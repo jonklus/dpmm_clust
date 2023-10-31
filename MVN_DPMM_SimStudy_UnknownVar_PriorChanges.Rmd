@@ -1,0 +1,522 @@
+---
+title: "Multivariate DPMM Unknown Var Simulations"
+author: "Jonathan Klus"
+date: "2023-07-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# load necessary functions
+source("./Multivariate_DPMM_unknownvar.R")
+source("./posterior_helper_fxns.R")
+
+# load R libraries
+library(ggplot2)
+library(plotly)
+library(label.switching)
+library(coda)
+library(tidyr)
+```
+
+## 2D Example - close together
+
+Mixture of 3 multivariate normal densities all with diagonal variance structure
+and $\sigma^2 = 10$. The true means are $(10,10)$, $(5,0)$, and $(0,10)$, and
+$\sum_{j}n_j = 30$.
+
+```{r, echo=FALSE}
+################## simulate data ##############################################
+set.seed(516)
+w = c(1/3, 1/3, 1/3)
+means = list(
+  c(10, 10),
+  c(5, 0),
+  c(0, 10)
+)
+
+var = diag(9, length(means[[1]])) # variances known, diagonal, and equal
+
+assign = sample(x = 1:length(means), size = 30, replace = TRUE, prob = w)
+y = lapply(X = assign,
+           FUN = function(x){
+             t(mvtnorm::rmvnorm(n = 1, mean = means[[x]], sigma = var))
+           })
+y_matrix = matrix(data = unlist(y), ncol = 2, byrow = TRUE)
+
+data = data.frame(
+  assign = assign,
+  y1 = y_matrix[,1],
+  y2 = y_matrix[,2]
+)
+
+# empirical means and variances
+data %>%
+  group_by(assign) %>%
+  dplyr::summarize(mean(y1), mean(y2), var(y1), var(y2))
+
+ggplot(data = data, aes(x = y1, y = y2)) +
+  geom_point(color = assign) +
+  ggtitle("Simulated 2D Data and True Group Assignments") + 
+  theme_classic()
+
+# drop params used to generate data, except for var which is assumed known
+rm(w, means)
+```
+
+### Using IG(1/2, 10) and arbitrary mean/var as prior
+
+```{r, message=FALSE}
+# sample
+set.seed(516)
+n_iter = 11000
+mu0 = matrix(data = rep(0, 2), nrow = 2)
+Sigma0 = Sigma0 = diag(300, 2)
+
+ex3 = MVN_CRP_sampler(S = n_iter, y = y, alpha = 1, Sigma0 = Sigma0,
+                        mu0 = mu0, a = 1/2, b = 10,
+                        k_init = 1, verbose = FALSE)
+save
+mean(ex3$accept[2:n_iter,])
+table(ex3$k)
+
+# traceplot for number of components k
+ggplot(mapping = aes(x = 1:n_iter, y = ex3$k)) + 
+  geom_line() +
+  ggtitle("Traceplot of no. components K") +
+  xlab("iter") + 
+  ylab("K") + 
+  theme_classic()
+
+# posterior inference before label switching fixed
+mean_list_by_k3 = list_params_by_k(draws = ex3$means, burn_in = 1000, param_type = "Mean", k_vec = ex3$k)
+var_list_by_k3 = list_params_by_k(draws = ex3$vars, burn_in = 1000, param_type = "Var", k_vec = ex3$k)
+#sigma22 is group 2, 2nd diagonal element
+prob_list_by_k3 = get_probs_by_k(probs = ex3$group_probs, 
+                                n_groups = ex3$k, 
+                                burn_in = 1000)
+group_assign_list_by_k3 = get_assign_by_k(assign = ex3$group_assign, 
+                                         n_groups = ex3$k, 
+                                         burn_in = 1000)
+## deal with label switching for each k
+
+## in this case need to skip first result bc only one group was found -- can't 
+## have label switching when there is only 1 group so the function fails
+stephens_result3 = lapply(X = 2:length(group_assign_list_by_k3), 
+                         FUN = function(x){
+                           label.switching(method = "STEPHENS", 
+                                           z = group_assign_list_by_k3[[x]],
+                                           p = prob_list_by_k3[[x]])
+                         }) 
+
+## now reorder means to deal with label switching and redo posterior inference and 
+## traceplots
+mean_list_by_k_stephens3 = list_params_by_k(draws = ex3$means, k_vec = ex3$k,
+                                           burn_in = 1000,
+                                           relabel = TRUE,
+                                           permutation = stephens_result3, 
+                                           param_type = "Mean")
+var_list_by_k_stephens3 = list_params_by_k(draws = ex3$vars, k_vec = ex3$k,
+                                           burn_in = 1000,
+                                           relabel = TRUE,
+                                           permutation = stephens_result3,
+                                           param_type = "Var")
+
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[1]], digits = 2)
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[2]], digits = 2)
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[3]], digits = 2)
+
+make_postsum(mcmc_df = var_list_by_k_stephens3[[1]], digits = 2)
+make_postsum(mcmc_df = var_list_by_k_stephens3[[2]], digits = 2)
+make_postsum(mcmc_df = var_list_by_k_stephens3[[3]], digits = 2)
+
+make_traceplot(param_list_by_k = mean_list_by_k_stephens3, 
+               k_index = 3, 
+               component_no = 1,
+               title_note = "K=3",
+               param_type = "Mean")
+make_traceplot(param_list_by_k = mean_list_by_k_stephens3, 
+               k_index = 3, 
+               component_no = 2,
+               title_note = "K=3",
+               param_type = "Mean")
+
+make_traceplot(param_list_by_k = var_list_by_k_stephens3, 
+                    k_index = 3, 
+                    component_no = 1,
+                    title_note = "K=3",
+                    param_type = "Var")
+make_traceplot(param_list_by_k = var_list_by_k_stephens3, 
+                    k_index = 3, 
+                    component_no = 2,
+                    title_note = "K=3",
+                    param_type = "Var")
+```
+
+### Using IG(1/2, 10) and empirical mean/var as prior
+
+```{r, message=FALSE}
+# sample
+set.seed(516)
+n_iter = 11000
+mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1)
+Sigma0 = round(cov(matrix(unlist(y), ncol = 2)), -1)
+
+ex3 = MVN_CRP_sampler(S = n_iter, y = y, alpha = 1, Sigma0 = Sigma0,
+                        mu0 = mu0, a = 1/2, b = 10,
+                        k_init = 1, verbose = FALSE)
+mean(ex3$accept[2:n_iter,])
+table(ex3$k)
+
+# traceplot for number of components k
+ggplot(mapping = aes(x = 1:n_iter, y = ex3$k)) + 
+  geom_line() +
+  ggtitle("Traceplot of no. components K") +
+  xlab("iter") + 
+  ylab("K") + 
+  theme_classic()
+
+# posterior inference before label switching fixed
+mean_list_by_k3 = list_params_by_k(draws = ex3$means, burn_in = 1000, param_type = "Mean", k_vec = ex3$k)
+var_list_by_k3 = list_params_by_k(draws = ex3$vars, burn_in = 1000, param_type = "Var", k_vec = ex3$k)
+#sigma22 is group 2, 2nd diagonal element
+prob_list_by_k3 = get_probs_by_k(probs = ex3$group_probs, 
+                                n_groups = ex3$k, 
+                                burn_in = 1000)
+group_assign_list_by_k3 = get_assign_by_k(assign = ex3$group_assign, 
+                                         n_groups = ex3$k, 
+                                         burn_in = 1000)
+## deal with label switching for each k
+
+## in this case need to skip first result bc only one group was found -- can't 
+## have label switching when there is only 1 group so the function fails
+stephens_result3 = lapply(X = 2:length(group_assign_list_by_k3), 
+                         FUN = function(x){
+                           label.switching(method = "STEPHENS", 
+                                           z = group_assign_list_by_k3[[x]],
+                                           p = prob_list_by_k3[[x]])
+                         }) 
+
+## now reorder means to deal with label switching and redo posterior inference and 
+## traceplots
+mean_list_by_k_stephens3 = list_params_by_k(draws = ex3$means, k_vec = ex3$k,
+                                           burn_in = 1000,
+                                           relabel = TRUE,
+                                           permutation = stephens_result3, 
+                                           param_type = "Mean")
+var_list_by_k_stephens3 = list_params_by_k(draws = ex3$vars, k_vec = ex3$k,
+                                           burn_in = 1000,
+                                           relabel = TRUE,
+                                           permutation = stephens_result3,
+                                           param_type = "Var")
+
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[1]], digits = 2)
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[2]], digits = 2)
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[3]], digits = 2)
+
+make_postsum(mcmc_df = var_list_by_k_stephens3[[1]], digits = 2)
+make_postsum(mcmc_df = var_list_by_k_stephens3[[2]], digits = 2)
+make_postsum(mcmc_df = var_list_by_k_stephens3[[3]], digits = 2)
+
+make_traceplot(param_list_by_k = mean_list_by_k_stephens3, 
+               k_index = 3, 
+               component_no = 1,
+               title_note = "K=3",
+               param_type = "Mean")
+make_traceplot(param_list_by_k = mean_list_by_k_stephens3, 
+               k_index = 3, 
+               component_no = 2,
+               title_note = "K=3",
+               param_type = "Mean")
+
+make_traceplot(param_list_by_k = var_list_by_k_stephens3, 
+                    k_index = 3, 
+                    component_no = 1,
+                    title_note = "K=3",
+                    param_type = "Var")
+make_traceplot(param_list_by_k = var_list_by_k_stephens3, 
+                    k_index = 3, 
+                    component_no = 2,
+                    title_note = "K=3",
+                    param_type = "Var")
+```
+
+### Using IG(1, 10) and empirical mean/var as prior
+
+```{r, message=FALSE}
+# sample
+set.seed(516)
+n_iter = 11000
+mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1)
+Sigma0 = round(cov(matrix(unlist(y), ncol = 2)), -1)
+
+ex3 = MVN_CRP_sampler(S = n_iter, y = y, alpha = 1, Sigma0 = Sigma0,
+                        mu0 = mu0, a = 1, b = 10,
+                        k_init = 1, verbose = FALSE)
+mean(ex3$accept[2:n_iter,])
+table(ex3$k)
+
+# traceplot for number of components k
+ggplot(mapping = aes(x = 1:n_iter, y = ex3$k)) + 
+  geom_line() +
+  ggtitle("Traceplot of no. components K") +
+  xlab("iter") + 
+  ylab("K") + 
+  theme_classic()
+
+# posterior inference before label switching fixed0
+mean_list_by_k3 = list_params_by_k(draws = ex3$means, burn_in = 1000, param_type = "Mean", k_vec = ex3$k)
+var_list_by_k3 = list_params_by_k(draws = ex3$vars, burn_in = 1000, param_type = "Var", k_vec = ex3$k)
+#sigma22 is group 2, 2nd diagonal element
+prob_list_by_k3 = get_probs_by_k(probs = ex3$group_probs, 
+                                n_groups = ex3$k, 
+                                burn_in = 1000)
+group_assign_list_by_k3 = get_assign_by_k(assign = ex3$group_assign, 
+                                         n_groups = ex3$k, 
+                                         burn_in = 1000)
+## deal with label switching for each k
+
+## in this case need to skip first result bc only one group was found -- can't 
+## have label switching when there is only 1 group so the function fails
+stephens_result3 = lapply(X = 2:length(group_assign_list_by_k3), 
+                         FUN = function(x){
+                           label.switching(method = "STEPHENS", 
+                                           z = group_assign_list_by_k3[[x]],
+                                           p = prob_list_by_k3[[x]])
+                         }) 
+
+## now reorder means to deal with label switching and redo posterior inference and 
+## traceplots
+mean_list_by_k_stephens3 = list_params_by_k(draws = ex3$means, k_vec = ex3$k,
+                                           burn_in = 1000,
+                                           relabel = TRUE,
+                                           permutation = stephens_result3, 
+                                           param_type = "Mean")
+var_list_by_k_stephens3 = list_params_by_k(draws = ex3$vars, k_vec = ex3$k,
+                                           burn_in = 1000,
+                                           relabel = TRUE,
+                                           permutation = stephens_result3,
+                                           param_type = "Var")
+
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[1]], digits = 2)
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[2]], digits = 2)
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[3]], digits = 2)
+
+make_postsum(mcmc_df = var_list_by_k_stephens3[[1]], digits = 2)
+make_postsum(mcmc_df = var_list_by_k_stephens3[[2]], digits = 2)
+make_postsum(mcmc_df = var_list_by_k_stephens3[[3]], digits = 2)
+
+make_traceplot(param_list_by_k = mean_list_by_k_stephens3, 
+               k_index = 3, 
+               component_no = 1,
+               title_note = "K=3",
+               param_type = "Mean")
+make_traceplot(param_list_by_k = mean_list_by_k_stephens3, 
+               k_index = 3, 
+               component_no = 2,
+               title_note = "K=3",
+               param_type = "Mean")
+
+make_traceplot(param_list_by_k = var_list_by_k_stephens3, 
+                    k_index = 3, 
+                    component_no = 1,
+                    title_note = "K=3",
+                    param_type = "Var")
+make_traceplot(param_list_by_k = var_list_by_k_stephens3, 
+                    k_index = 3, 
+                    component_no = 2,
+                    title_note = "K=3",
+                    param_type = "Var")
+```
+
+### Using IG(1, 10) and arbitrary mean/var as prior
+
+```{r,  message=FALSE}
+# sample
+set.seed(516)
+n_iter = 11000
+mu0 = matrix(data = rep(0, 2), nrow = 2)
+Sigma0 = Sigma0 = diag(300, 2)
+
+ex3 = MVN_CRP_sampler(S = n_iter, y = y, alpha = 1, Sigma0 = Sigma0,
+                        mu0 = mu0, a = 1, b = 10,
+                        k_init = 1, verbose = FALSE)
+mean(ex3$accept[2:n_iter,])
+table(ex3$k)
+
+# traceplot for number of components k
+ggplot(mapping = aes(x = 1:n_iter, y = ex3$k)) + 
+  geom_line() +
+  ggtitle("Traceplot of no. components K") +
+  xlab("iter") + 
+  ylab("K") + 
+  theme_classic()
+
+# posterior inference before label switching fixed
+mean_list_by_k3 = list_params_by_k(draws = ex3$means, burn_in = 1000, param_type = "Mean", k_vec = ex3$k)
+var_list_by_k3 = list_params_by_k(draws = ex3$vars, burn_in = 1000, param_type = "Var", k_vec = ex3$k)
+#sigma22 is group 2, 2nd diagonal element
+prob_list_by_k3 = get_probs_by_k(probs = ex3$group_probs, 
+                                n_groups = ex3$k, 
+                                burn_in = 1000)
+group_assign_list_by_k3 = get_assign_by_k(assign = ex3$group_assign, 
+                                         n_groups = ex3$k, 
+                                         burn_in = 1000)
+## deal with label switching for each k
+
+## in this case need to skip first result bc only one group was found -- can't 
+## have label switching when there is only 1 group so the function fails
+stephens_result3 = lapply(X = 2:length(group_assign_list_by_k3), 
+                         FUN = function(x){
+                           label.switching(method = "STEPHENS", 
+                                           z = group_assign_list_by_k3[[x]],
+                                           p = prob_list_by_k3[[x]])
+                         }) 
+
+## now reorder means to deal with label switching and redo posterior inference and 
+## traceplots
+mean_list_by_k_stephens3 = list_params_by_k(draws = ex3$means, k_vec = ex3$k,
+                                           burn_in = 1000,
+                                           relabel = TRUE,
+                                           permutation = stephens_result3, 
+                                           param_type = "Mean")
+var_list_by_k_stephens3 = list_params_by_k(draws = ex3$vars, k_vec = ex3$k,
+                                           burn_in = 1000,
+                                           relabel = TRUE,
+                                           permutation = stephens_result3,
+                                           param_type = "Var")
+
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[1]], digits = 2)
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[2]], digits = 2)
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[3]], digits = 2)
+
+make_postsum(mcmc_df = var_list_by_k_stephens3[[1]], digits = 2)
+make_postsum(mcmc_df = var_list_by_k_stephens3[[2]], digits = 2)
+make_postsum(mcmc_df = var_list_by_k_stephens3[[3]], digits = 2)
+
+make_traceplot(param_list_by_k = mean_list_by_k_stephens3, 
+               k_index = 3, 
+               component_no = 1,
+               title_note = "K=3",
+               param_type = "Mean")
+make_traceplot(param_list_by_k = mean_list_by_k_stephens3, 
+               k_index = 3, 
+               component_no = 2,
+               title_note = "K=3",
+               param_type = "Mean")
+
+make_traceplot(param_list_by_k = var_list_by_k_stephens3, 
+                    k_index = 3, 
+                    component_no = 1,
+                    title_note = "K=3",
+                    param_type = "Var")
+make_traceplot(param_list_by_k = var_list_by_k_stephens3, 
+                    k_index = 3, 
+                    component_no = 2,
+                    title_note = "K=3",
+                    param_type = "Var")
+```
+
+### Using IG(1, b) w/ b~Ga(1,1/2) and empirical mean/var as prior
+
+```{r,  message=FALSE}
+# sample
+set.seed(516)
+n_iter = 11000
+mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1)
+Sigma0 = round(cov(matrix(unlist(y), ncol = 2)), -1)
+
+ex3 = MVN_CRP_sampler(S = n_iter, y = y, alpha = 1, Sigma0 = Sigma0,
+                        mu0 = mu0, a = 1, b = 10, d = 1, f = 1/2, sigma_hyperprior = TRUE,
+                        k_init = 1, verbose = TRUE, print_iter = 1000)
+saveRDS(object = ex3, file = "hyperprior_results.rds")
+
+mean(ex3$accept[2:n_iter,])
+table(ex3$k)
+
+# traceplot for number of components k
+ggplot(mapping = aes(x = 1:n_iter, y = ex3$k)) + 
+  geom_line() +
+  ggtitle("Traceplot of no. components K") +
+  xlab("iter") + 
+  ylab("K") + 
+  theme_classic()
+
+# posterior inference before label switching fixed
+mean_list_by_k3 = list_params_by_k(draws = ex3$means, burn_in = 1000, param_type = "Mean", k_vec = ex3$k)
+var_list_by_k3 = list_params_by_k(draws = ex3$vars, burn_in = 1000, param_type = "Var", k_vec = ex3$k)
+#sigma22 is group 2, 2nd diagonal element
+prob_list_by_k3 = get_probs_by_k(probs = ex3$group_probs, 
+                                n_groups = ex3$k, 
+                                burn_in = 1000)
+group_assign_list_by_k3 = get_assign_by_k(assign = ex3$group_assign, 
+                                         n_groups = ex3$k, 
+                                         burn_in = 1000)
+## deal with label switching for each k
+
+## in this case need to skip first result bc only one group was found -- can't 
+## have label switching when there is only 1 group so the function fails
+stephens_result3 = lapply(X = 2:length(group_assign_list_by_k3), 
+                         FUN = function(x){
+                           label.switching(method = "STEPHENS", 
+                                           z = group_assign_list_by_k3[[x]],
+                                           p = prob_list_by_k3[[x]])
+                         }) 
+
+## now reorder means to deal with label switching and redo posterior inference and 
+## traceplots
+mean_list_by_k_stephens3 = list_params_by_k(draws = ex3$means, k_vec = ex3$k,
+                                           burn_in = 1000,
+                                           relabel = TRUE,
+                                           permutation = stephens_result3, 
+                                           param_type = "Mean")
+var_list_by_k_stephens3 = list_params_by_k(draws = ex3$vars, k_vec = ex3$k,
+                                           burn_in = 1000,
+                                           relabel = TRUE,
+                                           permutation = stephens_result3,
+                                           param_type = "Var")
+
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[1]], digits = 2)
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[2]], digits = 2)
+make_postsum(mcmc_df = mean_list_by_k_stephens3[[3]], digits = 2)
+
+make_postsum(mcmc_df = var_list_by_k_stephens3[[1]], digits = 2)
+make_postsum(mcmc_df = var_list_by_k_stephens3[[2]], digits = 2)
+make_postsum(mcmc_df = var_list_by_k_stephens3[[3]], digits = 2)
+
+make_traceplot(param_list_by_k = mean_list_by_k_stephens3, 
+               k_index = 3, 
+               component_no = 1,
+               title_note = "K=3",
+               param_type = "Mean")
+make_traceplot(param_list_by_k = mean_list_by_k_stephens3, 
+               k_index = 3, 
+               component_no = 2,
+               title_note = "K=3",
+               param_type = "Mean")
+
+make_traceplot(param_list_by_k = var_list_by_k_stephens3, 
+                    k_index = 3, 
+                    component_no = 1,
+                    title_note = "K=3",
+                    param_type = "Var")
+make_traceplot(param_list_by_k = var_list_by_k_stephens3, 
+                    k_index = 3, 
+                    component_no = 2,
+                    title_note = "K=3",
+                    param_type = "Var")
+
+## traceplot of b parameters
+b_mcmc_draws = data.frame(ex3$b) %>%
+  dplyr::mutate(iter = 1:nrow(ex3$b)) %>%
+  tidyr::pivot_longer(cols = c("b_1", "b_2"),
+                      names_to = "component",
+                      values_to = "param")
+
+ggplot(data = b_mcmc_draws) +
+  geom_line(mapping = aes(x = iter, y = param, color = component)) +
+  ggtitle("Traceplot of b") +
+  # ylab() +
+  theme_classic()
+```

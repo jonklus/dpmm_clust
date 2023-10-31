@@ -6,6 +6,15 @@
 .RData
 .RDataTmp
 
+# Other data files
+.Rds
+
+# Knitted files
+.html
+.pdf
+.doc
+.docx
+
 # User-specific files
 .Ruserdata
 

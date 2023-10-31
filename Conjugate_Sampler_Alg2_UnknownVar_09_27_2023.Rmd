@@ -1,0 +1,289 @@
+---
+title: "Conjugate Sampler - Unknown Variance"
+author: "Jonathan Klus"
+date: "2023-09-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# load necessary functions
+source("./Multivariate_DPMM_unknownvar_conjugate.R")
+source("./posterior_helper_fxns.R")
+
+# load R libraries
+library(ggplot2)
+library(plotly)
+library(label.switching)
+library(coda)
+library(tidyr)
+```
+
+## EEE Sampler Setup
+
+- $y_1, \dots, y_n \sim N(\mu, \sigma^2 I_J)$
+- $\mu_1, \dots, \mu_K \sim N(\mu_0, r\sigma^2 I_J)$
+- $\sigma^2 \sim IG(a,b)$
+- $r \sim IG(g, h)$
+- $b \sim Ga(d, f)$
+
+### 2D Example - well separated
+
+Mixture of 3 multivariate normal densities all with diagonal variance structure
+and $\sigma^2 = 10$. The true means are $(-20,20)$, $(20,-20)$, and $(0,0)$, and
+$\sum_{j}n_j = 30$.
+
+```{r, echo=FALSE}
+################## simulate data ##############################################
+w = c(0.4, 0.3, 0.3)
+means = list(
+  c(-20, 20),
+  c(20, -20),
+  c(0, 0)
+)
+
+var = diag(10, length(means[[1]])) # variances known, diagonal, and equal
+
+assign = sample(x = 1:length(means), size = 30, replace = TRUE, prob = w)
+y = lapply(X = assign,
+           FUN = function(x){
+             t(mvtnorm::rmvnorm(n = 1, mean = means[[x]], sigma = var))
+           })
+y_matrix = matrix(data = unlist(y), ncol = 2, byrow = TRUE)
+
+data = data.frame(
+  assign = assign,
+  y1 = y_matrix[,1],
+  y2 = y_matrix[,2]
+)
+
+ggplot(data = data, aes(x = y1, y = y2, label = rownames(data))) +
+  #geom_point(color = assign) +
+  #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+  geom_text(size = 3, color = assign) +
+  ggtitle("Simulated 2D Data and True Group Assignments") + 
+  theme_classic()
+
+# drop params used to generate data, except for var which is assumed known
+rm(w, means)
+```
+
+```{r}
+# sample
+set.seed(516)
+n_iter = 10^4
+mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1)
+print(mu0)
+ex1 = MVN_CRP_sampler_EEE(S = n_iter, y = y, alpha = 1, r = 10, 
+                          a = 1, b = 10, d = 1, f = 10, g = 2, h = 10, 
+                          sigma_hyperprior = TRUE, fix_r = FALSE, mu0 = mu0, 
+                          k_init = 1, diag_weights = FALSE, 
+                          verbose = TRUE, print_iter = 100)
+table(ex1$k)
+
+# traceplot for number of components k.
+
+make_k_traceplot(k = ex1$k, group_assign = ex1$group_assign)
+
+sample(ex1$vars, size = 100)
+  
+# ggplot(mapping = aes(x = 1:n_iter, y = ex3$k)) + 
+#   geom_line() +
+#   ggtitle("Traceplot of no. components K") +
+#   xlab("iter") + 
+#   ylab("K") + 
+#   theme_classic()
+
+# # posterior inference before label switching fixed
+# mean_list_by_k1 = list_params_by_k(draws = ex1$means, burn_in = 1000, param_type = "Mean", k_vec = ex1$k)
+# var_list_by_k1 = list_params_by_k(draws = ex1$vars, burn_in = 1000, param_type = "Var", k_vec = ex1$k)
+# #sigma22 is group 2, 2nd diagonal element
+# prob_list_by_k1 = get_probs_by_k(probs = ex1$group_probs, 
+#                                 n_groups = ex1$k, 
+#                                 burn_in = 1000)
+# group_assign_list_by_k1 = get_assign_by_k(assign = ex1$group_assign, 
+#                                          n_groups = ex1$k, 
+#                                          burn_in = 1000)
+# ## deal with label switching for each k
+# 
+# ## in this case need to skip first result bc only one group was found -- can't 
+# ## have label switching when there is only 1 group so the function fails
+# 
+# ## this ended up not being true here after some settings were changed --- need to program
+# ## a more robust way to do this to avoid manually changing Stephens settings and potentially
+# ## causing erros
+# stephens_result1 = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k1, 
+#                                        prob_list_by_k = prob_list_by_k1)
+# 
+# ## now reorder means to deal with label switching and redo posterior inference and 
+# ## traceplots
+# mean_list_by_k_stephens1 = list_params_by_k(draws = ex1$means, k_vec = ex1$k,
+#                                            burn_in = 1000,
+#                                            relabel = TRUE,
+#                                            permutation = stephens_result1, 
+#                                            param_type = "Mean")
+# var_list_by_k_stephens1 = list_params_by_k(draws = ex1$vars, k_vec = ex1$k,
+#                                            burn_in = 1000,
+#                                            relabel = TRUE,
+#                                            permutation = stephens_result1,
+#                                            param_type = "Var")
+# 
+# # posterior means
+# make_postsum(mcmc_df = mean_list_by_k_stephens1[[1]], digits = 2)
+# make_postsum(mcmc_df = mean_list_by_k_stephens1[[2]], digits = 2)
+# make_postsum(mcmc_df = mean_list_by_k_stephens1[[3]], digits = 2)
+# 
+# # posterior vars
+# make_postsum(mcmc_df = var_list_by_k_stephens1[[1]], digits = 2)
+# make_postsum(mcmc_df = var_list_by_k_stephens1[[2]], digits = 2)
+# make_postsum(mcmc_df = var_list_by_k_stephens1[[3]], digits = 2)
+# 
+# 
+# 
+# 
+# # empirical means & vars
+# # emp_mean_list_by_k_stephens3 = list_params_by_k(draws = ex3$emp_means, k_vec = ex3$k,
+# #                                            burn_in = 1000,
+# #                                            relabel = TRUE,
+# #                                            permutation = stephens_result3, 
+# #                                            param_type = "Mean")
+# emp_var_list_by_k_stephens1 = list_params_by_k(draws = ex1$emp_vars, k_vec = ex1$k,
+#                                            burn_in = 1000,
+#                                            relabel = TRUE,
+#                                            permutation = stephens_result1,
+#                                            param_type = "Var")
+# 
+# # empirical vars
+# make_postsum(mcmc_df = emp_var_list_by_k_stephens1[[1]], digits = 2)
+# make_postsum(mcmc_df = emp_var_list_by_k_stephens1[[2]], digits = 2)
+# make_postsum(mcmc_df = emp_var_list_by_k_stephens1[[3]], digits = 2)
+# 
+# make_traceplot(param_list_by_k = mean_list_by_k_stephens1, 
+#                k = 3, p = 2,
+#                component_no = 1,
+#                param_type = "Mean")
+# make_traceplot(param_list_by_k = mean_list_by_k_stephens1, 
+#                k = 3, p = 2,
+#                component_no = 2,
+#                param_type = "Mean")
+# make_traceplot(param_list_by_k = var_list_by_k_stephens1, 
+#                     k = 3, 
+#                     component_no = 1,
+#                     p=2,
+#                     param_type = "Var")
+# make_traceplot(param_list_by_k = var_list_by_k_stephens1, 
+#                     k = 3, 
+#                     component_no = 2,
+#                     p=2,
+#                     param_type = "Var")
+# 
+# make_traceplot(param_list_by_k = mean_list_by_k_stephens1, 
+#                k = 4, p = 2,
+#                component_no = 1,
+#                param_type = "Mean")
+# make_traceplot(param_list_by_k = mean_list_by_k_stephens1, 
+#                k = 4, p = 2,
+#                component_no = 2,
+#                param_type = "Mean")
+# 
+# make_traceplot(param_list_by_k = var_list_by_k_stephens1, 
+#                     k = 4, 
+#                     component_no = 1,
+#                     p=2,
+#                     param_type = "Var")
+# make_traceplot(param_list_by_k = var_list_by_k_stephens1, 
+#                     k = 4, 
+#                     component_no = 2,
+#                     p=2,
+#                     param_type = "Var")
+# 
+# make_traceplot(param_list_by_k = mean_list_by_k_stephens1, 
+#                k = 5, p = 2,
+#                component_no = 1,
+#                param_type = "Mean")
+# make_traceplot(param_list_by_k = mean_list_by_k_stephens1, 
+#                k = 5, p = 2,
+#                component_no = 2,
+#                param_type = "Mean")
+# make_traceplot(param_list_by_k = var_list_by_k_stephens1, 
+#                     k = 5, 
+#                     component_no = 1,
+#                     p=2,
+#                     param_type = "Var")
+# make_traceplot(param_list_by_k = var_list_by_k_stephens1, 
+#                     k = 5, 
+#                     component_no = 2,
+#                     p=2,
+#                     param_type = "Var")
+
+```
+
+## 2D Example - close together
+
+Mixture of 3 multivariate normal densities all with diagonal variance structure
+and $\sigma^2 = 10$. The true means are $(10,10)$, $(0,-5)$, , $(12,-2)$, and $(0,10)$, and
+$\sum_{j}n_j = 50$.
+
+```{r, echo=FALSE}
+################## simulate data ##############################################
+set.seed(1234)
+w = c(.35, .25, .4)
+means = list(
+  #c(10, 10),
+  c(0, -5),
+  c(0, 10),
+  c(12,2)
+)
+
+var = diag(9, length(means[[1]])) # variances known, diagonal, and equal
+
+assign = sample(x = 1:length(means), size = 50, replace = TRUE, prob = w)
+y = lapply(X = assign,
+           FUN = function(x){
+             t(mvtnorm::rmvnorm(n = 1, mean = means[[x]], sigma = var))
+           })
+y_matrix = matrix(data = unlist(y), ncol = 2, byrow = TRUE)
+
+data = data.frame(
+  assign = assign,
+  y1 = y_matrix[,1],
+  y2 = y_matrix[,2]
+)
+
+# empirical means and variances
+data %>%
+  group_by(assign) %>%
+  dplyr::summarize(mean(y1), mean(y2), var(y1), var(y2))
+
+ggplot(data = data, aes(x = y1, y = y2)) +
+  geom_point(color = assign) +
+  ggtitle("Simulated 2D Data and True Group Assignments") + 
+  theme_classic()
+
+# drop params used to generate data, except for var which is assumed known
+rm(w, means)
+```
+
+
+```{r,  message=FALSE}
+mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1)
+print(mu0)
+
+# sample
+set.seed(516)
+n_iter = 10^4
+ex1 = MVN_CRP_sampler_EEE(S = n_iter, y = y, alpha = 1, r = 10, 
+                          a = 1, b = 10, d = 1, f = 10, g = 2, h = 10, 
+                          sigma_hyperprior = TRUE, fix_r = FALSE, mu0 = mu0, 
+                          k_init = 1, diag_weights = FALSE, 
+                          verbose = TRUE, print_iter = 100)
+table(ex1$k)
+
+# traceplot for number of components k.
+
+make_k_traceplot(k = ex1$k, group_assign = ex1$group_assign)
+
+sample(ex1$vars, size = 100)
+```
+
