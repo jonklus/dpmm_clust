@@ -1101,57 +1101,103 @@ group_prob_calc_EVV <- function(k, n, n_j, alpha, y_i, mu, Sigma, r, mu0, lambda
   
 }
 
-post_pred_EVV <- function(obs, group, r, counts, nu, y, ybar, group_labs, mu0, lambda0){
+post_pred_EVV <- function(obs, which_group, r, sm_counts, nu, y, ybar, loss_ybar, mu0, lambda0){
   
-  mu_n = ((1/r)*mu0[,1] + counts[group]*ybar[group])/((1/r) + counts[group])
-  lambda_n = lambda0 + loss_ybar + loss_mu0*((counts[group]/r)/(1/r + counts[group]))
+  loss_mu0 = (ybar[[which_group]] - mu0)%*%t(ybar[[which_group]] - mu0)
   
-  prob = LaplacesDemon::dmvt(x = y_i[,obs], 
-                             mu = mu_n, 
-                             S = lambda_n, 
-                             df = nu + counts[group] - nrow(mu0) + 1)
+  mu_n = ((1/r)*mu0[,1] + sm_counts[which_group]*ybar[[which_group]])/((1/r) + sm_counts[which_group])
   
-  return(prob)
-    
+  nu_n = nu + sm_counts[which_group] - nrow(mu0) + 1
+  
+  k_n = (r+sm_counts[which_group]+1)/((r+sm_counts[which_group])*(nu_n))
+  
+  lambda_n = k_n*(lambda0 + loss_ybar[[which_group]] + 
+                    loss_mu0*((sm_counts[which_group]/r)/(1/r + sm_counts[which_group])))
+  
+  # print(mu_n)
+  # print(lambda_n)
+  # print(nu_n)
+  
+  val = LaplacesDemon::dmvt(x = y[[obs]][,1], 
+                            mu = mu_n[,1], 
+                            S = lambda_n, 
+                            df = nu_n)
+  
+  return(sm_counts[which_group]*val)
+  
 }
 
-split_merge_prop_prob_EVV <- function(obs, r, counts, nu, y, group_labs, mu0, lambda0){
-  # obs is the specific observation under consideration
+# test line
+# post_pred_EVV(obs=2,which_group=1, r=10, sm_counts=c(10,11), nu=2, y=y, ybar=ybar, 
+#               loss_ybar=loss_ybar, mu0=matrix(data=0,nrow=2), lambda0=diag(10,2))
+######################
+
+split_merge_prop_prob_EVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, lambda0){
+  # split_labs is an array of length 2 indicating which entries in counts correspond
+  # to the groups that are part of the split/merge
+  # which_group is a scalar valued 1 or 2 indicating which of the groups we are considering
+  # obs is the index for the observation being considered at this point
+  # group_assign is an array of length n corresponding to group assignments for each obs
   # r and nu are scalar hyperparameters
   # counts is an array of the number of obs assigned to each group
-  # group_labs are the labels for the two groups under consideration
   # y is the data
   # mu0 and lambda0 are the prior mean and covariance matrix
   
-  ybar = lapply(X = unique(group_labs), 
+  
+  # which(as.numeric(names(test)) %in% c(1,3))
+  sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign[-obs] == x)})
+  
+  ybar = lapply(X = split_labs, 
                 FUN = function(x){
-                    group_ind = which(group_labs == x)
-                    ysum = Reduce(f = "+", 
-                                  x = lapply(X = group_ind, 
-                                             FUN = function(x){(y[[x]])}))
-                    return(ysum/length(group_ind))
+                  group_ind = which(group_assign == x)
+                  if(obs %in% group_ind){
+                    obs_ind = which(obs == group_ind)
+                    group_ind = group_ind[-obs_ind]
+                  } # else continue
+                  
+                  ysum = Reduce(f = "+", 
+                                x = lapply(X = group_ind, 
+                                           FUN = function(x){(y[[x]])}))
+                  
+                  return(ysum/length(group_ind))
                 })
   
-  loss_ybar = lapply(X = unique(group_labs), 
-                    FUN = function(x){
-                      
-                      col_ind = x  # from outer apply
-                      group_ind = which(group_labs == x)
-                      
-                      Reduce(f = "+", 
-                             x = lapply(X = group_ind, FUN = function(x){
-                               (y[[x]] - ybar[,col_ind])%*%t(y[[x]] - ybar[,col_ind])}))
-                      
-                    })
+  loss_ybar = lapply(X = 1:2, 
+                     FUN = function(x){
+                       
+                       col_ind = x  # from outer apply
+                       group_ind = which(group_assign == split_labs[x])
+                       if(obs %in% group_ind){
+                         obs_ind = which(obs == group_ind)
+                         group_ind = group_ind[-obs_ind]
+                       } # else continue
+                       
+                       Reduce(f = "+", 
+                              x = lapply(X = group_ind, FUN = function(x){
+                                (y[[x]] - ybar[[col_ind]])%*%t(y[[x]] - ybar[[col_ind]])}))
+                       
+                     })
   
-  mu_n = (1/r)*mu0[,1] + counts 
-  lambda_n = lambda0 + loss_ybar + (n/r)/(1/r + counts[])*loss_mu0
   
-  prob1 = LaplacesDemon::dmvt(x = y_i[,obs], mu = mu0[,1], 
-                              S = (r+1)*lambda0, df = nu)
+  
+  
+  ratio = sapply(X = 1:2,
+                 FUN = function(x){
+                   
+                   xx = ifelse(x==1,2,1)
+                   num = post_pred_EVV(obs = obs, which_group = x, r = r, # which group is which????
+                                       sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
+                                       loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
+                   denom = num + post_pred_EVV(obs = obs, which_group = xx, r = r,
+                                               sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
+                                               loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
+                   return(num/denom)
+                   
+                 })
+  
+  return(ratio)
   
 }
-
 
 MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambda0, mu0, k_init = 2,
                                 g = 1, h = 1, nu = 2, nu_hyperprior = FALSE, fix_r = FALSE, split_merge = FALSE,
@@ -1395,6 +1441,7 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       sm_iter = 10
       
       temp_group_assign = matrix(data = NA, nrow = sm_iter + 1, ncol = length(group_assign[s,]))
+      sm_probs = matrix(data = NA, nrow = sm_iter, ncol = length(y))
       temp_group_assign[1,] = group_assign[s,]
       
       # randomly select two observed data points y
@@ -1419,7 +1466,7 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         # specify random launch state
         split_lab = c(lab1, avail_labels[1]) # keep original label, new one for 2nd group
         
-        for(scan in 1:11){
+        for(scan in 1:(sm_iter+1)){
           for(obs in subset_index_minus){
             
             if(scan == 1){
@@ -1437,17 +1484,33 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
               # current observation under consideration cannot be included here
               if(obs %in% split_group_lab_index1)
               
-              split_assign_prob = placeholder
+              split_assign_prob = split_merge_prop_prob_EVV(
+                obs = obs, split_labs = split_lab, r=r, 
+                group_assign = temp_group_assign[scan,], nu = nu, 
+                y = y, mu0 = mu0, lambda0= lambda0)
               
-              temp_group_assign[scan,obs] = sample(x = split_lab, size = 1, 
+    
+              
+               sm_prop_index = sample(x = 1:2, size = 1, 
                                                    prob = split_assign_prob)
+              
+              temp_group_assign[scan,obs] = split_lab[sm_prop_index]
+              sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
               
             }
             
-            
-            
           }
         }
+        
+        # calculate & evaluate acceptance prob
+        prob1 = 1
+        prob2 = Reduce(f = "*", x = c(1,2,3,4,5))
+        prob3 = 1
+        
+        # if new group created by split, give it a mean and variance
+        
+        # final bookkeeping 
+        
         
         
         # if MERGE    
