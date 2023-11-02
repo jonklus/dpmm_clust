@@ -1024,6 +1024,14 @@ MVN_CRP_sampler_VEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
 
 ## calculate group membership probabilities
 
+prior_pred_NinvW <- function(y_i, mu0, r, lambda0, nu){
+  
+  dens = LaplacesDemon::dmvt(x = y_i[,1], 
+                              mu = mu0[,1], 
+                              S = (r+1)*lambda0,
+                              df = nu)
+}
+
 group_prob_calc_EVV <- function(k, n, n_j, alpha, y_i, mu, Sigma, r, mu0, lambda0, nu,
                                 singleton = 0, curr_group_assign = NULL, curr_labels = NULL){
   
@@ -1089,11 +1097,10 @@ group_prob_calc_EVV <- function(k, n, n_j, alpha, y_i, mu, Sigma, r, mu0, lambda
     
   
   #### probability of creating a new group
-  pr_new = alpha/(n-1+alpha)*LaplacesDemon::dmvt(x = y_i[,1], 
-                                                 mu = mu0[,1], 
-                                                 S = (r+1)*lambda0,
-                                                 df = nu)
-  
+  pr_new = alpha/(n-1+alpha)*prior_pred_NinvW(y_i = y_i, mu0 = mu0,
+                                              r = r, lambda0 = lambda0, 
+                                              nu = nu)
+
   #### normalize probs to account for "b"
   pr_c = c(pr_curr, pr_new)/(sum(pr_curr) + pr_new)
   
@@ -1101,29 +1108,62 @@ group_prob_calc_EVV <- function(k, n, n_j, alpha, y_i, mu, Sigma, r, mu0, lambda
   
 }
 
-post_pred_EVV <- function(obs, which_group, r, sm_counts, nu, y, ybar, loss_ybar, mu0, lambda0){
+post_pred_EVV <- function(obs, which_group, r, sm_counts, nu, y, ybar, loss_ybar, mu0, lambda0, type){
   
-  loss_mu0 = (ybar[[which_group]] - mu0)%*%t(ybar[[which_group]] - mu0)
+  if(type == "scans"){
+    # restricted gibbs sampling scans
+    
+    loss_mu0 = (ybar[[which_group]] - mu0)%*%t(ybar[[which_group]] - mu0)
+    
+    mu_n = ((1/r)*mu0[,1] + sm_counts[which_group]*ybar[[which_group]])/((1/r) + sm_counts[which_group])
+    
+    nu_n = nu + sm_counts[which_group] - nrow(mu0) + 1
+    
+    k_n = (r+sm_counts[which_group]+1)/((r+sm_counts[which_group])*(nu_n))
+    
+    lambda_n = k_n*(lambda0 + loss_ybar[[which_group]] + 
+                      loss_mu0*((sm_counts[which_group]/r)/(1/r + sm_counts[which_group])))
+    
+    # print(mu_n)
+    # print(lambda_n)
+    # print(nu_n)
+    
+    val = sm_counts[which_group]*LaplacesDemon::dmvt(x = y[[obs]][,1], 
+                                                      mu = mu_n[,1], 
+                                                      S = lambda_n, 
+                                                      df = nu_n)
+    
+    
+  } else if(type = "ll_ratio"){
+    # components of likelihood ratio for final acceptance prob calc
+    
+    loss_mu0 = (ybar - mu0)%*%t(ybar - mu0)
+    
+    mu_n = ((1/r)*mu0[,1] + sm_counts*ybar)/((1/r) + sm_counts)
+    
+    nu_n = nu + sm_counts - nrow(mu0) + 1
+    
+    k_n = (r+sm_counts+1)/((r+sm_counts)*(nu_n))
+    
+    lambda_n = k_n*(lambda0 + loss_ybar + 
+                      loss_mu0*((sm_counts/r)/(1/r + sm_counts)))
+    
+    # print(mu_n)
+    # print(lambda_n)
+    # print(nu_n)
+    
+    val = sm_counts[which_group]*LaplacesDemon::dmvt(x = y[[obs]][,1], 
+                                                     mu = mu_n[,1], 
+                                                     S = lambda_n, 
+                                                     df = nu_n)
   
-  mu_n = ((1/r)*mu0[,1] + sm_counts[which_group]*ybar[[which_group]])/((1/r) + sm_counts[which_group])
+    
+  }
   
-  nu_n = nu + sm_counts[which_group] - nrow(mu0) + 1
   
-  k_n = (r+sm_counts[which_group]+1)/((r+sm_counts[which_group])*(nu_n))
+
   
-  lambda_n = k_n*(lambda0 + loss_ybar[[which_group]] + 
-                    loss_mu0*((sm_counts[which_group]/r)/(1/r + sm_counts[which_group])))
-  
-  # print(mu_n)
-  # print(lambda_n)
-  # print(nu_n)
-  
-  val = LaplacesDemon::dmvt(x = y[[obs]][,1], 
-                            mu = mu_n[,1], 
-                            S = lambda_n, 
-                            df = nu_n)
-  
-  return(sm_counts[which_group]*val)
+  return(val)
   
 }
 
@@ -1478,8 +1518,8 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
               sm_counts = table(temp_group_assign[scan,-obs])
               split_group_count_index = which(as.numeric(names(sm_counts)) %in% split_lab)
               current_obs_index = which(temp_group_assign == obs)
-              split_group_lab_index1 = which(temp_group_assign == split_lab[1])
-              split_group_lab_index2 = which(temp_group_assign == split_lab[2])
+              split_group_lab_index1 = which(temp_group_assign[(sm_iter+1),] == split_lab[1])
+              split_group_lab_index2 = which(temp_group_assign[(sm_iter+1),] == split_lab[2])
               
               # current observation under consideration cannot be included here
               if(obs %in% split_group_lab_index1)
@@ -1503,9 +1543,37 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         }
         
         # calculate & evaluate acceptance prob
-        prob1 = 1
-        prob2 = Reduce(f = "*", x = c(1,2,3,4,5))
-        prob3 = 1
+        sm_counts = table(temp_group_assign[sm_iter+1,]) # update counts after scans
+        # proposal probability
+        prob1 = -Reduce(f = "+", x = log(sm_probs[sm_iter+1,])) # log1 - sum(logs)
+        # prior ratio
+        prob2_num = factorial(sm_counts[[split_group_count_index[1]]] -1)*factorial(sm_counts[[split_group_count_index[2]]] -1)
+        prob2_denom = factorial(sm_counts[[split_group_count_index[1]]]+sm_counts[[split_group_count_index[2]]]-1)
+        prob2 = log(alpha) + (log(prob2_num) - log(prob2_denom))
+          
+        # likelihood ratio
+        
+        ## component 1 - numerator I (group 1)
+        prob3_num1 = 0
+        for(obs_ind in 1:length(subset_index)){
+          if(obs_ind == 1){
+            # first observation --- prior predictive
+            val = prior_pred_NinvW(y_i = y_i, mu0 = mu0,
+                                   r = r, lambda0 = lambda0, 
+                                   nu = nu)
+            prob3_num1 = prob3_num1 + log(val)
+            
+          } else{
+            # posterior predictive
+            val = post_pred_EVV()
+            
+          }
+        }
+    
+        
+        ## component 2 - numerator II (group 2)
+        
+        ## component 3 - denominator (all in original group)
         
         # if new group created by split, give it a mean and variance
         
