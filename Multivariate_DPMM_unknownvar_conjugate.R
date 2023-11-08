@@ -1114,7 +1114,18 @@ post_pred_EVV <- function(obs, which_group, r, sm_counts, nu, y, ybar, loss_ybar
   
   loss_mu0 = (ybar[[which_group]] - mu0)%*%t(ybar[[which_group]] - mu0)
   
-  mu_n = ((1/r)*mu0[,1] + sm_counts[which_group]*ybar[[which_group]])/((1/r) + sm_counts[which_group])
+  mu_n = ((1/r)*mu0 + sm_counts[which_group]*ybar[[which_group]])/((1/r) + sm_counts[which_group])
+  
+  cat(mu_n)
+  cat("\n")
+  cat("dim", dim(mu_n))
+  cat("\n")
+  print(mu_n[,1])
+  cat("\n")
+  cat("y", y[[obs]])
+  cat("\n")
+  cat("dim", dim(y[[obs]]))
+  cat("\n")
   
   nu_n = nu + sm_counts[which_group] - nrow(mu0) + 1
   
@@ -1155,7 +1166,7 @@ final_post_pred_EVV <- function(y_i, r, nu, y, mu0, lambda0){
   
   loss_mu0 = (ybar - mu0)%*%t(ybar - mu0)
   
-  mu_n = ((1/r)*mu0[,1] + sm_counts*ybar)/((1/r) + sm_counts)
+  mu_n = ((1/r)*mu0 + sm_counts*ybar)/((1/r) + sm_counts)
   
   nu_n = nu + sm_counts - nrow(mu0) + 1
   
@@ -1306,6 +1317,10 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
   
   emp_means = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
   emp_vars = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
+  
+  # split merge step - only used if needed
+  sm_results = matrix(data = NA, nrow = 1, ncol = 5)
+  colnames(sm_results) = c("s", "sm_iter", "move_type","accept", "prob")
   
   if(nu_hyperprior == TRUE & fix_r == FALSE){
     extra_params = matrix(data = NA, nrow = S, ncol = 2)
@@ -1905,7 +1920,7 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         
       }
       
-      sm_results = rbind(sm_results, c(s, sm_iter, move_type,accept, prob))
+      sm_results = rbind(sm_results, c(s, sm_iter, move_type, accept, accept_prob))
       
       cat("SM Step complete:")
       cat("\n")
@@ -1915,7 +1930,7 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       cat("\n")
       cat("accept", accept)
       cat("\n")
-      cat("prob", prob)
+      cat("prob", accept_prob)
       cat("\n")
       print(table(group_assign[s,]))
       
@@ -2133,6 +2148,7 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
                        emp_vars = emp_vars,
                        extra_params = extra_params,
                        accept = accept_ind,
+                       sm_results = sm_results,
                        group_probs = probs,
                        group_assign = group_assign,
                        pairwise_mats = pairwise_mats)
@@ -2150,6 +2166,7 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
                        emp_vars = emp_vars,
                        #extra_params = extra_params,
                        accept = accept_ind,
+                       sm_results = sm_results,
                        group_probs = probs,
                        group_assign = group_assign,
                        pairwise_mats = pairwise_mats)

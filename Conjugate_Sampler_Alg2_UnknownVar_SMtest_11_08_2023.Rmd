@@ -87,88 +87,12 @@ ggplot(data = data, aes(x = y1, y = y2, label = rownames(data))) +
 rm(w, means)
 ```
 
-#### VII sampler
-
-```{r}
-# sample
-set.seed(516)
-n_iter = 10^1
-mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1)
-print(mu0)
-ex1 = MVN_CRP_sampler_VEE(S = n_iter, y = y, alpha = 1, r = 10, 
-                          a = 1, b = 12,
-                          d = 1, f = 50,
-                          g = 1, h = 50, 
-                          sigma_hyperprior = FALSE, fix_r = FALSE, 
-                          mu0 = mu0, 
-                          k_init = 1, diag_weights = FALSE, 
-                          verbose = TRUE, print_iter = 10^0, )
-# saveRDS(object = ex1, file = "./MCMC_Runs/conjVEEsamp_wellsep_a1_b12_d1_f59_g1_h50_rvaries.rds")
-
-table(ex1$k)
-
-# traceplot for number of components k.
-
-make_k_traceplot(k = ex1$k, group_assign = ex1$group_assign)
-summary(ex1$extra_params[1:n_iter,"r"])
-
-# fix label switching
-
-# posterior inference conditional on k 
-
-mean_list_by_k1 = list_params_by_k(draws = ex1$means, burn_in = 1000, param_type = "Mean", k_vec = ex1$k)
-var_list_by_k1 = list_params_by_k(draws = ex1$vars, burn_in = 1000, param_type = "Var", k_vec = ex1$k)
-#sigma22 is group 2, 2nd diagonal element
-prob_list_by_k1 = get_probs_by_k(probs = ex1$group_probs,
-                                n_groups = ex1$k,
-                                burn_in = 1000)
-group_assign_list_by_k1 = get_assign_by_k(assign = ex1$group_assign,
-                                         n_groups = ex1$k,
-                                         burn_in = 1000)
-
-stephens_result1 = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k1,
-                                       prob_list_by_k = prob_list_by_k1)
-
-## now reorder means to deal with label switching and redo posterior inference and
-## traceplots
-mean_list_by_k_stephens1 = list_params_by_k(draws = ex1$means, k_vec = ex1$k,
-                                           burn_in = 1000,
-                                           relabel = TRUE,
-                                           permutation = stephens_result1,
-                                           param_type = "Mean")
-var_list_by_k_stephens1 = list_params_by_k(draws = ex1$vars, k_vec = ex1$k,
-                                           burn_in = 1000,
-                                           relabel = TRUE,
-                                           permutation = stephens_result1,
-                                           param_type = "Var")
-
-# posterior means
-make_postsum(mcmc_df = mean_list_by_k_stephens1[[1]], digits = 2)
-make_postsum(mcmc_df = mean_list_by_k_stephens1[[2]], digits = 2)
-make_postsum(mcmc_df = mean_list_by_k_stephens1[[3]], digits = 2)
-
-# posterior vars
-make_postsum(mcmc_df = var_list_by_k_stephens1[[1]], digits = 2)
-make_postsum(mcmc_df = var_list_by_k_stephens1[[2]], digits = 2)
-make_postsum(mcmc_df = var_list_by_k_stephens1[[3]], digits = 2)
-
-make_traceplot(param_list_by_k = mean_list_by_k_stephens1,
-               k = 3, p = 2,
-               component_no = 1,
-               param_type = "Mean")
-
-make_traceplot(param_list_by_k = mean_list_by_k_stephens1,
-               k = 3, p = 2,
-               component_no = 2,
-               param_type = "Mean")
-```
-
 #### EVV sampler 
 
 ```{r}
 # sample
 set.seed(516)
-n_iter = 10^4
+n_iter = 10^2
 mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1)
 print(mu0)
 ex1 = MVN_CRP_sampler_EVV(S = n_iter, y = y, alpha = 1, r = 10, 
@@ -177,8 +101,9 @@ ex1 = MVN_CRP_sampler_EVV(S = n_iter, y = y, alpha = 1, r = 10,
                           mu0 = mu0, nu = 2,
                           lambda0 = diag(x = 10, nrow = 2),
                           k_init = 1, diag_weights = FALSE, 
-                          verbose = TRUE, print_iter = 10^3)
-saveRDS(object = ex1, file = "./MCMC_Runs/conjEVVsamp_wellsep_nu2_g1_h50_rvaries.rds")
+                          verbose = TRUE, print_iter = 10^0, 
+                          split_merge = TRUE, sm_iter = 5)
+#saveRDS(object = ex1, file = "./MCMC_Runs/conjEVVsamp_wellsep_nu2_g1_h50_rvaries.rds")
 
 table(ex1$k)
 
