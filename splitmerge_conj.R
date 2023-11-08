@@ -227,7 +227,8 @@ if(move_type == "SPLIT"){
         temp_group_assign[scan,obs] = split_lab[sm_prop_index]
         sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
   
-    }  # iterate through all observations in the two split groups under consideration
+      }  
+    } # iterate through all observations in the two split groups under consideration
   } # scans 1:(sm_iter+1)
   
   # calculate & evaluate acceptance prob
@@ -378,27 +379,27 @@ if(move_type == "SPLIT"){
   sm_counts_before = table(temp_group_assign[scan,-obs])
   split_group_count_index = which(as.numeric(names(sm_counts_before)) %in% split_lab)
   
-    for(obs in subset_index_minus){
-        
-        temp_group_assign[scan,obs] = lab1 # keep 1st group label
-        
-        sm_counts_before = table(temp_group_assign[scan,-obs])
-        split_group_count_index_before = which(as.numeric(names(sm_counts)) %in% split_lab)
-        
-        # current observation under consideration cannot be included here
-        
-        split_assign_prob = split_merge_prob_EVV(
-          obs = obs, split_labs = split_lab, r=r, 
-          group_assign = temp_group_assign[scan,], nu = nu, 
-          y = y, mu0 = mu0, lambda0= lambda0)
-        
-        sm_prop_index = sample(x = 1:2, size = 1,
-                               prob = split_assign_prob)
-        # 
-        # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
-        sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
-  
-    }  # iterate through all observations in the two split groups under consideration
+  for(obs in subset_index_minus){
+      
+      temp_group_assign[scan,obs] = lab1 # keep 1st group label
+      
+      sm_counts_before = table(temp_group_assign[scan,-obs])
+      split_group_count_index_before = which(as.numeric(names(sm_counts)) %in% split_lab)
+      
+      # current observation under consideration cannot be included here
+      
+      split_assign_prob = split_merge_prob_EVV(
+        obs = obs, split_labs = split_lab, r=r, 
+        group_assign = temp_group_assign[scan,], nu = nu, 
+        y = y, mu0 = mu0, lambda0= lambda0)
+      
+      sm_prop_index = sample(x = 1:2, size = 1,
+                             prob = split_assign_prob)
+      # 
+      # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
+      sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
+
+  }  # iterate through all observations in the two split groups under consideration
   
 
 
