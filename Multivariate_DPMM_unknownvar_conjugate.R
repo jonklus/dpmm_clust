@@ -1576,7 +1576,8 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         # calculate & evaluate acceptance prob
         sm_counts = table(temp_group_assign[sm_iter+1,]) # update counts after scans
         ## proposal probability
-        prob1 = -Reduce(f = "+", x = log(sm_probs[sm_iter+1,])) # log1 - sum(logs)
+        prob1 = -Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index_minus])) # log1 - sum(logs)
+        #print(sm_probs)
         ## prior ratio
         prob2_num = factorial(sm_counts[[split_group_count_index[1]]] -1)*factorial(sm_counts[[split_group_count_index[2]]] -1)
         prob2_denom = factorial(sm_counts[[split_group_count_index[1]]]+sm_counts[[split_group_count_index[2]]]-1)
@@ -1614,6 +1615,11 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         ## evaluate acceptance prob
         prob3 = prob3_num1 + prob3_num2 - prob3_denom
         accept_prob = min(1, exp(prob1 + prob2 + prob3))
+        cat(move_type)
+        cat("\n")
+        cat(prob1, prob2_num, prob2_denom, prob3_num1, prob3_num2, prob3_denom)
+        cat("\n")
+        cat("accept_prob", accept_prob)
         u = runif(n = 1)
         if(accept_prob > u){
           # accept
@@ -1628,6 +1634,76 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
           label_assign = as.numeric(names(table(group_assign[s,])))
           which_split_labs = which(label_assign == split_lab) 
           
+          # if new group created by split, give it a mean and variance
+          
+          ## draw variances for both groups - use empirical variance since mean not known yet
+          ## may want to change this in the future if you come up with a better idea...
+          
+          ybar = lapply(X = split_lab, 
+                        FUN = function(x){
+                          group_ind = which(group_assign[s,] == x)
+                          if(obs %in% group_ind){
+                            obs_ind = which(obs == group_ind)
+                            # group_ind = group_ind[-obs_ind] # include all obs this time
+                          } # else continue
+                          
+                          ysum = Reduce(f = "+", 
+                                        x = lapply(X = group_ind, 
+                                                   FUN = function(x){(y[[x]])}))
+                          
+                          return(ysum/length(group_ind))
+                        })
+          
+          emp_var = lapply(X = 1:2, 
+                           FUN = function(x){
+                             
+                             col_ind = x  # from outer apply
+                             group_ind = which(group_assign[s,] == split_lab[x])
+                             if(obs %in% group_ind){
+                               obs_ind = which(obs == group_ind)
+                               #group_ind = group_ind[-obs_ind] # include all obs this time
+                             } # else continue
+                             
+                             emp_loss = Reduce(f = "+", 
+                                               x = lapply(X = group_ind, FUN = function(x){
+                                                 (y[[x]] - ybar[[col_ind]])%*%t(y[[x]] - ybar[[col_ind]])}))
+                             
+                             return(emp_loss/length(group_ind))
+                             
+                           })
+          
+          ## draw means for both groups conditional on empirical variances...
+          # cat("\n")
+          # cat("split_lab", split_lab)
+          # cat("\n")
+          # cat("grp_assgn", group_assign[s,])
+          sum_y_i = sapply(X = split_lab, 
+                           FUN = function(x){
+                             rowSums(matrix(unlist(y[group_assign[s,] == x]), nrow = p))
+                             # unravel list of p*1 observations, put in matrix, find sum
+                           })
+          
+          mu_cov = lapply(X = 1:2, 
+                          FUN = function(x){emp_var[[x]]/(1/r + count_assign[x])}) 
+          
+          mu_mean = lapply(X = 1:2, 
+                           FUN = function(x){(sum_y_i[,x] + mu0/r)/(1/r + count_assign[x])})
+          
+          mu_list = lapply(X = 1:2, 
+                           FUN = function(x){
+                             t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
+                                                mean = mu_mean[[x]], 
+                                                sigma = mu_cov[[x]]))
+                           }) 
+          
+          ## add new means and variances to relevant vectors/lists
+          length_Sigma = length(Sigma)
+          Sigma[[which_split_labs[1]]] = emp_var[[1]]
+          Sigma[[length_Sigma+1]] = emp_var[[2]]
+          
+          mu[,which_split_labs[1]] = mu_list[[1]]
+          mu = cbind(mu, mu_list[[2]])
+          
         } else{
           # reject
           accept = 0
@@ -1635,72 +1711,7 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         }
         
         
-        # if new group created by split, give it a mean and variance
-        
-        ## draw variances for both groups - use empirical variance since mean not known yet
-        ## may want to change this in the future if you come up with a better idea...
-        
-        ybar = lapply(X = split_labs, 
-                      FUN = function(x){
-                        group_ind = which(group_assign[s,] == x)
-                        if(obs %in% group_ind){
-                          obs_ind = which(obs == group_ind)
-                          # group_ind = group_ind[-obs_ind] # include all obs this time
-                        } # else continue
-                        
-                        ysum = Reduce(f = "+", 
-                                      x = lapply(X = group_ind, 
-                                                 FUN = function(x){(y[[x]])}))
-                        
-                        return(ysum/length(group_ind))
-                      })
-        
-        emp_var = lapply(X = 1:2, 
-                         FUN = function(x){
-                           
-                           col_ind = x  # from outer apply
-                           group_ind = which(group_assign[s,] == split_lab[x])
-                           if(obs %in% group_ind){
-                             obs_ind = which(obs == group_ind)
-                             #group_ind = group_ind[-obs_ind] # include all obs this time
-                           } # else continue
-                           
-                           emp_loss = Reduce(f = "+", 
-                                             x = lapply(X = group_ind, FUN = function(x){
-                                               (y[[x]] - ybar[[col_ind]])%*%t(y[[x]] - ybar[[col_ind]])}))
-                           
-                           return(emp_loss/length(group_ind))
-                           
-                         })
-        
-        ## draw means for both groups conditional on empirical variances...
-        
-        sum_y_i = sapply(X = split_lab, 
-                         FUN = function(x){
-                           rowSums(matrix(unlist(y[group_assign[s,] == x]), nrow = p))
-                           # unravel list of p*1 observations, put in matrix, find sum
-                         })
-        
-        mu_cov = lapply(X = 1:2, 
-                        FUN = function(x){emp_var[[x]]/(1/r + count_assign[x])}) 
-        
-        mu_mean = lapply(X = 1:2, 
-                         FUN = function(x){(sum_y_i[,x] + mu0/r)/(1/r + count_assign[x])})
-        
-        mu_list = lapply(X = 1:2, 
-                         FUN = function(x){
-                           t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
-                                              mean = mu_mean[[x]], 
-                                              sigma = mu_cov[[x]]))
-                         }) 
-        
-        ## add new means and variances to relevant vectors/lists
-        length_Sigma = length(Sigma)
-        Sigma[[which_split_labs[1]]] = emp_var[[1]]
-        Sigma[[length_Sigma+1]] = emp_var[[2]]
-        
-        mu[,which_split_labs[1]] = mu_list[[1]]
-        mu = cbind(mu, mu_list[[2]])
+
         
         # if MERGE    
       } else if(move_type == "MERGE"){
@@ -1896,19 +1907,21 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       
       sm_results = rbind(sm_results, c(s, sm_iter, move_type,accept, prob))
       
+      cat("SM Step complete:")
+      cat("\n")
+      cat("iter", s)
+      cat("\n")
+      cat("move_type", move_type)
+      cat("\n")
+      cat("accept", accept)
+      cat("\n")
+      cat("prob", prob)
+      cat("\n")
+      print(table(group_assign[s,]))
+      
     }
     
-  # cat("SM Step complete:")
-  # cat("\n")
-  # cat("s", s)
-  # cat("\n")
-  # cat("move_type", move_type)
-  # cat("\n")
-  # cat("accept", accept)
-  # cat("\n")
-  # cat("prob", prob)
-  # cat("\n")
-  # print(table(group_assign[s,]))
+
     
     # Proceed to Gibbs step
     
