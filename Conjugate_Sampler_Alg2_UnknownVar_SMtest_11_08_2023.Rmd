@@ -101,7 +101,7 @@ ex1 = MVN_CRP_sampler_EVV(S = n_iter, y = y, alpha = 1, r = 10,
                           mu0 = mu0, nu = 2,
                           lambda0 = diag(x = 10, nrow = 2),
                           k_init = 1, diag_weights = FALSE, 
-                          verbose = TRUE, print_iter = 10^0, 
+                          verbose = TRUE, print_iter = 10^1, 
                           split_merge = TRUE, sm_iter = 5)
 #saveRDS(object = ex1, file = "./MCMC_Runs/conjEVVsamp_wellsep_nu2_g1_h50_rvaries.rds")
 

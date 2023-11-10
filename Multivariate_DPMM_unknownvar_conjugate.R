@@ -1116,15 +1116,19 @@ post_pred_EVV <- function(obs, which_group, r, sm_counts, nu, y, ybar, loss_ybar
   
   mu_n = ((1/r)*mu0 + sm_counts[which_group]*ybar[[which_group]])/((1/r) + sm_counts[which_group])
   
-  cat(mu_n)
+  cat("obs:", obs)
   cat("\n")
-  cat("dim", dim(mu_n))
+  cat("mu_n:", mu_n)
   cat("\n")
-  print(mu_n[,1])
+  cat("dim(mu):", dim(mu_n))
   cat("\n")
-  cat("y", y[[obs]])
+  cat("y:", y[[obs]])
   cat("\n")
-  cat("dim", dim(y[[obs]]))
+  cat("dim(y):", dim(y[[obs]]))
+  cat("\n")
+  cat(r, sm_counts[which_group])
+  cat("\n")
+  print(ybar[[which_group]])
   cat("\n")
   
   nu_n = nu + sm_counts[which_group] - nrow(mu0) + 1
@@ -1228,6 +1232,11 @@ split_merge_prob_EVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
   
   sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign[-obs] == x)})
   
+  cat("\n")
+  cat("sm_counts:", sm_counts)
+  cat("\n")
+  print(group_assign)
+  
   ybar = lapply(X = split_labs, 
                 FUN = function(x){
                   group_ind = which(group_assign == x)
@@ -1243,6 +1252,10 @@ split_merge_prob_EVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
                   return(ysum/length(group_ind))
                 })
   
+  cat("ybar:")
+  print(ybar)
+  cat("\n")
+  # 
   loss_ybar = lapply(X = 1:2, 
                      FUN = function(x){
                        
@@ -1259,22 +1272,74 @@ split_merge_prob_EVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
                        
                      })
   
+  cat("loss_ybar:")
+  print(loss_ybar)
+  cat("\n")
   
   
   
-  ratio = sapply(X = 1:2,
-                 FUN = function(x){
-                   
-                   xx = ifelse(x==1,2,1)
-                   num = post_pred_EVV(obs = obs, which_group = x, r = r, # which group is which????
-                                       sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
-                                       loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
-                   denom = num + post_pred_EVV(obs = obs, which_group = xx, r = r,
-                                               sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
-                                               loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
-                   return(num/denom)
-                   
-                 })
+  
+  # ratio = sapply(X = 1:2,
+  #                FUN = function(x){
+  #                  
+  #                  xx = ifelse(x==1,2,1)
+  #                  num = post_pred_EVV(obs = obs, which_group = x, r = r, # which group is which????
+  #                                      sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
+  #                                      loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
+  #                  denom = num + post_pred_EVV(obs = obs, which_group = xx, r = r,
+  #                                              sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
+  #                                              loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
+  #                  return(num/denom)
+  #                  
+  #                })
+  
+  if(0 %in% sm_counts){
+    # if there is a singleton, take action to prevent issues with ybar and loss_ybar
+    # need to use prior predictive instead of posterior predictive for this group
+    
+    which_zero = which(sm_counts == 0)
+    
+    if(which_zero == 1){
+      
+      num = prior_pred_NinvW(y_i = y[[obs]], mu0 = mu0, r = r, 
+                              lambda0 = lambda0, nu = nu)
+      
+      denom = num1 + post_pred_EVV(obs = obs, which_group = 2, r = r, 
+                                    sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
+                                    loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
+      
+      ratio = c(num/denom, 1-(num/denom))
+      
+    } else{ 
+      # which_zero == 2
+      
+      num = post_pred_EVV(obs = obs, which_group = 1, r = r, 
+                          sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
+                          loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
+      
+      denom = num1 + prior_pred_NinvW(y_i = y[[obs]], mu0 = mu0, r = r, 
+                                      lambda0 = lambda0, nu = nu)
+      
+      ratio = c(1-(num/denom), num/denom)
+      
+    }
+    
+    
+    
+    } else{
+    # proceed as usual 
+    
+    num = post_pred_EVV(obs = obs, which_group = 1, r = r, 
+                        sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
+                        loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
+    
+    denom = num + post_pred_EVV(obs = obs, which_group = 2, r = r,
+                                sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
+                                loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
+
+    ratio = c(num/denom, 1-(num/denom))
+    
+  }
   
   return(ratio)
   
@@ -1462,7 +1527,6 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         avail_labels = avail_labels[-1]
         k = length(curr_labels)
         
-        
         ### using only the ith observation:
         
         #### draw variance for newly created group from FC posterior of sigma2
@@ -1504,6 +1568,8 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       cat("\n")
       print(paste("Current k = ", k))
       cat("\n")
+      print(group_assign[s,])
+      cat("\n")
       print(table(group_assign[s,]))
       cat("\n")
       print(mu)
@@ -1535,6 +1601,11 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       lab1 = temp_group_assign[1, sampled_obs[1]]
       lab2 = temp_group_assign[1, sampled_obs[2]]
       move_type = ifelse(lab1 == lab2, "SPLIT", "MERGE")
+      cat("move_type:", move_type)
+      cat("\n")
+      cat("sampled_obs:", sampled_obs)
+      cat("\n")
+      cat("group_labs:", c(lab1, lab2))
       
       # bookkeeping - group labels
       subset_index = which(temp_group_assign[1,] %in% c(lab1, lab2)) 
