@@ -1304,7 +1304,7 @@ split_merge_prob_EVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
       num = prior_pred_NinvW(y_i = y[[obs]], mu0 = mu0, r = r, 
                               lambda0 = lambda0, nu = nu)
       
-      denom = num1 + post_pred_EVV(obs = obs, which_group = 2, r = r, 
+      denom = num + post_pred_EVV(obs = obs, which_group = 2, r = r, 
                                     sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
                                     loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
       
@@ -1317,10 +1317,10 @@ split_merge_prob_EVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
                           sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
                           loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
       
-      denom = num1 + prior_pred_NinvW(y_i = y[[obs]], mu0 = mu0, r = r, 
+      denom = num + prior_pred_NinvW(y_i = y[[obs]], mu0 = mu0, r = r, 
                                       lambda0 = lambda0, nu = nu)
       
-      ratio = c(1-(num/denom), num/denom)
+      ratio = c(num/denom, 1-(num/denom))
       
     }
     
@@ -1443,6 +1443,14 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
   # iterate 1:S
   for(s in 2:S){
     
+    cat("\n\n")
+    cat("*******************************************************************")
+    cat("\n")
+    cat("Starting iter: ", s)
+    cat("\n")
+    cat("*******************************************************************")
+
+    
     ## initialize group assignments for current iteration using ending state from prior iteration
     group_assign[s, ] = group_assign[s-1, ]
     
@@ -1476,6 +1484,9 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       ### if observation i is a singleton, remove its mean from the current state of system
       if(group_assign[s,i] %in% singletons){
         
+        cat("\n")
+        cat("Singleton")
+        
         #### only drop observation i if it is a singleton...DO NOT drop other singleton
         #### observations at this point!!!
         singleton_index = which(label_assign == group_assign[s,i]) 
@@ -1505,6 +1516,18 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         
       } else{
         
+        cat("\n")
+        cat("non-singleton")
+        cat("\n")
+        cat("count_assign:", count_assign)
+        cat("\n")
+        cat("group_assign", group_assign[s,])
+        cat("\n")
+        cat("mu")
+        print(mu)
+        cat("\n")
+        print(Sigma)
+        cat("\n")
         #### calculate proposal distribution for group assignment
         #### if obs i is not presently a singleton
         pr_c = group_prob_calc_EVV(k = k, n = n, n_j = count_assign, alpha = alpha, 
@@ -1524,7 +1547,11 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         
         #### handle bookkeeping
         curr_labels = c(curr_labels, avail_labels[1])
+        cat("\n")
+        cat("New curr labels array after bookeeping:", curr_labels)
         avail_labels = avail_labels[-1]
+        cat("\n")
+        cat("New avail labels array after bookeeping:", head(avail_labels))
         k = length(curr_labels)
         
         ### using only the ith observation:
@@ -1804,26 +1831,29 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         
         # specify random launch state
         split_lab = c(lab1, lab2) # original labels, assign merged obs to lab1
-        temp_group_assign[scan,] = temp_group_assign[1,] # initialize
+        
         
         count_assign = as.numeric(table(temp_group_assign[1,]))
         label_assign = as.numeric(names(table(temp_group_assign[1,])))
         which_split_labs = which(label_assign %in% split_lab) 
         
-        # specify merge group
+
         scan = sm_iter + 1 # skip to last row of table
+        temp_group_assign[scan,] = temp_group_assign[1,] # initialize
+
+        
+        sm_counts_before = table(temp_group_assign[scan,])
+        split_group_count_index = which(as.numeric(names(sm_counts_before)) %in% split_lab)
+        
         temp_group_assign[scan,sampled_obs] = lab1 # anchor observations that arent
         # in subset-index-minus...
-        
-        sm_counts_before = table(temp_group_assign[scan,-obs])
-        split_group_count_index = which(as.numeric(names(sm_counts_before)) %in% split_lab)
         
         for(obs in subset_index_minus){
           
           temp_group_assign[scan,obs] = lab1 # keep 1st group label
           
-          sm_counts_before = table(temp_group_assign[scan,-obs])
-          split_group_count_index_before = which(as.numeric(names(sm_counts)) %in% split_lab)
+          # sm_counts_before = table(temp_group_assign[scan,-obs])
+          # split_group_count_index_before = which(as.numeric(names(sm_counts)) %in% split_lab)
           
           # current observation under consideration cannot be included here
           
@@ -1850,6 +1880,12 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         # two anchor observations. shoudl you be calculating a prob for those as well though???
         
         ## prior ratio
+        cat("\n")
+        cat("sm_counts_before:")
+        print(sm_counts_before)
+        cat("\n")
+        cat("split_group_count_index:", split_group_count_index)
+        
         prob2_num = factorial(sm_counts_before[[split_group_count_index[1]]] -1)*factorial(sm_counts_before[[split_group_count_index[2]]] -1)
         prob2_denom = factorial(sm_counts_before[[split_group_count_index[1]]]+sm_counts_before[[split_group_count_index[2]]]-1)
         prob2 = -(log(alpha) + (log(prob2_num) - log(prob2_denom)))
@@ -1898,7 +1934,9 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
           
           # count_assign = count_assign[-which_split_labs[2]]
           # label_assign = label_assign[-which_split_labs[2]]
-          avail_labels = c(temp_group_assign[1, sampled_obs[2]], avail_labels)
+          # avail_labels = c(temp_group_assign[1, sampled_obs[2]], avail_labels)
+          # i think the line above is duplicating bookeeping step of adding to availabe
+          # labels...comment out for now and test...
           
           # put old group lab out of reserve
           curr_label_del = which(curr_labels == split_lab[2])
@@ -1993,6 +2031,7 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       
       sm_results = rbind(sm_results, c(s, sm_iter, move_type, accept, accept_prob))
       
+      cat("\n")
       cat("SM Step complete:")
       cat("\n")
       cat("iter", s)
