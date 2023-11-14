@@ -92,7 +92,7 @@ rm(w, means)
 ```{r}
 # sample
 set.seed(516)
-n_iter = 10^2
+n_iter = 10^4
 mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1)
 print(mu0)
 ex1 = MVN_CRP_sampler_EVV(S = n_iter, y = y, alpha = 1, r = 10, 
@@ -101,9 +101,9 @@ ex1 = MVN_CRP_sampler_EVV(S = n_iter, y = y, alpha = 1, r = 10,
                           mu0 = mu0, nu = 2,
                           lambda0 = diag(x = 10, nrow = 2),
                           k_init = 1, diag_weights = FALSE, 
-                          verbose = TRUE, print_iter = 10^1, 
+                          verbose = TRUE, print_iter = 10^3, 
                           split_merge = TRUE, sm_iter = 5)
-#saveRDS(object = ex1, file = "./MCMC_Runs/conjEVVsamp_wellsep_nu2_g1_h50_rvaries.rds")
+saveRDS(object = ex1, file = "../MCMC_Runs/conjEVVsamp_wellsep_nu2_g1_h50_rvaries_withSM.rds")
 
 table(ex1$k)
 

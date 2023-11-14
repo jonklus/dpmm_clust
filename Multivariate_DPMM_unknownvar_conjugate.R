@@ -338,7 +338,9 @@ MVN_CRP_sampler_EEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
     } ### end iterations from i=1:n
     
     if((s %% print_iter == 0) & (s > print_iter) & (verbose == TRUE)){
+      cat("\n")
       print("End of CRP step") # just create a new line for separation
+      cat("\n")
       print(paste("iter = ", s))
       print(paste("Current k = ", k))
       print(table(group_assign[s,]))
@@ -1443,12 +1445,12 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
   # iterate 1:S
   for(s in 2:S){
     
-    cat("\n\n")
-    cat("*******************************************************************")
-    cat("\n")
-    cat("Starting iter: ", s)
-    cat("\n")
-    cat("*******************************************************************")
+    # cat("\n\n")
+    # cat("*******************************************************************")
+    # cat("\n")
+    # cat("Starting iter: ", s)
+    # cat("\n")
+    # cat("*******************************************************************")
 
     
     ## initialize group assignments for current iteration using ending state from prior iteration
@@ -1484,8 +1486,8 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       ### if observation i is a singleton, remove its mean from the current state of system
       if(group_assign[s,i] %in% singletons){
         
-        cat("\n")
-        cat("Singleton")
+        # cat("\n")
+        # cat("Singleton")
         
         #### only drop observation i if it is a singleton...DO NOT drop other singleton
         #### observations at this point!!!
@@ -1516,18 +1518,18 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         
       } else{
         
-        cat("\n")
-        cat("non-singleton")
-        cat("\n")
-        cat("count_assign:", count_assign)
-        cat("\n")
-        cat("group_assign", group_assign[s,])
-        cat("\n")
-        cat("mu")
-        print(mu)
-        cat("\n")
-        print(Sigma)
-        cat("\n")
+        # cat("\n")
+        # cat("non-singleton")
+        # cat("\n")
+        # cat("count_assign:", count_assign)
+        # cat("\n")
+        # cat("group_assign", group_assign[s,])
+        # cat("\n")
+        # cat("mu")
+        # print(mu)
+        # cat("\n")
+        # print(Sigma)
+        # cat("\n")
         #### calculate proposal distribution for group assignment
         #### if obs i is not presently a singleton
         pr_c = group_prob_calc_EVV(k = k, n = n, n_j = count_assign, alpha = alpha, 
@@ -1547,11 +1549,11 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         
         #### handle bookkeeping
         curr_labels = c(curr_labels, avail_labels[1])
-        cat("\n")
-        cat("New curr labels array after bookeeping:", curr_labels)
+        # cat("\n")
+        # cat("New curr labels array after bookeeping:", curr_labels)
         avail_labels = avail_labels[-1]
-        cat("\n")
-        cat("New avail labels array after bookeeping:", head(avail_labels))
+        # cat("\n")
+        # cat("New avail labels array after bookeeping:", head(avail_labels))
         k = length(curr_labels)
         
         ### using only the ith observation:
@@ -1589,7 +1591,7 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
     } ### end iterations from i=1:n
     
     if((s %% print_iter == 0) & (s >= print_iter) & (verbose == TRUE)){
-      print("End of CRP step") # just create a new line for separation
+      print("**End of CRP step**") # just create a new line for separation
       cat("\n")
       print(paste("iter = ", s))
       cat("\n")
@@ -1728,11 +1730,6 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         ## evaluate acceptance prob
         prob3 = prob3_num1 + prob3_num2 - prob3_denom
         accept_prob = min(1, exp(prob1 + prob2 + prob3))
-        cat(move_type)
-        cat("\n")
-        cat(prob1, prob2_num, prob2_denom, prob3_num1, prob3_num2, prob3_denom)
-        cat("\n")
-        cat("accept_prob", accept_prob)
         u = runif(n = 1)
         if(accept_prob > u){
           # accept
@@ -1880,11 +1877,12 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         # two anchor observations. shoudl you be calculating a prob for those as well though???
         
         ## prior ratio
-        cat("\n")
-        cat("sm_counts_before:")
-        print(sm_counts_before)
-        cat("\n")
-        cat("split_group_count_index:", split_group_count_index)
+        
+        # cat("\n")
+        # cat("sm_counts_before:")
+        # print(sm_counts_before)
+        # cat("\n")
+        # cat("split_group_count_index:", split_group_count_index)
         
         prob2_num = factorial(sm_counts_before[[split_group_count_index[1]]] -1)*factorial(sm_counts_before[[split_group_count_index[2]]] -1)
         prob2_denom = factorial(sm_counts_before[[split_group_count_index[1]]]+sm_counts_before[[split_group_count_index[2]]]-1)
@@ -1956,59 +1954,59 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
           ## draw variances for new groups - use empirical variance since mean not known yet
           ## may want to change this in the future if you come up with a better idea...
           
-          ybar = lapply(X = split_lab[1], 
-                        FUN = function(x){
-                          group_ind = which(group_assign[s,] == x)
-                          if(obs %in% group_ind){
-                            obs_ind = which(obs == group_ind)
-                            # group_ind = group_ind[-obs_ind] # include all obs this time
-                          } # else continue
-                          
-                          ysum = Reduce(f = "+", 
-                                        x = lapply(X = group_ind, 
-                                                   FUN = function(x){(y[[x]])}))
-                          
-                          return(ysum/length(group_ind))
-                        })
+          # ybar = lapply(X = split_lab[1], 
+          #               FUN = function(x){
+          #                 group_ind = which(group_assign[s,] == x)
+          #                 if(obs %in% group_ind){
+          #                   obs_ind = which(obs == group_ind)
+          #                   # group_ind = group_ind[-obs_ind] # include all obs this time
+          #                 } # else continue
+          #                 
+          #                 ysum = Reduce(f = "+", 
+          #                               x = lapply(X = group_ind, 
+          #                                          FUN = function(x){(y[[x]])}))
+          #                 
+          #                 return(ysum/length(group_ind))
+          #               })
           
-          emp_var = lapply(X = 1, 
-                           FUN = function(x){
-                             
-                             col_ind = x  # from outer apply
-                             group_ind = which(group_assign[s,] == split_lab[x])
-                             if(obs %in% group_ind){
-                               obs_ind = which(obs == group_ind)
-                               #group_ind = group_ind[-obs_ind] # include all obs this time
-                             } # else continue
-                             
-                             emp_loss = Reduce(f = "+", 
-                                               x = lapply(X = group_ind, FUN = function(x){
-                                                 (y[[x]] - ybar[[col_ind]])%*%t(y[[x]] - ybar[[col_ind]])}))
-                             
-                             return(emp_loss/length(group_ind))
-                             
-                           })
+          group_ind = which(group_assign[s,] == split_lab[1])
+          ybar = Reduce(f = "+", x = y[group_ind])/length(group_ind) 
+                          
+ 
+          # emp_var = lapply(X = 1, 
+          #                  FUN = function(x){
+          #                    
+          #                    col_ind = x  # from outer apply
+          #                    group_ind = which(group_assign[s,] == split_lab[x])
+          #                    if(obs %in% group_ind){
+          #                      obs_ind = which(obs == group_ind)
+          #                      #group_ind = group_ind[-obs_ind] # include all obs this time
+          #                    } # else continue
+          #                    
+          #                    emp_loss = Reduce(f = "+", 
+          #                                      x = lapply(X = group_ind, FUN = function(x){
+          #                                        (y[[x]] - ybar[[col_ind]])%*%t(y[[x]] - ybar[[col_ind]])}))
+          #                    
+          #                    return(emp_loss/length(group_ind))
+          #                    
+          #                  })
+          
+          emp_var = Reduce(f = "+", 
+                            x = lapply(X = group_ind, FUN = function(x){
+                              (y[[x]] - ybar)%*%t(y[[x]] - ybar)}))/length(group_ind)
           
           ## draw means for both groups conditional on empirical variances...
           
-          sum_y_i = sapply(X = split_lab[1], 
-                           FUN = function(x){
-                             rowSums(matrix(unlist(y[group_assign[s,] == x]), nrow = p))
+          sum_y_i = rowSums(matrix(unlist(y[group_assign[s,] == split_lab[1]]), nrow = p))
                              # unravel list of p*1 observations, put in matrix, find sum
-                           })
+                 
+          mu_cov = emp_var/(1/r + count_assign[which_split_lab[1]])
           
-          mu_cov = lapply(X = which_split_lab, 
-                          FUN = function(x){emp_var[[x]]/(1/r + count_assign[x])}) 
+          mu_mean = (sum_y_i + mu0/r)/(1/r + count_assign[which_split_lab[1]])
           
-          mu_mean = lapply(X = which_split_lab, 
-                           FUN = function(x){(sum_y_i[,x] + mu0/r)/(1/r + count_assign[x])})
-          
-          mu_list = lapply(X = which_split_lab, 
-                           FUN = function(x){
-                             t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
-                                                mean = mu_mean[[x]], 
-                                                sigma = mu_cov[[x]]))
-                           }) 
+          mu_list = t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
+                                        mean = mu_mean[[x]], 
+                                        sigma = mu_cov[[x]]))
           
           ## add new means and variances to relevant vectors/lists
           length_Sigma = length(Sigma)
@@ -2175,9 +2173,7 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
     # print progress
     if((s %% print_iter == 0) & (s >= print_iter) & (verbose == TRUE)){
       print("After Gibbs step:") # just create a new line for separate
-      # print(paste("iter = ", s))
-      # print(paste("Current k = ", k))
-      # print(table(group_assign[s,]))
+      cat("\n")
       cat("mu",mu)
       cat("\n")
       cat("Sigma")
@@ -2188,9 +2184,7 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       cat("\n")
       cat("nu",nu)
       cat("\n")
-      # print(c("Current labels: ", curr_labels))
-      # print(avail_labels)
-      
+
       if(nrow(mu0) == 2){
         # if this is a 2D problem, can make scatterplot of group assign
         yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
