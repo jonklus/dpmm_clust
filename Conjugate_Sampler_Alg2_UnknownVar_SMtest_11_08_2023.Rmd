@@ -107,6 +107,18 @@ saveRDS(object = ex1, file = "../MCMC_Runs/conjEVVsamp_wellsep_nu2_g1_h50_rvarie
 
 table(ex1$k)
 
+sm_result_ex1 = data.frame(ex1$sm_results) %>%
+  dplyr::filter(is.na(s) == FALSE) %>%
+  dplyr::mutate(
+    move_type = factor(move_type),
+    s = as.integer(s),
+    sm_iter = as.integer(sm_iter),
+    accept = as.integer(accept),
+    prob = as.numeric(prob)
+  ) %>%
+  dplyr::group_by(move_type) %>%
+  dplyr::summarise(Prob_Accept = mean(accept))
+
 # traceplot for number of components k.
 
 make_k_traceplot(k = ex1$k, group_assign = ex1$group_assign)

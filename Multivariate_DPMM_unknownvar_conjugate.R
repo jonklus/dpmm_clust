@@ -1118,21 +1118,21 @@ post_pred_EVV <- function(obs, which_group, r, sm_counts, nu, y, ybar, loss_ybar
   
   mu_n = ((1/r)*mu0 + sm_counts[which_group]*ybar[[which_group]])/((1/r) + sm_counts[which_group])
   
-  cat("obs:", obs)
-  cat("\n")
-  cat("mu_n:", mu_n)
-  cat("\n")
-  cat("dim(mu):", dim(mu_n))
-  cat("\n")
-  cat("y:", y[[obs]])
-  cat("\n")
-  cat("dim(y):", dim(y[[obs]]))
-  cat("\n")
-  cat(r, sm_counts[which_group])
-  cat("\n")
-  print(ybar[[which_group]])
-  cat("\n")
-  
+  # cat("obs:", obs)
+  # cat("\n")
+  # cat("mu_n:", mu_n)
+  # cat("\n")
+  # cat("dim(mu):", dim(mu_n))
+  # cat("\n")
+  # cat("y:", y[[obs]])
+  # cat("\n")
+  # cat("dim(y):", dim(y[[obs]]))
+  # cat("\n")
+  # cat(r, sm_counts[which_group])
+  # cat("\n")
+  # print(ybar[[which_group]])
+  # cat("\n")
+  # 
   nu_n = nu + sm_counts[which_group] - nrow(mu0) + 1
   
   k_n = (r+sm_counts[which_group]+1)/((r+sm_counts[which_group])*(nu_n))
@@ -1234,10 +1234,10 @@ split_merge_prob_EVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
   
   sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign[-obs] == x)})
   
-  cat("\n")
-  cat("sm_counts:", sm_counts)
-  cat("\n")
-  print(group_assign)
+  # cat("\n")
+  # cat("sm_counts:", sm_counts)
+  # cat("\n")
+  # print(group_assign)
   
   ybar = lapply(X = split_labs, 
                 FUN = function(x){
@@ -1254,10 +1254,10 @@ split_merge_prob_EVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
                   return(ysum/length(group_ind))
                 })
   
-  cat("ybar:")
-  print(ybar)
-  cat("\n")
-  # 
+  # cat("ybar:")
+  # print(ybar)
+  # cat("\n")
+
   loss_ybar = lapply(X = 1:2, 
                      FUN = function(x){
                        
@@ -1274,9 +1274,9 @@ split_merge_prob_EVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
                        
                      })
   
-  cat("loss_ybar:")
-  print(loss_ybar)
-  cat("\n")
+  # cat("loss_ybar:")
+  # print(loss_ybar)
+  # cat("\n")
   
   
   
@@ -1444,13 +1444,19 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
   
   # iterate 1:S
   for(s in 2:S){
-    
-    # cat("\n\n")
-    # cat("*******************************************************************")
-    # cat("\n")
-    # cat("Starting iter: ", s)
-    # cat("\n")
-    # cat("*******************************************************************")
+  
+    # print progress
+    if(s %% print_iter == 0){
+      
+      cat("\n\n")
+      cat("*******************************************************************")
+      cat("\n")
+      cat("Starting iter: ", s)
+      cat("\n")
+      cat("*******************************************************************")
+      
+    }    
+
 
     
     ## initialize group assignments for current iteration using ending state from prior iteration
@@ -1630,11 +1636,11 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       lab1 = temp_group_assign[1, sampled_obs[1]]
       lab2 = temp_group_assign[1, sampled_obs[2]]
       move_type = ifelse(lab1 == lab2, "SPLIT", "MERGE")
-      cat("move_type:", move_type)
-      cat("\n")
-      cat("sampled_obs:", sampled_obs)
-      cat("\n")
-      cat("group_labs:", c(lab1, lab2))
+      # cat("move_type:", move_type)
+      # cat("\n")
+      # cat("sampled_obs:", sampled_obs)
+      # cat("\n")
+      # cat("group_labs:", c(lab1, lab2))
       
       # bookkeeping - group labels
       subset_index = which(temp_group_assign[1,] %in% c(lab1, lab2)) 
@@ -2005,14 +2011,14 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
           mu_mean = (sum_y_i + mu0/r)/(1/r + count_assign[which_split_lab[1]])
           
           mu_list = t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
-                                        mean = mu_mean[[x]], 
-                                        sigma = mu_cov[[x]]))
+                                        mean = mu_mean, 
+                                        sigma = mu_cov))
           
           ## add new means and variances to relevant vectors/lists
           length_Sigma = length(Sigma)
-          Sigma[[which_split_lab]] = emp_var[[1]]
+          Sigma[[which_split_lab]] = emp_var
           
-          mu[,which_split_lab] = mu_list[[1]]
+          mu[,which_split_lab] = mu_list
           
           
         } else{
@@ -2029,18 +2035,18 @@ MVN_CRP_sampler_EVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       
       sm_results = rbind(sm_results, c(s, sm_iter, move_type, accept, accept_prob))
       
-      cat("\n")
-      cat("SM Step complete:")
-      cat("\n")
-      cat("iter", s)
-      cat("\n")
-      cat("move_type", move_type)
-      cat("\n")
-      cat("accept", accept)
-      cat("\n")
-      cat("prob", accept_prob)
-      cat("\n")
-      print(table(group_assign[s,]))
+      # cat("\n")
+      # cat("SM Step complete:")
+      # cat("\n")
+      # cat("iter", s)
+      # cat("\n")
+      # cat("move_type", move_type)
+      # cat("\n")
+      # cat("accept", accept)
+      # cat("\n")
+      # cat("prob", accept_prob)
+      # cat("\n")
+      # print(table(group_assign[s,]))
       
     }
     
