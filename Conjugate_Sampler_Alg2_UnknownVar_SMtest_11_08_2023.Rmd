@@ -93,6 +93,7 @@ rm(w, means)
 # sample
 set.seed(516)
 n_iter = 10^4
+start_run = Sys.time()
 mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1)
 print(mu0)
 ex1 = MVN_CRP_sampler_EVV(S = n_iter, y = y, alpha = 1, r = 10, 
@@ -103,6 +104,9 @@ ex1 = MVN_CRP_sampler_EVV(S = n_iter, y = y, alpha = 1, r = 10,
                           k_init = 1, diag_weights = FALSE, 
                           verbose = TRUE, print_iter = 10^3, 
                           split_merge = TRUE, sm_iter = 5)
+end_run = Sys.time()
+difftime(time1 = end_run, time2 = start_run)
+
 saveRDS(object = ex1, file = "../MCMC_Runs/conjEVVsamp_wellsep_nu2_g1_h50_rvaries_withSM.rds")
 
 table(ex1$k)
@@ -117,7 +121,7 @@ sm_result_ex1 = data.frame(ex1$sm_results) %>%
     prob = as.numeric(prob)
   ) %>%
   dplyr::group_by(move_type) %>%
-  dplyr::summarise(Prob_Accept = mean(accept))
+  dplyr::summarise(prob_Accept = mean(accept))
 
 # traceplot for number of components k.
 

@@ -30,10 +30,9 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50){
   # of groups found at the end of the iteration (i.e. the final k for the ith iteration)
   # burn-in is the number of initial MCMC iterations to discard
   
-  k_vec_bi = n_groups[(burn_in+1):length(probs)]
   if(any(table(k_vec_bi == 1))){
-    singleton_labs = as.numeric(names(which(table(k_vec_bi) == 1)))
-    singleton_iters = which(k_vec_bi %in% singleton_labs)
+    singleton_labs = as.numeric(names(which(table(n_groups) == 1)))
+    singleton_iters = which(n_groups %in% singleton_labs)
   } else{
     singleton_iters = NULL
   }
@@ -43,6 +42,8 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50){
   # drop burn-in AND any singleton iterations before proceeding
   prob_list = probs[-drop_iters]
   final_k = n_groups[-drop_iters]
+  
+  print(table(final_k))
   
   unique_k = sort(unique(final_k))
   #print(unique_k)
