@@ -30,7 +30,11 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50){
   # of groups found at the end of the iteration (i.e. the final k for the ith iteration)
   # burn-in is the number of initial MCMC iterations to discard
   
-  if(any(table(k_vec_bi == 1))){
+  
+  # for debugging purposes
+  original_index = 1:length(probs)
+  
+  if(any(table(n_groups == 1))){
     singleton_labs = as.numeric(names(which(table(n_groups) == 1)))
     singleton_iters = which(n_groups %in% singleton_labs)
   } else{
@@ -42,8 +46,21 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50){
   # drop burn-in AND any singleton iterations before proceeding
   prob_list = probs[-drop_iters]
   final_k = n_groups[-drop_iters]
+  original_index = original_index[-drop_iters]
+  
+  # check again for singletons because some may occur after burn in dropped (i.e.
+  # dropping burn in may create singletons)
+  if(any(table(final_k == 1))){
+    singleton_labs = as.numeric(names(which(table(final_k) == 1)))
+    singleton_iters = which(final_k %in% singleton_labs)
+    final_k = final_k[-singleton_iters]
+    prob_list = prob_list[-singleton_iters]
+    original_index = original_index[-singleton_iters]
+  } 
+  
   
   print(table(final_k))
+  print(length(prob_list))
   
   unique_k = sort(unique(final_k))
   #print(unique_k)
@@ -56,7 +73,7 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50){
   for(i in 1:length(unique_k)){
     
     k = unique_k[i]
-    #print(k)
+    print(k)
     
     k_index = which(final_k == unique_k[i]) # indices of all iters with k probs
     #print(k_index)
@@ -84,8 +101,10 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50){
         probs_kij = probs_kij[,-(k+1)] # remove last column
         
       } else if(ncol(prob_list[[k_index[j]]]) > (k+1)){
-        
-        stop("Error: number of group membership probs provides > (k+1)")
+        print(k_index[j])
+        print(original_index[k_index[j]])
+        print(head(prob_list[[k_index[j]]]))
+        stop("Error: number of group membership probs provided > (k+1)")
         
       } # else continue
       

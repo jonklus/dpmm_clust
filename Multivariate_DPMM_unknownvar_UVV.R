@@ -382,8 +382,8 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
   emp_vars = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
   
   # split merge step - only used if needed
-  sm_results = matrix(data = NA, nrow = 1, ncol = 5)
-  colnames(sm_results) = c("s", "sm_iter", "move_type","accept", "prob")
+  sm_results = matrix(data = NA, nrow = 1, ncol = 7)
+  colnames(sm_results) = c("s", "sm_iter", "move_type","accept", "prob", "k_start", "k_end")
   
   if(nu_hyperprior == TRUE & fix_r == FALSE){
     extra_params = matrix(data = NA, nrow = S, ncol = 2)
@@ -621,6 +621,8 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
     
     if(split_merge == TRUE & (s %% sm_iter) == 0){
       
+      k_start = k
+      
       temp_group_assign = matrix(data = NA, nrow = sm_iter + 1, ncol = length(group_assign[s,]))
       sm_probs = matrix(data = NA, nrow = sm_iter + 1, ncol = length(y))
       temp_group_assign[1,] = group_assign[s,]
@@ -746,11 +748,11 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
           count_assign = as.numeric(table(group_assign[s,]))
           label_assign = as.numeric(names(table(group_assign[s,])))
           which_split_labs = which(label_assign == split_lab) 
+          num_groups[s,] = k
           
           # if new group created by split, give it a mean and variance
           
-          ## draw variances for both groups - use empirical variance since mean not known yet
-          ## may want to change this in the future if you come up with a better idea...
+          ## draw variances for both groups - use marginal posterior variance 
           
           ybar = lapply(X = split_lab, 
                         FUN = function(x){
@@ -766,8 +768,8 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
                           
                           return(ysum/length(group_ind))
                         })
-          
-          emp_var = lapply(X = 1:2, 
+
+          emp_loss = lapply(X = 1:2, 
                            FUN = function(x){
                              
                              col_ind = x  # from outer apply
@@ -779,11 +781,19 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
                              
                              emp_loss = Reduce(f = "+", 
                                                x = lapply(X = group_ind, FUN = function(x){
-                                                 (y[[x]] - ybar[[col_ind]])%*%t(y[[x]] - ybar[[col_ind]])}))
+                                                 (y[[x]] - mu0)%*%t(y[[x]] - mu0)}))
                              
-                             return(emp_loss/length(group_ind))
+                             return(emp_loss)
                              
                            })
+          
+          
+          Sigma_temp = lapply(X = 1:2, 
+                         FUN = function(x){
+                           n_k = count_assign[which_split_labs[x]]
+                           LaplacesDemon::rinvwishart(nu = nu + n_k + 1, 
+                                                      S = emp_loss[[x]]/(1+r) + nu*lambda0)
+                         })
           
           ## draw means for both groups conditional on empirical variances...
           # cat("\n")
@@ -797,10 +807,16 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
                            })
           
           mu_cov = lapply(X = 1:2, 
-                          FUN = function(x){emp_var[[x]]/(1/r + count_assign[x])}) 
+                          FUN = function(x){
+                            n_k = count_assign[which_split_labs[x]]
+                            return(Sigma_temp[[x]]/(1/r + n_k))
+                            }) 
           
           mu_mean = lapply(X = 1:2, 
-                           FUN = function(x){(sum_y_i[,x] + mu0/r)/(1/r + count_assign[x])})
+                           FUN = function(x){
+                             n_k = count_assign[which_split_labs[x]]
+                             return((sum_y_i[,x] + mu0/r)/(1/r + n_k))
+                             })
           
           mu_list = lapply(X = 1:2, 
                            FUN = function(x){
@@ -811,8 +827,9 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
           
           ## add new means and variances to relevant vectors/lists
           length_Sigma = length(Sigma)
-          Sigma[[which_split_labs[1]]] = emp_var[[1]]
-          Sigma[[length_Sigma+1]] = emp_var[[2]]
+          Sigma[[which_split_labs[1]]] = Sigma_temp[[1]]
+          Sigma[[length_Sigma+1]] = Sigma_temp[[2]]
+          rm(Sigma_temp)
           
           mu[,which_split_labs[1]] = mu_list[[1]]
           mu = cbind(mu, mu_list[[2]])
@@ -949,6 +966,7 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
           count_assign = as.numeric(table(group_assign[s,]))
           label_assign = as.numeric(names(table(group_assign[s,])))
           which_split_lab = which(label_assign == split_lab[1]) 
+          num_groups[s,] = k
           
           # save info about accept/reject & probs
           
@@ -975,35 +993,23 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
           group_ind = which(group_assign[s,] == split_lab[1])
           ybar = Reduce(f = "+", x = y[group_ind])/length(group_ind) 
           
+          emp_loss = Reduce(f = "+", 
+                            x = lapply(X = group_ind, FUN = function(x){
+                              (y[[x]] - mu0)%*%t(y[[x]] - mu0)}))
           
-          # emp_var = lapply(X = 1, 
-          #                  FUN = function(x){
-          #                    
-          #                    col_ind = x  # from outer apply
-          #                    group_ind = which(group_assign[s,] == split_lab[x])
-          #                    if(obs %in% group_ind){
-          #                      obs_ind = which(obs == group_ind)
-          #                      #group_ind = group_ind[-obs_ind] # include all obs this time
-          #                    } # else continue
-          #                    
-          #                    emp_loss = Reduce(f = "+", 
-          #                                      x = lapply(X = group_ind, FUN = function(x){
-          #                                        (y[[x]] - ybar[[col_ind]])%*%t(y[[x]] - ybar[[col_ind]])}))
-          #                    
-          #                    return(emp_loss/length(group_ind))
-          #                    
-          #                  })
+          print(emp_loss/(1+r))
+          print(nu*lambda0)
           
-          emp_var = Reduce(f = "+", 
-                           x = lapply(X = group_ind, FUN = function(x){
-                             (y[[x]] - ybar)%*%t(y[[x]] - ybar)}))/length(group_ind)
+          Sigma_temp = LaplacesDemon::rinvwishart(nu = nu + count_assign[which_split_lab[1]] + 1, 
+                                                  S = emp_loss/(1+r) + nu*lambda0)
+
           
-          ## draw means for both groups conditional on empirical variances...
+          ## draw means for both groups conditional on drawn variances...
           
           sum_y_i = rowSums(matrix(unlist(y[group_assign[s,] == split_lab[1]]), nrow = p))
           # unravel list of p*1 observations, put in matrix, find sum
           
-          mu_cov = emp_var/(1/r + count_assign[which_split_lab[1]])
+          mu_cov = Sigma_temp/(1/r + count_assign[which_split_lab[1]])
           
           mu_mean = (sum_y_i + mu0/r)/(1/r + count_assign[which_split_lab[1]])
           
@@ -1013,7 +1019,7 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
           
           ## add new means and variances to relevant vectors/lists
           length_Sigma = length(Sigma)
-          Sigma[[which_split_lab]] = emp_var
+          Sigma[[which_split_lab]] = Sigma_temp
           
           mu[,which_split_lab] = mu_list
           
@@ -1030,7 +1036,8 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         
       }
       
-      sm_results = rbind(sm_results, c(s, sm_iter, move_type, accept, accept_prob))
+      k_end = k
+      sm_results = rbind(sm_results, c(s, sm_iter, move_type, accept, accept_prob, k_start, k_end))
       
       # cat("\n")
       # cat("SM Step complete:")

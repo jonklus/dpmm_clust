@@ -1,0 +1,57 @@
+---
+title: "Split Merge Accept/Reject Summary"
+author: "Jonathan Klus"
+date: "2023-11-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+```
+
+## Well separated case
+
+```{r}
+ex1 = readRDS(file = "../MCMC_Runs/conjUVVsamp_wellsep_nu2_g1_h50_rvaries_withSM.rds")
+
+ex1_df = data.frame(ex1$sm_results) %>%
+  dplyr::filter(is.na(s) == FALSE) %>%
+  dplyr::mutate(
+    move_type = factor(move_type),
+    s = as.integer(s),
+    sm_iter = as.integer(sm_iter),
+    accept = as.integer(accept),
+    prob = as.numeric(prob)
+  ) 
+
+ex1_df %>%
+  dplyr::group_by(move_type) %>%
+  dplyr::summarise(prob_Accept = round(mean(accept),3))
+
+ex1_df[sample(x = 1:nrow(ex1_df), size = 50, replace = FALSE),]
+```
+
+
+## Closer together case
+
+```{r}
+ex1 = readRDS(file = "../MCMC_Runs/conjUVVsamp_closer_nu2_g1_h50_rvaries_withSM.rds")
+
+ex1_df = data.frame(ex1$sm_results) %>%
+  dplyr::filter(is.na(s) == FALSE) %>%
+  dplyr::mutate(
+    move_type = factor(move_type),
+    s = as.integer(s),
+    sm_iter = as.integer(sm_iter),
+    accept = as.integer(accept),
+    prob = as.numeric(prob)
+  ) 
+
+ex1_df %>%
+  dplyr::group_by(move_type) %>%
+  dplyr::summarise(prob_Accept = round(mean(accept),3))
+
+ex1_df[sample(x = 1:nrow(ex1_df), size = 50, replace = FALSE),]
+```
