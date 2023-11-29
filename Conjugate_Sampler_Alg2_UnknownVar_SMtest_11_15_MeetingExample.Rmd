@@ -125,7 +125,7 @@ summary(ex1$extra_params[1:n_iter,"r"])
 ```{r}
 # sample
 set.seed(516)
-n_iter = 10^4
+n_iter = 10^3
 start_run = Sys.time()
 mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1)
 print(mu0)
@@ -140,7 +140,7 @@ ex1 = MVN_CRP_sampler_UVV(S = n_iter, y = y, alpha = 1, r = 10,
 end_run = Sys.time()
 difftime(time1 = end_run, time2 = start_run)
 
-saveRDS(object = ex1, file = "../MCMC_Runs/conjUVVsamp_wellsep_nu2_g1_h50_rvaries_withSM.rds")
+#saveRDS(object = ex1, file = "../MCMC_Runs/conjUVVsamp_wellsep_nu2_g1_h50_rvaries_withSM.rds")
 
 table(ex1$k)
 
