@@ -466,6 +466,10 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   emp_means = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
   emp_vars = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
   
+  # split merge step - only used if needed
+  sm_results = matrix(data = NA, nrow = 1, ncol = 7)
+  colnames(sm_results) = c("s", "sm_iter", "move_type","accept", "prob", "k_start", "k_end")
+  
   if(sigma_hyperprior == TRUE & fix_r == FALSE){
     extra_params = matrix(data = NA, nrow = S, ncol = 2)
     colnames(extra_params) = c("b", "r")
@@ -521,6 +525,19 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   
   # iterate 1:S
   for(s in 2:S){
+    
+    # print progress
+    if(s %% print_iter == 0){
+      
+      cat("\n\n")
+      cat("*******************************************************************")
+      cat("\n")
+      cat("Starting iter: ", s)
+      cat("\n")
+      cat("*******************************************************************")
+      
+    }    
+    
     
     ## initialize group assignments for current iteration using ending state from prior iteration
     group_assign[s, ] = group_assign[s-1, ]
@@ -640,21 +657,473 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       
     } ### end iterations from i=1:n
     
-    if((s %% print_iter == 0) & (s > print_iter) & (verbose == TRUE)){
-      print("End of CRP step") # just create a new line for separation
-      print(paste("iter = ", s))
+    if((s %% print_iter == 0) & (s >= print_iter) & (verbose == TRUE)){
+      cat("\n")
+      cat("End of CRP step") # just create a new line for separation
+      cat("\n")
+      # print(paste("iter = ", s))
+      # cat("\n")
       print(paste("Current k = ", k))
+      cat("\n")
+      print(group_assign[s,])
+      cat("\n")
       print(table(group_assign[s,]))
+      cat("\n")
       print(mu)
+      cat("\n")
       print(sigma2)
+      cat("\n")
     }
-    
+
     # final update of counts after a sweep
     count_assign = as.numeric(table(group_assign[s,]))
     label_assign = as.numeric(names(table(group_assign[s,])))
     num_groups[s,] = k
     
     # proceed to split-merge step if true
+    
+    # Split-Merge step --- every 10 iterations
+    
+    if(split_merge == TRUE & (s %% sm_iter) == 0){
+      
+      k_start = k
+      
+      temp_group_assign = matrix(data = NA, nrow = sm_iter + 1, ncol = length(group_assign[s,]))
+      sm_probs = matrix(data = NA, nrow = sm_iter + 1, ncol = length(y))
+      temp_group_assign[1,] = group_assign[s,]
+      
+      # randomly select two observed data points y
+      sampled_obs = sample(x = 1:length(y), size = 2, replace = FALSE)
+      
+      # check if in same group - if yes SPLIT
+      # if no, MERGE
+      lab1 = temp_group_assign[1, sampled_obs[1]]
+      lab2 = temp_group_assign[1, sampled_obs[2]]
+      move_type = ifelse(lab1 == lab2, "SPLIT", "MERGE")
+      # cat("move_type:", move_type)
+      # cat("\n")
+      # cat("sampled_obs:", sampled_obs)
+      # cat("\n")
+      # cat("group_labs:", c(lab1, lab2))
+      
+      # bookkeeping - group labels
+      subset_index = which(temp_group_assign[1,] %in% c(lab1, lab2)) 
+      anchor_obs_index = which(subset_index %in% sampled_obs)
+      subset_index_minus = subset_index[-anchor_obs_index] # except sampled observations i and j
+      existing_group_index = which(label_assign == lab1) 
+      
+      # perform restricted Gibbs scans
+      
+      # if SPLIT
+      if(move_type == "SPLIT"){
+        
+        # specify random launch state
+        split_lab = c(lab1, avail_labels[1]) # keep original label, new one for 2nd group
+        
+        
+        for(scan in 1:(sm_iter+1)){
+          
+          for(obs in subset_index_minus){
+            
+            if(scan == 1){
+              
+              # specify random launch state
+              temp_group_assign[scan,obs] = sample(x = split_lab, size = 1)
+              # specify new group label to 2nd anchor point as well
+              temp_group_assign[scan,anchor_obs_index[2]] = split_lab[2] 
+              
+            } else{ # for remaining scans after random launch state set
+              
+              temp_group_assign[scan,] = temp_group_assign[(scan-1),] # initialize
+              sm_counts = table(temp_group_assign[scan,-obs])
+              split_group_count_index = which(as.numeric(names(sm_counts)) %in% split_lab)
+              #current_obs_index = which(temp_group_assign[scan,] == obs)
+              #split_group_lab_index1 = which(temp_group_assign[scan,] == split_lab[1])
+              #split_group_lab_index2 = which(temp_group_assign[scan,] == split_lab[2])
+              
+              # current observation under consideration cannot be included here
+              
+              split_assign_prob = split_merge_prob_DEV(obs = obs, split_labs = split_lab, r=r, 
+                                                        group_assign = temp_group_assign[scan,], 
+                                                        y = y, mu0 = mu0, a = a, b = b)
+              
+              sm_prop_index = sample(x = 1:2, size = 1, 
+                                     prob = split_assign_prob)
+              
+              temp_group_assign[scan,obs] = split_lab[sm_prop_index]
+              sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
+              
+            }  
+          } # iterate through all observations in the two split groups under consideration
+        } # scans 1:(sm_iter+1)
+        
+        # calculate & evaluate acceptance prob
+        sm_counts = table(temp_group_assign[sm_iter+1,]) # update counts after scans
+        ## proposal probability
+        prob1 = -Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index_minus])) # log1 - sum(logs)
+        #print(sm_probs)
+        ## prior ratio
+        prob2_num = factorial(sm_counts[[split_group_count_index[1]]] -1)*factorial(sm_counts[[split_group_count_index[2]]] -1)
+        prob2_denom = factorial(sm_counts[[split_group_count_index[1]]]+sm_counts[[split_group_count_index[2]]]-1)
+        prob2 = log(alpha) + (log(prob2_num) - log(prob2_denom))
+        
+        ## likelihood ratio
+        subset_index_grp1 = which(temp_group_assign[sm_iter+1,] %in% split_lab[1]) 
+        subset_index_grp2 = which(temp_group_assign[sm_iter+1,] %in% split_lab[2]) 
+        
+        ### component 1 - numerator I (group 1)
+        prob3_num1 = 0
+        for(obs_ind in 1:length(subset_index_grp1)){
+          val = ll_components(subset_index = subset_index_grp1, obs_ind = obs_ind, 
+                              y = y, mu0 = mu0, a = a, b = b, r = r)
+          prob3_num1 = prob3_num1 + log(val)
+        }
+        
+        ### component 2 - numerator II (group 2)
+        prob3_num2 = 0
+        for(obs_ind in 1:length(subset_index_grp2)){
+          val = ll_components(subset_index = subset_index_grp2, obs_ind = obs_ind, 
+                              y = y, mu0 = mu0, a = a, b = b, r = r)
+          prob3_num2 = prob3_num2 + log(val)
+        }
+        
+        
+        ### component 3 - denominator (all in original group)
+        prob3_denom = 0
+        for(obs_ind in 1:length(subset_index)){
+          val = ll_components(subset_index = subset_index, obs_ind = obs_ind,
+                              y = y, mu0 = mu0, a = a, b = b, r = r)
+          prob3_denom = prob3_denom + log(val)
+        }
+        
+        ## evaluate acceptance prob
+        prob3 = prob3_num1 + prob3_num2 - prob3_denom
+        accept_prob = min(1, exp(prob1 + prob2 + prob3))
+        u = runif(n = 1)
+        if(accept_prob > u){
+          # accept
+          accept = 1
+          group_assign[s,] = temp_group_assign[sm_iter+1,]
+          # take new group lab out of reserve
+          curr_labels = c(curr_labels, avail_labels[1])
+          avail_labels = avail_labels[-1]
+          k = length(curr_labels)
+          # update labels, etc
+          count_assign = as.numeric(table(group_assign[s,]))
+          label_assign = as.numeric(names(table(group_assign[s,])))
+          which_split_labs = which(label_assign == split_lab) 
+          num_groups[s,] = k
+          
+          # if new group created by split, give it a mean and variance
+          
+          ## draw variances for both groups - use marginal posterior variance 
+          
+          ybar = lapply(X = split_lab, 
+                        FUN = function(x){
+                          group_ind = which(group_assign[s,] == x)
+                          if(obs %in% group_ind){
+                            obs_ind = which(obs == group_ind)
+                            # group_ind = group_ind[-obs_ind] # include all obs this time
+                          } # else continue
+                          
+                          ysum = Reduce(f = "+", 
+                                        x = lapply(X = group_ind, 
+                                                   FUN = function(x){(y[[x]])}))
+                          
+                          return(ysum/length(group_ind))
+                        })
+          
+          emp_loss = lapply(X = 1:2, 
+                            FUN = function(x){
+                              
+                              col_ind = x  # from outer apply
+                              group_ind = which(group_assign[s,] == split_lab[x])
+                              if(obs %in% group_ind){
+                                obs_ind = which(obs == group_ind)
+                                #group_ind = group_ind[-obs_ind] # include all obs this time
+                              } # else continue
+                              
+                              emp_loss = Reduce(f = "+", 
+                                                x = lapply(X = group_ind, FUN = function(x){
+                                                  t(y[[x]] - mu0)%*%(y[[x]] - mu0)}))
+                              
+                              return(emp_loss) # equal diagonal case 
+                              
+                            })
+          #
+          ##
+          ###
+          ####
+          ######
+          ########
+          
+          sigma2_temp = lapply(X = 1:2, 
+                              FUN = function(x){
+                                n_k = count_assign[which_split_labs[x]]
+                                1/rgamma(n = 1, 
+                                       shape = p/2 + n_k + a, 
+                                       rate = emp_loss[[x]]/(2*(1+r)) + b)
+                              })
+          
+          ## draw means for both groups conditional on empirical variances...
+          # cat("\n")
+          # cat("split_lab", split_lab)
+          # cat("\n")
+          # cat("grp_assgn", group_assign[s,])
+          sum_y_i = sapply(X = split_lab, 
+                           FUN = function(x){
+                             rowSums(matrix(unlist(y[group_assign[s,] == x]), nrow = p))
+                             # unravel list of p*1 observations, put in matrix, find sum
+                           })
+          
+          mu_cov = lapply(X = 1:2, 
+                          FUN = function(x){
+                            n_k = count_assign[which_split_labs[x]]
+                            diag(sigma2[[x]]/(1/r + n_k), p)
+                            }) 
+
+          
+          mu_mean = lapply(X = 1:2, 
+                           FUN = function(x){
+                             n_k = count_assign[which_split_labs[x]]
+                             return((sum_y_i[,x] + mu0/r)/(1/r + n_k))
+                           })
+          
+          mu_list = lapply(X = 1:2, 
+                           FUN = function(x){
+                             t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
+                                                mean = mu_mean[[x]], 
+                                                sigma = mu_cov[[x]]))
+                           }) 
+          
+          ## add new means and variances to relevant vectors/lists
+          length_sigma2 = length(sigma2)
+          sigma2[[which_split_labs[1]]] = sigma2_temp[[1]]
+          sigma2[[length_sigma2+1]] = sigma2_temp[[2]]
+          rm(sigma2_temp)
+          
+          mu[,which_split_labs[1]] = mu_list[[1]]
+          mu = cbind(mu, mu_list[[2]])
+          #mu = matrix(data = unlist(x = mu_list), nrow = p) # put draws of mu back into same
+          
+        } else{
+          # reject
+          accept = 0
+          # group assign remains unchanged
+        }
+        
+        
+        
+        
+        # if MERGE    
+      } else if(move_type == "MERGE"){
+        
+        # specify random launch state
+        split_lab = c(lab1, lab2) # original labels, assign merged obs to lab1
+        
+        
+        count_assign = as.numeric(table(temp_group_assign[1,]))
+        label_assign = as.numeric(names(table(temp_group_assign[1,])))
+        which_split_labs = which(label_assign %in% split_lab) 
+        
+        
+        scan = sm_iter + 1 # skip to last row of table
+        temp_group_assign[scan,] = temp_group_assign[1,] # initialize
+        
+        
+        sm_counts_before = table(temp_group_assign[scan,])
+        split_group_count_index = which(as.numeric(names(sm_counts_before)) %in% split_lab)
+        
+        temp_group_assign[scan,sampled_obs] = lab1 # anchor observations that arent
+        # in subset-index-minus...
+        
+        for(obs in subset_index_minus){
+          
+          temp_group_assign[scan,obs] = lab1 # keep 1st group label
+          
+          # sm_counts_before = table(temp_group_assign[scan,-obs])
+          # split_group_count_index_before = which(as.numeric(names(sm_counts)) %in% split_lab)
+          
+          # current observation under consideration cannot be included here
+          
+          split_assign_prob = split_merge_prob_DEV(obs = obs, split_labs = split_lab, r=r, 
+                                                    group_assign = temp_group_assign[scan,], 
+                                                    y = y, mu0 = mu0, a = a, b = b)
+          
+          sm_prop_index = sample(x = 1:2, size = 1,
+                                 prob = split_assign_prob)
+          # 
+          # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
+          sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
+          
+        }  # iterate through all observations in the two split groups under consideration
+        
+        
+        
+        # calculate & evaluate acceptance prob
+        sm_counts = table(temp_group_assign[sm_iter+1,]) # update counts after scans
+        ## proposal probability
+        prob1 = Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index_minus])) # log1 - sum(logs)
+        # need to index by subset since NAs for observation not part of split/merge -- as well as the
+        # two anchor observations. shoudl you be calculating a prob for those as well though???
+        
+        ## prior ratio
+        
+        # cat("\n")
+        # cat("sm_counts_before:")
+        # print(sm_counts_before)
+        # cat("\n")
+        # cat("split_group_count_index:", split_group_count_index)
+        
+        prob2_num = factorial(sm_counts_before[[split_group_count_index[1]]] -1)*factorial(sm_counts_before[[split_group_count_index[2]]] -1)
+        prob2_denom = factorial(sm_counts_before[[split_group_count_index[1]]]+sm_counts_before[[split_group_count_index[2]]]-1)
+        prob2 = -(log(alpha) + (log(prob2_num) - log(prob2_denom)))
+        
+        ## likelihood ratio
+        subset_index_grp1 = which(temp_group_assign[1,] %in% split_lab[1]) 
+        subset_index_grp2 = which(temp_group_assign[1,] %in% split_lab[2]) 
+        
+        ### component 1 - numerator I (group 1)
+        prob3_num1 = 0
+        for(obs_ind in 1:length(subset_index_grp1)){
+          val = ll_components(subset_index = subset_index_grp1, obs_ind = obs_ind, 
+                              y = y, mu0 = mu0, r = r, a = a, b = b)
+          prob3_num1 = prob3_num1 + log(val)
+        }
+        
+        ### component 2 - numerator II (group 2)
+        prob3_num2 = 0
+        for(obs_ind in 1:length(subset_index_grp2)){
+          val = ll_components(subset_index = subset_index_grp2, obs_ind = obs_ind, 
+                              y = y, mu0 = mu0, r = r, a = a, b = b)
+          prob3_num2 = prob3_num2 + log(val)
+        }
+        
+        
+        ### component 3 - denominator (all in original group)
+        prob3_denom = 0
+        for(obs_ind in 1:length(subset_index)){
+          val = ll_components(subset_index = subset_index, obs_ind = obs_ind, 
+                              y = y, mu0 = mu0, r = r, a = a, b = b)
+          prob3_denom = prob3_denom + log(val)
+        }
+        
+        ## evaluate acceptance prob
+        prob3 = -(prob3_num1 + prob3_num2 - prob3_denom)
+        accept_prob = min(1, exp(prob1 + prob2 + prob3))
+        u = runif(n = 1)
+        if(accept_prob > u){
+          # accept
+          accept = 1
+          group_assign[s,] = temp_group_assign[sm_iter+1,]
+          
+          # bookeeping if merge step ACCEPTED only, keep first group -- remove 2nd 
+          mu = matrix(mu[,-which_split_labs[2]], nrow = p)
+          sigma2 = sigma2[-which_split_labs[2]]
+          
+          # count_assign = count_assign[-which_split_labs[2]]
+          # label_assign = label_assign[-which_split_labs[2]]
+          # avail_labels = c(temp_group_assign[1, sampled_obs[2]], avail_labels)
+          # i think the line above is duplicating bookeeping step of adding to availabe
+          # labels...comment out for now and test...
+          
+          # put old group lab out of reserve
+          curr_label_del = which(curr_labels == split_lab[2])
+          avail_labels = c(curr_labels[curr_label_del], avail_labels)
+          curr_labels = curr_labels[-curr_label_del]
+          
+          k = length(curr_labels)
+          # update labels, etc
+          count_assign = as.numeric(table(group_assign[s,]))
+          label_assign = as.numeric(names(table(group_assign[s,])))
+          which_split_lab = which(label_assign == split_lab[1]) 
+          num_groups[s,] = k
+          
+          # save info about accept/reject & probs
+          
+          # merged group...give it a mean and variance
+          
+          ## draw variances for new groups - use empirical variance since mean not known yet
+          ## may want to change this in the future if you come up with a better idea...
+          
+          # ybar = lapply(X = split_lab[1], 
+          #               FUN = function(x){
+          #                 group_ind = which(group_assign[s,] == x)
+          #                 if(obs %in% group_ind){
+          #                   obs_ind = which(obs == group_ind)
+          #                   # group_ind = group_ind[-obs_ind] # include all obs this time
+          #                 } # else continue
+          #                 
+          #                 ysum = Reduce(f = "+", 
+          #                               x = lapply(X = group_ind, 
+          #                                          FUN = function(x){(y[[x]])}))
+          #                 
+          #                 return(ysum/length(group_ind))
+          #               })
+          
+          group_ind = which(group_assign[s,] == split_lab[1])
+          ybar = Reduce(f = "+", x = y[group_ind])/length(group_ind) 
+          
+          emp_loss = Reduce(f = "+", 
+                            x = lapply(X = group_ind, FUN = function(x){
+                              t(y[[x]] - mu0)%*%(y[[x]] - mu0)}))
+          
+
+          sigma2_temp = 1/rgamma(n = 1, 
+                                 shape = p/2 + count_assign[which_split_lab[1]] + a, 
+                                 rate = emp_loss/(2*(1+r)) + b)
+          
+          
+          ## draw means for both groups conditional on drawn variances...
+          
+          sum_y_i = rowSums(matrix(unlist(y[group_assign[s,] == split_lab[1]]), nrow = p))
+          # unravel list of p*1 observations, put in matrix, find sum
+          
+          mu_cov = diag(sigma2_temp/(1/r + count_assign[which_split_lab[1]]), p)
+          
+          mu_mean = (sum_y_i + mu0/r)/(1/r + count_assign[which_split_lab[1]])
+          
+          mu_list = t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
+                                       mean = mu_mean, 
+                                       sigma = mu_cov))
+          
+          ## add new means and variances to relevant vectors/lists
+          length_sigma2 = length(sigma2)
+          sigma2[[which_split_lab]] = sigma2_temp
+          
+          mu[,which_split_lab] = mu_list
+          #mu = matrix(data = unlist(x = mu_list), nrow = p) # put draws of mu back into same
+          
+          
+        } else{
+          # reject
+          accept = 0
+          # group assign remains unchanged
+        }
+        
+        
+        
+        
+        
+      }
+      
+      k_end = k
+      sm_results = rbind(sm_results, c(s, sm_iter, move_type, accept, accept_prob, k_start, k_end))
+      
+      # cat("\n")
+      # cat("SM Step complete:")
+      # cat("\n")
+      # cat("iter", s)
+      # cat("\n")
+      # cat("move_type", move_type)
+      # cat("\n")
+      # cat("accept", accept)
+      # cat("\n")
+      # cat("prob", accept_prob)
+      # cat("\n")
+      # print(table(group_assign[s,]))
+      
+    }
     
     # print results after each sweep
     
@@ -771,18 +1240,22 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                            })
     
     # print progress
-    if((s %% print_iter == 0) & (s > print_iter) & (verbose == TRUE)){
-      print("After Gibbs step:") # just create a new line for separate
-      # print(paste("iter = ", s))
-      # print(paste("Current k = ", k))
-      # print(table(group_assign[s,]))
-      cat("mu",mu)
-      cat("sigma2",as.numeric(paste(sigma2)))
+    if((s %% print_iter == 0) & (s >= print_iter) & (verbose == TRUE)){
+      cat("After Gibbs step:") # just create a new line for separate
+      cat("\n")
+      cat("mu")
+      cat("\n")
+      print(mu)
+      cat("\n")
+      cat("sigma2")
+      cat("\n")
+      print(sigma2)
+      cat("\n")
       cat("r",r)
+      cat("\n")
       cat("b",b)
-      # print(c("Current labels: ", curr_labels))
-      # print(avail_labels)
-      
+      cat("\n")
+   
       if(nrow(mu0) == 2){
         # if this is a 2D problem, can make scatterplot of group assign
         yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
@@ -850,6 +1323,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                        emp_vars = emp_vars,
                        extra_params = extra_params,
                        accept = accept_ind,
+                       sm_results = sm_results,
                        group_probs = probs,
                        group_assign = group_assign,
                        pairwise_mats = pairwise_mats)
@@ -868,6 +1342,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                        emp_vars = emp_vars,
                        #extra_params = extra_params,
                        accept = accept_ind,
+                       sm_results = sm_results,
                        group_probs = probs,
                        group_assign = group_assign,
                        pairwise_mats = pairwise_mats)
