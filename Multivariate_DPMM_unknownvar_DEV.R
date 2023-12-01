@@ -225,7 +225,7 @@ post_pred_DEV <- function(obs, which_group, group_assign, split_labs, r, sm_coun
   
 }
 
-final_post_pred_UVV <- function(y_i, r, y, mu0, a, b){
+final_post_pred_DEV <- function(y_i, r, y, mu0, a, b){
   
   # use to calculate values after final gibbs scan 
   ## y_i is observation of interest, y is all data being considered for posterior,
@@ -256,8 +256,12 @@ final_post_pred_UVV <- function(y_i, r, y, mu0, a, b){
   b_n = b + (t(mu0)%*%mu0/r + sum_ysq - (1/r + sm_counts)*t(mu_n)%*%mu_n)/2
   
   lambda_n = diag(b_n[,1]*(1+(1/r + sm_counts)^(-1))/a_n, length(mu_n[,1]))
+  
+  print(mu_n)
+  print(b_n)
+  print(lambda_n)
 
-  val = sm_counts*LaplacesDemon::dmvt(x = y_i, 
+  val = sm_counts*LaplacesDemon::dmvt(x = y_i[,1], 
                                       mu = mu_n[,1], 
                                       S = lambda_n, 
                                       df = 2*a_n)
@@ -267,7 +271,7 @@ final_post_pred_UVV <- function(y_i, r, y, mu0, a, b){
   
 }
 
-ll_components_DEV <- function(subset_index, obs_ind, y, mu0, lambda0, r, nu){
+ll_components_DEV <- function(subset_index, obs_ind, y, mu0, r, a, b){
   # function to calculate the components of the likelihood ratio for the MH
   # acceptance probability after n_iter split merge restricted Gibbs scans
   
@@ -382,7 +386,7 @@ split_merge_prob_DEV <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
                              a = a, b = b)
       
       denom = num + post_pred_DEV(obs = obs, which_group = 2, r = r, group_assign = group_assign,
-                                  sm_counts = sm_counts, y = y, ybar = ybar, 
+                                  sm_counts = sm_counts, y = y, ybar = ybar, split_labs = split_labs,
                                   loss_ybar = loss_ybar, mu0 = mu0, a = a, b = b)
       
       ratio = c(num/denom, 1-(num/denom))
@@ -391,7 +395,7 @@ split_merge_prob_DEV <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
       # which_zero == 2
       
       num = post_pred_DEV(obs = obs, which_group = 1, r = r, 
-                          group_assign = group_assign,
+                          group_assign = group_assign, split_labs = split_labs,
                           sm_counts = sm_counts, y = y, ybar = ybar, 
                           loss_ybar = loss_ybar, mu0 = mu0, a = a, b = b)
       
@@ -408,12 +412,12 @@ split_merge_prob_DEV <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
     # proceed as usual 
     
     num = post_pred_DEV(obs = obs, which_group = 1, r = r, 
-                        group_assign = group_assign,
+                        group_assign = group_assign, split_labs = split_labs,
                         sm_counts = sm_counts, y = y, ybar = ybar, 
                         loss_ybar = loss_ybar, mu0 = mu0, a = a, b = b)
     
     denom = num + post_pred_DEV(obs = obs, which_group = 2, r = r,
-                                group_assign = group_assign,
+                                group_assign = group_assign, split_labs = split_labs,
                                 sm_counts = sm_counts, y = y, ybar = ybar, 
                                 loss_ybar = loss_ybar, mu0 = mu0, a = a, b = b)
     
@@ -851,13 +855,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                               return(emp_loss) # equal diagonal case 
                               
                             })
-          #
-          ##
-          ###
-          ####
-          ######
-          ########
-          
+       
           sigma2_temp = lapply(X = 1:2, 
                               FUN = function(x){
                                 n_k = count_assign[which_split_labs[x]]
