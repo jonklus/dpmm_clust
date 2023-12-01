@@ -267,7 +267,7 @@ final_post_pred_UVV <- function(y_i, r, y, mu0, a, b){
   
 }
 
-ll_components <- function(subset_index, obs_ind, y, mu0, lambda0, r, nu){
+ll_components_DEV <- function(subset_index, obs_ind, y, mu0, lambda0, r, nu){
   # function to calculate the components of the likelihood ratio for the MH
   # acceptance probability after n_iter split merge restricted Gibbs scans
   
@@ -429,6 +429,7 @@ split_merge_prob_DEV <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
 
 MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1/2, b = 10, mu0, k_init = 2,
                                 d = 1, f = 1, g = 1, h = 1, sigma_hyperprior = TRUE, fix_r = FALSE,
+                                split_merge = FALSE, sm_iter = 10,
                                 diag_weights = FALSE, verbose = TRUE, print_iter = 100){
   
   # S is number of MCMC iterations
@@ -774,7 +775,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         ### component 1 - numerator I (group 1)
         prob3_num1 = 0
         for(obs_ind in 1:length(subset_index_grp1)){
-          val = ll_components(subset_index = subset_index_grp1, obs_ind = obs_ind, 
+          val = ll_components_DEV(subset_index = subset_index_grp1, obs_ind = obs_ind, 
                               y = y, mu0 = mu0, a = a, b = b, r = r)
           prob3_num1 = prob3_num1 + log(val)
         }
@@ -782,7 +783,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         ### component 2 - numerator II (group 2)
         prob3_num2 = 0
         for(obs_ind in 1:length(subset_index_grp2)){
-          val = ll_components(subset_index = subset_index_grp2, obs_ind = obs_ind, 
+          val = ll_components_DEV(subset_index = subset_index_grp2, obs_ind = obs_ind, 
                               y = y, mu0 = mu0, a = a, b = b, r = r)
           prob3_num2 = prob3_num2 + log(val)
         }
@@ -791,7 +792,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         ### component 3 - denominator (all in original group)
         prob3_denom = 0
         for(obs_ind in 1:length(subset_index)){
-          val = ll_components(subset_index = subset_index, obs_ind = obs_ind,
+          val = ll_components_DEV(subset_index = subset_index, obs_ind = obs_ind,
                               y = y, mu0 = mu0, a = a, b = b, r = r)
           prob3_denom = prob3_denom + log(val)
         }
@@ -986,7 +987,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         ### component 1 - numerator I (group 1)
         prob3_num1 = 0
         for(obs_ind in 1:length(subset_index_grp1)){
-          val = ll_components(subset_index = subset_index_grp1, obs_ind = obs_ind, 
+          val = ll_components_DEV(subset_index = subset_index_grp1, obs_ind = obs_ind, 
                               y = y, mu0 = mu0, r = r, a = a, b = b)
           prob3_num1 = prob3_num1 + log(val)
         }
@@ -994,7 +995,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         ### component 2 - numerator II (group 2)
         prob3_num2 = 0
         for(obs_ind in 1:length(subset_index_grp2)){
-          val = ll_components(subset_index = subset_index_grp2, obs_ind = obs_ind, 
+          val = ll_components_DEV(subset_index = subset_index_grp2, obs_ind = obs_ind, 
                               y = y, mu0 = mu0, r = r, a = a, b = b)
           prob3_num2 = prob3_num2 + log(val)
         }
@@ -1003,7 +1004,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         ### component 3 - denominator (all in original group)
         prob3_denom = 0
         for(obs_ind in 1:length(subset_index)){
-          val = ll_components(subset_index = subset_index, obs_ind = obs_ind, 
+          val = ll_components_DEV(subset_index = subset_index, obs_ind = obs_ind, 
                               y = y, mu0 = mu0, r = r, a = a, b = b)
           prob3_denom = prob3_denom + log(val)
         }
