@@ -257,9 +257,9 @@ final_post_pred_DEE <- function(y_i, r, y, mu0, a, b){
   
   lambda_n = diag(b_n[,1]*(1+(1/r + sm_counts)^(-1))/a_n, length(mu_n[,1]))
   
-  print(mu_n)
-  print(b_n)
-  print(lambda_n)
+  # print(mu_n)
+  # print(b_n)
+  # print(lambda_n)
   
   val = sm_counts*LaplacesDemon::dmvt(x = y_i[,1], 
                                       mu = mu_n[,1], 
@@ -434,7 +434,7 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
 
 MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1/2, b = 10, mu0, k_init = 2,
                                 d = 1, f = 1, g = 1, h = 1, sigma_hyperprior = TRUE, fix_r = FALSE,
-                                diag_weights = FALSE, verbose = TRUE, print_iter = 100, do_split_merge = TRUE, sm_iter = 5){
+                                diag_weights = FALSE, verbose = TRUE, print_iter = 100, split_merge = TRUE, sm_iter = 5){
   
   # S is number of MCMC iterations
   # y is a list of data of length n
@@ -687,9 +687,11 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         
         # specify random launch state
         split_lab = c(lab1, avail_labels[1]) # keep original label, new one for 2nd group
-        
+        print(split_lab)
         
         for(scan in 1:(sm_iter+1)){
+          
+          print(scan)
           
           for(obs in subset_index_minus){
             
@@ -699,6 +701,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
               temp_group_assign[scan,obs] = sample(x = split_lab, size = 1)
               # specify new group label to 2nd anchor point as well
               temp_group_assign[scan,anchor_obs_index[2]] = split_lab[2] 
+              print(temp_group_assign[scan,])
               
             } else{ # for remaining scans after random launch state set
               
@@ -714,12 +717,16 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
               split_assign_prob = split_merge_prob_DEE(obs = obs, split_labs = split_lab, r=r, 
                                                        group_assign = temp_group_assign[scan,], 
                                                        y = y, mu0 = mu0, a = a, b = b)
+              print(split_assign_prob)
               
               sm_prop_index = sample(x = 1:2, size = 1, 
                                      prob = split_assign_prob)
               
               temp_group_assign[scan,obs] = split_lab[sm_prop_index]
               sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
+              
+              print(temp_group_assign[scan,])
+              print(sm_probs[scan,])
               
             }  
           } # iterate through all observations in the two split groups under consideration
@@ -728,6 +735,9 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         # calculate & evaluate acceptance prob
         sm_counts = table(temp_group_assign[sm_iter+1,]) # update counts after scans
         ## proposal probability
+        print("split")
+        print(sm_probs[sm_iter+1,subset_index_minus])
+        print(log(sm_probs[sm_iter+1,subset_index_minus]))
         prob1 = -Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index_minus])) # log1 - sum(logs)
         #print(sm_probs)
         ## prior ratio
@@ -874,6 +884,9 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         # calculate & evaluate acceptance prob
         sm_counts = table(temp_group_assign[sm_iter+1,]) # update counts after scans
         ## proposal probability
+        print("merge")
+        print(sm_probs[sm_iter+1,subset_index_minus])
+        print(log(sm_probs[sm_iter+1,subset_index_minus]))
         prob1 = Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index_minus])) # log1 - sum(logs)
         # need to index by subset since NAs for observation not part of split/merge -- as well as the
         # two anchor observations. shoudl you be calculating a prob for those as well though???

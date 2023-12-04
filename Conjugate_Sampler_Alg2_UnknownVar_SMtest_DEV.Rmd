@@ -1,5 +1,5 @@
 ---
-title: "Conjugate Sampler - Split/Merge Demo for DEV"
+title: "Conjugate Sampler - Split/Merge Demo for DEV & DEE"
 author: "Jonathan Klus"
 date: "2023-11-15"
 output: html_document
@@ -183,7 +183,7 @@ n_iter = 10^3
 start_run = Sys.time()
 mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1)
 print(mu0)
-ex1 = MVN_CRP_sampler_DEV(S = n_iter, y = y, alpha = 1, r = 10, 
+ex1 = MVN_CRP_sampler_DEE(S = n_iter, y = y, alpha = 1, r = 10, 
                           g = 1, h = 50, 
                           sigma_hyperprior = FALSE, fix_r = FALSE, 
                           mu0 = mu0, a = 1, b = 50,

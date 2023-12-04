@@ -145,3 +145,64 @@ for(i in 1:nrow(master_grid)){
 
     }
 
+
+
+################################# METRICS ######################################
+
+calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, mu_true, 
+                           Sigma_true, equal_var_assump = FALSE){
+  
+  # function to calculate KL divergence between truth and posterior mean for
+  # a particular clustering (e.g. k=3) after running MCMC
+  
+  # y, mu_est, Sigma_est are lists - mu and sigma are MCMC output that has been
+  # filtered by k and processed to correct label switching so that they are aligned
+  # mu_true, and Sigma_true are the ground truth from which data were simulated
+  # truth is a vector of true group assignments
+  # group_assign is a S*n matrix of estimated group assignments
+  # equal_var_assump is a logical that determines whether we assume the groups
+  # had unique variances estimated as part of the MCMC
+  
+  # assumes MV normal likelihood
+  
+  if(equal_var_assump == FALSE){
+    # each group has its own estimated variance
+    
+    # calculate density of truth
+    true_dens = sapply(X = 1:length(y), 
+                       FUN = function(x){
+                         mvtnorm::dmvnorm(x = y[[x]][,1], 
+                                          mean = mu_true[[truth[x]]][,1], 
+                                          sigma = Sigma_true[[truth[x]]])
+                         
+                       })
+      
+      
+    
+    # calculate density of estimates
+    est_dens = matrix(data = NA, nrow = length(mu), ncol = length(y))
+    for(iter in 1:length(mu)){
+      
+      est_dens[iter,] = sapply(X = 1:length(y), 
+                               FUN = function(x){
+                                 mvtnorm::dmvnorm(x = y[[x]][,1], 
+                                                  mean = mu_est[[group_assign[iter,x]]][,1], 
+                                                  sigma = Sigma_est[[group_assign[iter,x]]])
+                                 
+                               })
+      
+    }
+    
+  } else{
+    # pooled variance, assumed equal across groups
+  }
+  
+  # now do we average over densities in estimates then calc KL div, or  calculate KL divergence
+  # at each iteration and then average over all iterations?
+  
+  # option 1 - average over densities, then calculate KL
+  
+  
+  # option 2 - calculate KL divergence at each iteration
+  
+}

@@ -257,9 +257,9 @@ final_post_pred_DEV <- function(y_i, r, y, mu0, a, b){
   
   lambda_n = diag(b_n[,1]*(1+(1/r + sm_counts)^(-1))/a_n, length(mu_n[,1]))
   
-  print(mu_n)
-  print(b_n)
-  print(lambda_n)
+  # print(mu_n)
+  # print(b_n)
+  # print(lambda_n)
 
   val = sm_counts*LaplacesDemon::dmvt(x = y_i[,1], 
                                       mu = mu_n[,1], 
