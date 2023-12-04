@@ -532,7 +532,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   for(s in 2:S){
     
     # print progress
-    if(s %% print_iter == 0){
+    if(s %% print_iter == 0 & verbose == TRUE){
       
       cat("\n\n")
       cat("*******************************************************************")

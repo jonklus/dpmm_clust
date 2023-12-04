@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # load necessary functions
 source("./Multivariate_DPMM_unknownvar_DEV.R")
+source("./Multivariate_DPMM_unknownvar_DEE.R")
 source("./posterior_helper_fxns.R")
 
 # load R libraries
@@ -92,6 +93,67 @@ start_run = Sys.time()
 mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1)
 print(mu0)
 ex1 = MVN_CRP_sampler_DEV(S = n_iter, y = y, alpha = 1, r = 10, 
+                          g = 1, h = 50, 
+                          sigma_hyperprior = FALSE, fix_r = FALSE, 
+                          mu0 = mu0, a = 1, b = 50,
+                          k_init = 1, diag_weights = FALSE, 
+                          verbose = TRUE, print_iter = 500, 
+                          split_merge = FALSE)
+end_run = Sys.time()
+difftime(time1 = end_run, time2 = start_run)
+
+#saveRDS(object = ex1, file = "../MCMC_Runs/conjUVVsamp_wellsep_nu2_g1_h50_rvaries_noSM.rds")
+
+table(ex1$k)
+
+# traceplot for number of components k.
+
+make_k_traceplot(k = ex1$k, group_assign = ex1$group_assign)
+summary(ex1$extra_params[1:n_iter,"r"])
+```
+
+
+##### with split-merge step
+
+```{r}
+# sample
+set.seed(516)
+n_iter = 10^3
+start_run = Sys.time()
+mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1)
+print(mu0)
+ex1 = MVN_CRP_sampler_DEE(S = n_iter, y = y, alpha = 1, r = 10, 
+                          g = 1, h = 50, 
+                          sigma_hyperprior = FALSE, fix_r = FALSE, 
+                          mu0 = mu0, a = 1, b = 50,
+                          k_init = 1, diag_weights = FALSE, 
+                          verbose = TRUE, print_iter = 500, 
+                          split_merge = TRUE, sm_iter = 5)
+end_run = Sys.time()
+difftime(time1 = end_run, time2 = start_run)
+
+#saveRDS(object = ex1, file = "../MCMC_Runs/conjUVVsamp_wellsep_nu2_g1_h50_rvaries_withSM.rds")
+
+table(ex1$k)
+
+# traceplot for number of components k.
+
+make_k_traceplot(k = ex1$k, group_assign = ex1$group_assign)
+summary(ex1$extra_params[1:n_iter,"r"])
+```
+
+#### DEE sampler 
+
+##### without split-merge step
+
+```{r}
+# sample
+set.seed(516)
+n_iter = 10^3
+start_run = Sys.time()
+mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1)
+print(mu0)
+ex1 = MVN_CRP_sampler_DEE(S = n_iter, y = y, alpha = 1, r = 10, 
                           g = 1, h = 50, 
                           sigma_hyperprior = FALSE, fix_r = FALSE, 
                           mu0 = mu0, a = 1, b = 50,
