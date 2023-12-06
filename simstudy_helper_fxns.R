@@ -11,7 +11,7 @@
 library(ggplot2)
 library(tidyr)
 library(parallel)
-
+library(LaplacesDemon)
 
 ########################### GENERATE DATA ######################################
 
@@ -156,6 +156,7 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, mu_t
   # a particular clustering (e.g. k=3) after running MCMC
   
   # y, mu_est, Sigma_est are lists - mu and sigma are MCMC output that has been
+  # if equal var assumption is true -- Sigma_est and Sigma_true are matrices
   # filtered by k and processed to correct label switching so that they are aligned
   # mu_true, and Sigma_true are the ground truth from which data were simulated
   # truth is a vector of true group assignments
@@ -165,36 +166,66 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, mu_t
   
   # assumes MV normal likelihood
   
-  if(equal_var_assump == FALSE){
-    # each group has its own estimated variance
+    if(equal_var_assump == FALSE){
+      # each group has its own estimated variance
+      
+      # calculate density of truth
+      true_dens = sapply(X = 1:length(y), 
+                         FUN = function(x){
+                           mvtnorm::dmvnorm(x = y[[x]][,1], 
+                                            mean = mu_true[[truth[x]]][,1], 
+                                            sigma = Sigma_true[[truth[x]]])
+                           
+                         })
+        
+        
+      
+      # calculate density of estimates
+      est_dens_i = matrix(data = NA, nrow = length(mu), ncol = length(y))
+      for(iter in 1:length(mu)){
+        
+        est_dens_i[iter,] = sapply(X = 1:length(y), 
+                                 FUN = function(x){
+                                   mvtnorm::dmvnorm(x = y[[x]][,1], 
+                                                    mean = mu_est[[group_assign[iter,x]]][,1], 
+                                                    sigma = Sigma_est[[group_assign[iter,x]]])
+                                   
+                                 })
+        
+      }
+      
+      est_dens = colMeans(est_dens_i) # average over all iterations
+    
+  } else{
+    # pooled variance, assumed equal across groups
     
     # calculate density of truth
     true_dens = sapply(X = 1:length(y), 
                        FUN = function(x){
                          mvtnorm::dmvnorm(x = y[[x]][,1], 
                                           mean = mu_true[[truth[x]]][,1], 
-                                          sigma = Sigma_true[[truth[x]]])
+                                          sigma = Sigma_true)
                          
                        })
-      
-      
+    
+    
     
     # calculate density of estimates
-    est_dens = matrix(data = NA, nrow = length(mu), ncol = length(y))
+    est_dens_i = matrix(data = NA, nrow = length(mu), ncol = length(y))
     for(iter in 1:length(mu)){
       
-      est_dens[iter,] = sapply(X = 1:length(y), 
-                               FUN = function(x){
-                                 mvtnorm::dmvnorm(x = y[[x]][,1], 
-                                                  mean = mu_est[[group_assign[iter,x]]][,1], 
-                                                  sigma = Sigma_est[[group_assign[iter,x]]])
-                                 
-                               })
+      est_dens_i[iter,] = sapply(X = 1:length(y), 
+                                 FUN = function(x){
+                                   mvtnorm::dmvnorm(x = y[[x]][,1], 
+                                                    mean = mu_est[[group_assign[iter,x]]][,1], 
+                                                    sigma = Sigma_est)
+                                   
+                                 })
       
     }
     
-  } else{
-    # pooled variance, assumed equal across groups
+    est_dens = colMeans(est_dens_i) # average over all iterations
+    
   }
   
   # now do we average over densities in estimates then calc KL div, or  calculate KL divergence
@@ -205,4 +236,8 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, mu_t
   
   # option 2 - calculate KL divergence at each iteration
   
+  kl_div = LaplacesDemon::KLD(px = true_dens, py = est_dens)
+  
+  return(kl_div)
 }
+
