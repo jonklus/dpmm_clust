@@ -33,7 +33,7 @@ n_grid = c(10,30, 100, 200)
 
 
 # other sim settings
-n_reps = 10^1  # number of times to repeat each simulation
+n_reps = 10^0  # number of times to repeat each simulation
 n_iter = 10^3  # number of iterations
 
 # grid of seeds
