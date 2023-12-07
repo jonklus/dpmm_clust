@@ -668,11 +668,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       lab1 = temp_group_assign[1, sampled_obs[1]]
       lab2 = temp_group_assign[1, sampled_obs[2]]
       move_type = ifelse(lab1 == lab2, "SPLIT", "MERGE")
-      # cat("move_type:", move_type)
-      # cat("\n")
-      # cat("sampled_obs:", sampled_obs)
-      # cat("\n")
-      # cat("group_labs:", c(lab1, lab2))
+
       
       # bookkeeping - group labels
       subset_index = which(temp_group_assign[1,] %in% c(lab1, lab2)) 
@@ -747,6 +743,9 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                 temp_group_assign[scan,] = temp_group_assign[(scan-1),] # initialize
                 sm_counts = table(temp_group_assign[scan,-obs])
                 split_group_count_index = which(as.numeric(names(sm_counts)) %in% split_lab)
+                
+                print(split_lab)
+                
                 #current_obs_index = which(temp_group_assign[scan,] == obs)
                 #split_group_lab_index1 = which(temp_group_assign[scan,] == split_lab[1])
                 #split_group_lab_index2 = which(temp_group_assign[scan,] == split_lab[2])
@@ -785,6 +784,9 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
 
         #print(sm_probs)
         ## prior ratio
+        print(sm_counts)
+        print(split_group_count_index)
+        
         prob2_num = factorial(sm_counts[[split_group_count_index[1]]] -1)*factorial(sm_counts[[split_group_count_index[2]]] -1)
         prob2_denom = factorial(sm_counts[[split_group_count_index[1]]]+sm_counts[[split_group_count_index[2]]]-1)
         prob2 = log(alpha) + (log(prob2_num) - log(prob2_denom))
@@ -939,9 +941,6 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         # calculate & evaluate acceptance prob
         sm_counts = table(temp_group_assign[sm_iter+1,]) # update counts after scans
         ## proposal probability
-        print("merge")
-        print(sm_probs[sm_iter+1,subset_index_minus])
-        print(log(sm_probs[sm_iter+1,subset_index_minus]))
         prob1 = Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index_minus])) # log1 - sum(logs)
         # need to index by subset since NAs for observation not part of split/merge -- as well as the
         # two anchor observations. shoudl you be calculating a prob for those as well though???
