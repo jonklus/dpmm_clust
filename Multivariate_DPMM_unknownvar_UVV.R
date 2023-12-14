@@ -647,7 +647,18 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       
       # need to do something here to deal with situations where groups only contain
       # anchor obs
-      subset_index_minus = subset_index[-anchor_obs_index] # except sampled observations i and j
+      
+      
+      # check whether subset_index_minus contains only 2 observations
+      if(length(subset_index) == length(anchor_obs_index)){
+        # when a single observation is in each group only
+        # edge case
+        subset_index_minus = NA
+        
+      } else{
+        # proceed as usual
+        subset_index_minus = subset_index[-anchor_obs_index] # except sampled observations i and j
+      }
       
       existing_group_index = which(label_assign == lab1) 
       
@@ -665,44 +676,70 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         print(subset_index_minus)
 
         
-        for(scan in 1:(sm_iter+1)){
+        if(is.na(subset_index_minus) == TRUE){
+          # special case
+        } else{
+          # proceed as normal
           
-          for(obs in subset_index_minus){
+          for(scan in 1:(sm_iter+1)){
             
-            if(scan == 1){
+            for(obs in subset_index){
               
-              # specify random launch state
-              temp_group_assign[scan,obs] = sample(x = split_lab, size = 1)
-              # specify new group label to 2nd anchor point as well
-              temp_group_assign[scan,anchor_obs_index[2]] = split_lab[2] 
-              
-            } else{ # for remaining scans after random launch state set
-              
-              temp_group_assign[scan,] = temp_group_assign[(scan-1),] # initialize
-              sm_counts = table(temp_group_assign[scan,-obs])
-              split_group_count_index = which(as.numeric(names(sm_counts)) %in% split_lab)
-              #current_obs_index = which(temp_group_assign[scan,] == obs)
-              #split_group_lab_index1 = which(temp_group_assign[scan,] == split_lab[1])
-              #split_group_lab_index2 = which(temp_group_assign[scan,] == split_lab[2])
-              
-              # current observation under consideration cannot be included here
-              
-              split_assign_prob = split_merge_prob_UVV(
-                obs = obs, split_labs = split_lab, r=r, 
-                group_assign = temp_group_assign[scan,], nu = nu, 
-                y = y, mu0 = mu0, lambda0= lambda0)
-              
-              sm_prop_index = sample(x = 1:2, size = 1, 
-                                     prob = split_assign_prob)
-              
-              temp_group_assign[scan,obs] = split_lab[sm_prop_index]
-              sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
-              
-              print(temp_group_assign[scan,])
-              
-            }  
-          } # iterate through all observations in the two split groups under consideration
-        } # scans 1:(sm_iter+1)
+              if(scan == 1){
+                
+                if(obs %in% anchor_obs_index){
+                  # dont sample 
+                  # specify new group label to 2nd anchor point as well
+                  if(obs == anchor_obs_index[2]){
+                    temp_group_assign[scan,obs] = split_lab[2] 
+                  }
+
+                } else{
+                  # proceed as usual
+                  # specify random launch state
+                  temp_group_assign[scan,obs] = sample(x = split_lab, size = 1)
+                  
+                }
+                
+              } else{ # for remaining scans after random launch state set
+                
+                if(obs %in% anchor_obs_index){ # change this to if singleton
+                  # maybe borrow some code from CRP stuff???
+                  # still need to deal with anchor obs because group assignment
+                  # is deterministic for these observations
+                  
+                  
+                } else{
+                  
+                  temp_group_assign[scan,] = temp_group_assign[(scan-1),] # initialize
+                  sm_counts = table(temp_group_assign[scan,-obs])
+                  split_group_count_index = which(as.numeric(names(sm_counts)) %in% split_lab)
+                  #current_obs_index = which(temp_group_assign[scan,] == obs)
+                  #split_group_lab_index1 = which(temp_group_assign[scan,] == split_lab[1])
+                  #split_group_lab_index2 = which(temp_group_assign[scan,] == split_lab[2])
+                  
+                  # current observation under consideration cannot be included here
+                  
+                  split_assign_prob = split_merge_prob_UVV(
+                    obs = obs, split_labs = split_lab, r=r, 
+                    group_assign = temp_group_assign[scan,], nu = nu, 
+                    y = y, mu0 = mu0, lambda0= lambda0)
+                  
+                  sm_prop_index = sample(x = 1:2, size = 1, 
+                                         prob = split_assign_prob)
+                  
+                  temp_group_assign[scan,obs] = split_lab[sm_prop_index]
+                  sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
+                }
+
+              }  
+            } # iterate through all observations in the two split groups under consideration
+          } # scans 1:(sm_iter+1)
+          
+          
+        }
+        
+        
         
         # calculate & evaluate acceptance prob
         sm_counts = table(temp_group_assign[sm_iter+1,]) # update counts after scans
@@ -710,7 +747,7 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
 
         print(sm_probs[sm_iter+1,])
         
-        prob1 = -Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index_minus])) # log1 - sum(logs)
+        prob1 = -Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index])) # log1 - sum(logs)
         #print(sm_probs)
         ## prior ratio
         prob2_num = factorial(sm_counts[[split_group_count_index[1]]] -1)*factorial(sm_counts[[split_group_count_index[2]]] -1)
