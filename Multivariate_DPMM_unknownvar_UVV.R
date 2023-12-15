@@ -291,11 +291,11 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
   #                  
   #                })
   
-  if(0 %in% sm_counts){
+  if(1 %in% sm_counts){
     # if there is a singleton, take action to prevent issues with ybar and loss_ybar
     # need to use prior predictive instead of posterior predictive for this group
     
-    which_zero = which(sm_counts == 0)
+    which_zero = which(sm_counts == 1)
     
     if(which_zero == 1){
       
@@ -650,9 +650,9 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       
       
       # check whether subset_index_minus contains only 2 observations
-      if(length(subset_index) == length(anchor_obs_index)){
+      if(length(subset_index[-anchor_obs_index]) == 0){
         # when a single observation is in each group only
-        # edge case
+        # edge case - will return numeric zero
         subset_index_minus = NA
         
       } else{
@@ -678,6 +678,7 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         
         if(is.na(subset_index_minus) == TRUE){
           # special case
+          
         } else{
           # proceed as normal
           
@@ -703,15 +704,53 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
                 
               } else{ # for remaining scans after random launch state set
                 
-                if(obs %in% anchor_obs_index){ # change this to if singleton
+                temp_group_assign[scan,] = temp_group_assign[(scan-1),] # initialize
+                sm_count_assign = as.numeric(table(temp_group_assign[scan,]))
+                sm_label_assign = as.numeric(names(table(temp_group_assign[scan,])))
+                sm_singletons = sm_label_assign[which(sm_count_assign == 1)]
+                
+                if(temp_group_assign[scan,obs] %in% sm_singletons){ # changing this to if singleton
                   # maybe borrow some code from CRP stuff???
                   # still need to deal with anchor obs because group assignment
                   # is deterministic for these observations
                   
+                  # ad hoc fix for now!
+                  sm_counts = table(temp_group_assign[scan,]) # dont drop obs from count when singleton
+                  split_group_count_index = which(as.numeric(names(sm_counts)) %in% split_lab)
+                  #current_obs_index = which(temp_group_assign[scan,] == obs)
+                  #split_group_lab_index1 = which(temp_group_assign[scan,] == split_lab[1])
+                  #split_group_lab_index2 = which(temp_group_assign[scan,] == split_lab[2])
+                  
+                  # current observation under consideration cannot be included in posterior
+                  # when singleton, revert to prior
+                  
+                  split_assign_prob = split_merge_prob_UVV(
+                    obs = obs, split_labs = split_lab, r=r, 
+                    group_assign = temp_group_assign[scan,], nu = nu, 
+                    y = y, mu0 = mu0, lambda0= lambda0)
+                  
+                  if(obs %in% anchor_obs_index){
+                    # dont sample --- but do record prob of group anchor obs in in!
+                    which_split_lab_anchor = which(split_lab == temp_group_assign[scan,obs])
+                    # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
+                    # dont need to assign again - already initialized since anchor
+                    sm_probs[scan,obs] = split_assign_prob[which_split_lab_anchor]
+                    
+                  } else{
+                    # proceed as usual
+                    sm_prop_index = sample(x = 1:2, size = 1, 
+                                           prob = split_assign_prob)
+                    
+                    temp_group_assign[scan,obs] = split_lab[sm_prop_index]
+                    sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
+                    
+                  }
+                  
+
+                  
                   
                 } else{
                   
-                  temp_group_assign[scan,] = temp_group_assign[(scan-1),] # initialize
                   sm_counts = table(temp_group_assign[scan,-obs])
                   split_group_count_index = which(as.numeric(names(sm_counts)) %in% split_lab)
                   #current_obs_index = which(temp_group_assign[scan,] == obs)
