@@ -114,6 +114,8 @@ post_pred_UVV <- function(obs, which_group, r, sm_counts, nu, y, ybar, loss_ybar
   
   mu_n = ((1/r)*mu0 + sm_counts[which_group]*ybar[[which_group]])/((1/r) + sm_counts[which_group])
   
+  print(mu_n)
+  print(sm_counts)
   # cat("obs:", obs)
   # cat("\n")
   # cat("mu_n:", mu_n)
