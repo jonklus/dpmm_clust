@@ -231,6 +231,8 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
   # mu0 and lambda0 are the prior mean and covariance matrix
   
   sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign[-obs] == x)})
+  cat("sm_counts_in_fxn", sm_counts)
+  cat("\n")
   
   # cat("\n")
   # cat("sm_counts:", sm_counts)
@@ -252,9 +254,9 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
                   return(ysum/length(group_ind))
                 })
   
-  # cat("ybar:")
-  # print(ybar)
-  # cat("\n")
+  cat("ybar:")
+  print(ybar)
+  cat("\n")
   
   loss_ybar = lapply(X = 1:2, 
                      FUN = function(x){
@@ -272,9 +274,9 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
                        
                      })
   
-  # cat("loss_ybar:")
-  # print(loss_ybar)
-  # cat("\n")
+  cat("loss_ybar:")
+  print(loss_ybar)
+  cat("\n")
   
   
   
@@ -324,6 +326,37 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
       
     }
     
+    
+    
+  } else if(0 %in% sm_counts){
+    # deals with end of merge step where one group is 0 by design
+    
+    which_zero = which(sm_counts == 0)
+    
+    if(which_zero == 1){
+      
+      num = prior_pred_NinvW(y_i = y[[obs]], mu0 = mu0, r = r, 
+                             lambda0 = lambda0, nu = nu)
+      
+      denom = num + post_pred_UVV(obs = obs, which_group = 2, r = r, 
+                                  sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
+                                  loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
+      
+      ratio = c(num/denom, 1-(num/denom))
+      
+    } else{ 
+      # which_zero == 2
+      
+      num = post_pred_UVV(obs = obs, which_group = 1, r = r, 
+                          sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
+                          loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
+      
+      denom = num + prior_pred_NinvW(y_i = y[[obs]], mu0 = mu0, r = r, 
+                                     lambda0 = lambda0, nu = nu)
+      
+      ratio = c(num/denom, 1-(num/denom))
+      
+    }
     
     
   } else{
