@@ -713,10 +713,18 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
           cat("Scan #", scan)
           cat("\n")
           
-          temp_group_assign[scan,] = temp_group_assign[(scan-1),] # initialize
-          # moved this up, was previously nested below, which means this step would
-          # be *repeated* for each observation, thus washing out any split/merge that
-          # was occurring as a result of the algorithm at each step
+          if(scan == 1){
+            
+            # already initialized above, no action required
+            
+          } else{
+            
+            temp_group_assign[scan,] = temp_group_assign[(scan-1),] # initialize
+            # moved this up, was previously nested below, which means this step would
+            # be *repeated* for each observation, thus washing out any split/merge that
+            # was occurring as a result of the algorithm at each step
+          }
+          
           
           for(obs in subset_index){
             
