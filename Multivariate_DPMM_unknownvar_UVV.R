@@ -730,32 +730,39 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
             
             cat("Obs:", obs)
             
-            if(scan == 1){
+            if(obs %in% anchor_obs_index){
+              cat(" Anchor, ")
+              # dont sample if anchor obs -- assignment cannot change
+              # specify new group label to 2nd anchor point as well
+              if(obs == anchor_obs_index[2]){
+                temp_group_assign[scan,obs] = split_lab[2] 
+              } else if(obs == anchor_obs_index[1]){
+                temp_group_assign[scan,obs] = split_lab[1] 
+              }
               
-              # fix this if statement --- doesnt need to be nested
-              # there is an extra layer here
-              if(obs %in% anchor_obs_index){
-                cat(" Anchor, ")
-                # dont sample 
-                # specify new group label to 2nd anchor point as well
-                if(obs == anchor_obs_index[2]){
-                  temp_group_assign[scan,obs] = split_lab[2] 
-                } else if(obs == anchor_obs_index[1]){
-                  temp_group_assign[scan,obs] = split_lab[1] 
-                }
-                cat("Assign:",temp_group_assign[scan,obs])
-                cat("\n")
-
-              } else{
-                # proceed as usual
+              split_assign_prob = split_merge_prob_UVV(
+                obs = obs, split_labs = split_lab, r=r, 
+                group_assign = temp_group_assign[scan,], nu = nu, 
+                y = y, mu0 = mu0, lambda0= lambda0)
+              
+              # dont sample --- but do record prob of group anchor obs in in!
+              which_split_lab_anchor = which(split_lab == temp_group_assign[scan,obs])
+              # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
+              # dont need to assign again - already initialized since anchor
+              sm_probs[scan,obs] = split_assign_prob[which_split_lab_anchor]
+              
+              cat("Assign:",temp_group_assign[scan,obs])
+              cat("\n")
+              
+            } else{
+              
+              if(scan == 1){
                 # specify random launch state
                 temp_group_assign[scan,obs] = sample(x = split_lab, size = 1)
                 cat("Assign:",temp_group_assign[scan,obs])
                 cat("\n")
                 
-              }
-              
-            } else{ # for remaining scans after random launch state set
+              } else{ # for remaining scans after random launch state set
               
               sm_count_assign = as.numeric(table(temp_group_assign[scan,]))
               sm_label_assign = as.numeric(names(table(temp_group_assign[scan,])))
@@ -781,31 +788,24 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
                   group_assign = temp_group_assign[scan,], nu = nu, 
                   y = y, mu0 = mu0, lambda0= lambda0)
                 
-                if(obs %in% anchor_obs_index){
-                  # dont sample --- but do record prob of group anchor obs in in!
-                  which_split_lab_anchor = which(split_lab == temp_group_assign[scan,obs])
-                  # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
-                  # dont need to assign again - already initialized since anchor
-                  sm_probs[scan,obs] = split_assign_prob[which_split_lab_anchor]
-                  
-                } else{
+                
                   # proceed as usual
                   sm_prop_index = sample(x = 1:2, size = 1, 
                                          prob = split_assign_prob)
                   
                   temp_group_assign[scan,obs] = split_lab[sm_prop_index]
                   sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
-                  
-                }
+ 
                 
-
+                  cat("Assign:",temp_group_assign[scan,obs])
+                  cat("\n")
                 
                 
-              } else{
+                } else{
                 
                 sm_counts = table(temp_group_assign[scan,-obs])
                 split_group_count_index = which(as.numeric(names(sm_counts)) %in% split_lab)
-
+                
                 #current_obs_index = which(temp_group_assign[scan,] == obs)
                 #split_group_lab_index1 = which(temp_group_assign[scan,] == split_lab[1])
                 #split_group_lab_index2 = which(temp_group_assign[scan,] == split_lab[2])
@@ -822,16 +822,21 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
                 
                 temp_group_assign[scan,obs] = split_lab[sm_prop_index]
                 sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
+                
+                cat("Assign:",temp_group_assign[scan,obs])
+                cat("\n")
               }
-
-            }  
-          } # iterate through all observations in the two split groups under consideration
-        } # scans 1:(sm_iter+1)
+              
+            } 
+              
+          }
+            
+            
+ 
+        } # iterate through all observations in the two split groups under consideration
+      } # scans 1:(sm_iter+1)
         
 
-        
-        
-        
         # calculate & evaluate acceptance prob
         sm_counts = table(temp_group_assign[sm_iter+1,]) # update counts after scans
         ## proposal probability
