@@ -677,11 +677,8 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       # bookkeeping - group labels
       subset_index = which(temp_group_assign[1,] %in% c(lab1, lab2)) 
       anchor_obs_index = which(subset_index %in% sampled_obs)
-      
-      # need to do something here to deal with situations where groups only contain
-      # anchor obs
-      
-      
+      cat("anchor_obs_index", anchor_obs_index)
+      cat("\n")
       # check whether subset_index_minus contains only 2 observations
       # if(length(subset_index[-anchor_obs_index]) == 0){
       #   # when a single observation is in each group only
@@ -707,6 +704,8 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         cat("\n")
         cat("subset_index:", subset_index)
         cat("\n")
+        cat("Anchor obs ind:", anchor_obs_index)
+        cat("\n")
         
         for(scan in 1:(sm_iter+1)){
           
@@ -725,6 +724,7 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
             # was occurring as a result of the algorithm at each step
           }
           
+
           
           for(obs in subset_index){
             
@@ -751,7 +751,7 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
               # dont need to assign again - already initialized since anchor
               sm_probs[scan,obs] = split_assign_prob[which_split_lab_anchor]
               
-              cat("Assign:",temp_group_assign[scan,obs])
+              cat(" Assign:",temp_group_assign[scan,obs])
               cat("\n")
               
             } else{
@@ -759,7 +759,7 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
               if(scan == 1){
                 # specify random launch state
                 temp_group_assign[scan,obs] = sample(x = split_lab, size = 1)
-                cat("Assign:",temp_group_assign[scan,obs])
+                cat(" Assign:",temp_group_assign[scan,obs])
                 cat("\n")
                 
               } else{ # for remaining scans after random launch state set
