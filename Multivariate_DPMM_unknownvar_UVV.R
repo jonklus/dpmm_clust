@@ -254,9 +254,9 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
                   return(ysum/length(group_ind))
                 })
   
-  cat("ybar:")
-  print(ybar)
-  cat("\n")
+  # cat("ybar:")
+  # print(ybar)
+  # cat("\n")
   
   loss_ybar = lapply(X = 1:2, 
                      FUN = function(x){
@@ -274,9 +274,9 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
                        
                      })
   
-  cat("loss_ybar:")
-  print(loss_ybar)
-  cat("\n")
+  # cat("loss_ybar:")
+  # print(loss_ybar)
+  # cat("\n")
   
   
   # ratio = sapply(X = 1:2,
@@ -332,6 +332,36 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
       cat("2 singleton", "\n")
       num = prior_pred_NinvW(y_i = y[[obs]], mu0 = mu0, r = r, 
                              lambda0 = lambda0, nu = nu)
+      
+      denom = num + prior_pred_NinvW(y_i = y[[obs]], mu0 = mu0, r = r, 
+                                     lambda0 = lambda0, nu = nu)
+      
+      ratio = c(num/denom, 1-(num/denom))
+      
+    }
+    
+  } else if(0 %in% sm_counts){
+    # only comes up at very end when calculating merge transition prob
+    
+    which_one = which(sm_counts == 0)
+    cat("1 singleton", "\n")
+    if(which_one == 1){
+      
+      num = prior_pred_NinvW(y_i = y[[obs]], mu0 = mu0, r = r, 
+                             lambda0 = lambda0, nu = nu)
+      
+      denom = num + post_pred_UVV(obs = obs, which_group = 2, r = r, 
+                                  sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
+                                  loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
+      
+      ratio = c(num/denom, 1-(num/denom))
+      
+    } else{ 
+      # which_one == 2
+      
+      num = post_pred_UVV(obs = obs, which_group = 1, r = r, 
+                          sm_counts = sm_counts, nu = nu, y = y, ybar = ybar, 
+                          loss_ybar = loss_ybar, mu0 = mu0, lambda0 = lambda0)
       
       denom = num + prior_pred_NinvW(y_i = y[[obs]], mu0 = mu0, r = r, 
                                      lambda0 = lambda0, nu = nu)
@@ -700,7 +730,10 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
           # initialize next scan with result of previous scan
           if(scan == 1){
             
-            # already initialized above, no action required
+            # intialize anchors so that there are no "zeros" for split groups
+            # under consideration when starting below
+            temp_group_assign[scan,sampled_obs[1]] = split_lab[1] 
+            temp_group_assign[scan,sampled_obs[2]] = split_lab[2] 
             
           } else{
             
