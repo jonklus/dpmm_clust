@@ -234,9 +234,9 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
   # need to make up your mind -- drop obs or leave in here??
   sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign == x)})
 
-  # cat("\n")
-  # cat("sm_counts:", sm_counts)
-  # cat("\n")
+  cat("\n")
+  cat("sm_counts:", sm_counts)
+  cat("\n")
   # print(group_assign)
   
   ybar = lapply(X = split_labs, 
@@ -697,6 +697,7 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
           cat("Scan #", scan)
           cat("\n")
           
+          # initialize next scan with result of previous scan
           if(scan == 1){
             
             # already initialized above, no action required
@@ -821,15 +822,14 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
                     cat("\n")
                   }
                   
-                  
                 }
               
             } 
               
-          }
+
  
-        } # iterate through all observations in the two split groups under consideration
-      } # scans 1:(sm_iter+1)
+          } # iterate through all observations in the two split groups under consideration
+        } # scans 1:(sm_iter+1)
         
 
         # calculate & evaluate acceptance prob
