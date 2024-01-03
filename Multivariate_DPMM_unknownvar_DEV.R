@@ -20,7 +20,7 @@ library(LaplacesDemon)
 
 ## calculate group membership probabilities
 
-group_prob_calc <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0, 
+group_prob_calc_diag_diag <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0, 
                             singleton = 0, curr_group_assign = NULL, curr_labels = NULL){
   # k is the number of existing groups
   # n is total number of observations
@@ -374,7 +374,9 @@ split_merge_prob_DEV <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
   #                  
   #                })
   
-  if(0 %in% sm_counts){
+  if(1 %in% sm_counts){
+    
+  } else if(0 %in% sm_counts){
     # if there is a singleton, take action to prevent issues with ybar and loss_ybar
     # need to use prior predictive instead of posterior predictive for this group
     
@@ -599,7 +601,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         
         #### calculate proposal distribution for group assignment
         ### for any observation i, calculate group membership probabilities
-        pr_c = group_prob_calc(k = k, n = n, n_j = count_assign, alpha = alpha, 
+        pr_c = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
                                y_i = y[[i]], mu = mu, sigma2 = sigma2, r = r, 
                                a = a, b = b, mu0 = mu0, singleton = 1)
         
@@ -608,7 +610,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         
         #### calculate proposal distribution for group assignment
         #### if obs i is not presently a singleton
-        pr_c = group_prob_calc(k = k, n = n, n_j = count_assign, alpha = alpha, 
+        pr_c = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
                                y_i = y[[i]], mu = mu, sigma2 = sigma2, r = r, 
                                a = a, b = b, mu0 = mu0, singleton = 0, 
                                curr_group_assign = group_assign[s,i], 
@@ -1279,7 +1281,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
     # at the end of each iteration, recalculate group probs based on final k
     # and save for label switching fix
     pr_c = sapply(X = 1:length(y), FUN = function(x){
-      group_prob_calc(k = k, n = n, n_j = count_assign, alpha = alpha, a = a, b = b, 
+      group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, a = a, b = b, 
                       y_i = y[[x]], mu = mu, sigma2 = sigma2, r = r, mu0 = mu0,
                       singleton = 0, curr_group_assign = group_assign[s,x], 
                       curr_labels = curr_labels)
