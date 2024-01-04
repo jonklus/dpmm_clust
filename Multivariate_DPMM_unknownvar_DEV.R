@@ -20,8 +20,9 @@ library(LaplacesDemon)
 
 ## calculate group membership probabilities
 
-group_prob_calc_diag_diag <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0, 
-                            singleton = 0, curr_group_assign = NULL, curr_labels = NULL){
+group_prob_calc_diag <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0, 
+                                  singleton = 0, curr_group_assign = NULL, 
+                                  curr_labels = NULL){
   # k is the number of existing groups
   # n is total number of observations
   # n_j is a vector of length k with the total number of observations in each group
@@ -166,6 +167,7 @@ post_pred_DEV <- function(obs, which_group, group_assign, split_labs, r, sm_coun
   # or PDF in references folder
   
   # restricted gibbs sampling scans
+  n_minus = sm_counts[which_group] - 1 
   
   sum_ysq = lapply(X = 1:2, 
                      FUN = function(x){
@@ -185,7 +187,7 @@ post_pred_DEV <- function(obs, which_group, group_assign, split_labs, r, sm_coun
   
   loss_mu0 = (ybar[[which_group]] - mu0)%*%t(ybar[[which_group]] - mu0)
   
-  mu_n = ((1/r)*mu0 + sm_counts[which_group]*ybar[[which_group]])/((1/r) + sm_counts[which_group])
+  mu_n = ((1/r)*mu0 + n_minus*ybar[[which_group]])/((1/r) + n_minus)
   
   # cat("obs:", obs)
   # cat("\n")
@@ -205,18 +207,18 @@ post_pred_DEV <- function(obs, which_group, group_assign, split_labs, r, sm_coun
   # need to recalculate the posterior predictives yourself...not super confident
   # in PDF this came from
   
-  a_n = a + sm_counts[which_group]/2
+  a_n = a + n_minus/2
   
-  b_n = b + (t(mu0)%*%mu0/r + sum_ysq[[which_group]] - (1/r + sm_counts[which_group])*t(mu_n)%*%mu_n)/2
+  b_n = b + (t(mu0)%*%mu0/r + sum_ysq[[which_group]] - (1/r + n_minus)*t(mu_n)%*%mu_n)/2
 
-  lambda_n = diag(b_n[,1]*(1+(1/r + sm_counts[which_group])^(-1))/a_n, length(mu_n[,1]))
+  lambda_n = diag(b_n[,1]*(1+(1/r + n_minus)^(-1))/a_n, length(mu_n[,1]))
   # take first "column" of scalar b_n snce R was still recognizing as a matrix
   
   # print(mu_n)
   # print(lambda_n)
   # print(nu_n)
   
-  val = sm_counts[which_group]*LaplacesDemon::dmvt(x = y[[obs]][,1], 
+  val = n_minus*LaplacesDemon::dmvt(x = y[[obs]][,1], 
                                                    mu = mu_n[,1], 
                                                    S = lambda_n, 
                                                    df = 2*a_n)
@@ -311,7 +313,7 @@ split_merge_prob_DEV <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
   # y is the data
   # mu0 is the prior mean 
   
-  sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign[-obs] == x)})
+  sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign == x)})
   
   # cat("\n")
   # cat("sm_counts:", sm_counts)
@@ -375,6 +377,50 @@ split_merge_prob_DEV <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
   #                })
   
   if(1 %in% sm_counts){
+    
+    which_one = which(sm_counts == 1)
+    
+    # check length of which_zero
+    if(length(which_one) == 1){
+      # proceed as usual
+      # cat("1 singleton", "\n")
+      if(which_one == 1){
+        
+        num = prior_pred_NinvGa(y_i = y[[obs]], mu0 = mu0, r = r, 
+                                a = a, b = b)
+        
+        denom = num + post_pred_DEV(obs = obs, which_group = 2, r = r, group_assign = group_assign,
+                                    sm_counts = sm_counts, y = y, ybar = ybar, split_labs = split_labs,
+                                    loss_ybar = loss_ybar, mu0 = mu0, a = a, b = b)
+        
+        ratio = c(num/denom, 1-(num/denom))
+        
+      } else{ 
+        # which_one == 2
+        
+        num = post_pred_DEV(obs = obs, which_group = 1, r = r, group_assign = group_assign,
+                            sm_counts = sm_counts, y = y, ybar = ybar, split_labs = split_labs,
+                            loss_ybar = loss_ybar, mu0 = mu0, a = a, b = b)
+        
+        denom = num + prior_pred_NinvGa(y_i = y[[obs]], mu0 = mu0, r = r, 
+                                        a = a, b = b)
+        
+        ratio = c(num/denom, 1-(num/denom))
+        
+      }
+      
+    } else{
+      # two singletons being considered
+      # cat("2 singleton", "\n")
+      num = prior_pred_NinvGa(y_i = y[[obs]], mu0 = mu0, r = r, 
+                              a = a, b = b)
+      
+      denom = num + prior_pred_NinvGa(y_i = y[[obs]], mu0 = mu0, r = r, 
+                                      a = a, b = b)
+      
+      ratio = c(num/denom, 1-(num/denom))
+      
+    }
     
   } else if(0 %in% sm_counts){
     # if there is a singleton, take action to prevent issues with ybar and loss_ybar
@@ -534,7 +580,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   for(s in 2:S){
     
     # print progress
-    if(s %% print_iter == 0 & verbose == TRUE){
+    if((s %% print_iter == 0) & (verbose == TRUE)){
       
       cat("\n\n")
       cat("*******************************************************************")

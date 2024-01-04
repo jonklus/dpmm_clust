@@ -253,9 +253,9 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
                   return(ysum/length(group_ind))
                 })
   
-  # cat("ybar:")
-  # print(ybar)
-  # cat("\n")
+  cat("ybar:")
+  print(ybar)
+  cat("\n")
   
   loss_ybar = lapply(X = 1:2, 
                      FUN = function(x){
@@ -273,9 +273,9 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
                        
                      })
   
-  # cat("loss_ybar:")
-  # print(loss_ybar)
-  # cat("\n")
+  cat("loss_ybar:")
+  print(loss_ybar)
+  cat("\n")
   
   
   # ratio = sapply(X = 1:2,
@@ -683,12 +683,12 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
       lab2 = temp_group_assign[1, sampled_obs[2]]
       move_type = ifelse(lab1 == lab2, "SPLIT", "MERGE")
       
-      # cat("move_type:", move_type)
-      # cat("\n")
-      # cat("sampled_obs:", sampled_obs)
-      # cat("\n")
-      # cat("group_labs:", c(lab1, lab2))
-      # cat("\n")
+      cat("move_type:", move_type)
+      cat("\n")
+      cat("sampled_obs:", sampled_obs)
+      cat("\n")
+      cat("group_labs:", c(lab1, lab2))
+      cat("\n")
       
       # bookkeeping - group labels
       subset_index = which(temp_group_assign[1,] %in% c(lab1, lab2)) 
@@ -716,15 +716,15 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         # specify random launch state
         split_lab = c(lab1, avail_labels[1]) # keep original label, new one for 2nd group
         
-        # cat("split_labs:", split_lab)
-        # cat("\n")
+        cat("split_labs:", split_lab)
+        cat("\n")
         # cat("subset_index:", subset_index)
         # cat("\n")
 
         for(scan in 1:(sm_iter+1)){
           
-          # cat("Scan #", scan)
-          # cat("\n")
+          cat("Scan #", scan)
+          cat("\n")
           
           # initialize next scan with result of previous scan
           if(scan == 1){
@@ -831,7 +831,6 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
                   } else{
                     
                     sm_counts = table(temp_group_assign[scan,-obs])
-                    split_group_count_index = which(as.numeric(names(sm_counts)) %in% split_lab)
                     
                     #current_obs_index = which(temp_group_assign[scan,] == obs)
                     #split_group_lab_index1 = which(temp_group_assign[scan,] == split_lab[1])
@@ -863,9 +862,16 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
           } # iterate through all observations in the two split groups under consideration
         } # scans 1:(sm_iter+1)
         
-
+        print(temp_group_assign)
+        cat("\n")
+        
         # calculate & evaluate acceptance prob
         sm_counts = table(temp_group_assign[sm_iter+1,]) # update counts after scans
+        split_group_count_index = which(as.numeric(names(sm_counts)) %in% split_lab)
+        
+        cat("Final counts & labels", "\n")
+        print(sm_counts)
+        cat("\n")
         ## proposal probability
 
         #print(sm_probs[sm_iter+1,])
@@ -875,7 +881,8 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
         #print(sm_probs)
         ## prior ratio
         
-        # print(split_group_count_index)
+        cat("split_group_count_index", split_group_count_index, "\n")
+        cat("sm_counts", sm_counts, "\n")
         # print(temp_group_assign[scan,])
         
         prob2_num = factorial(sm_counts[[split_group_count_index[1]]] -1)*factorial(sm_counts[[split_group_count_index[2]]] -1)
