@@ -115,12 +115,13 @@ lapply(X = 1:length(with_sm_res),
          print(ex1_df)
          
          p1 = make_k_traceplot(k = no_sm_res[[x]]$k, 
-                  group_assign = no_sm_res[[x]]$group_assign)
+                  group_assign = no_sm_res[[x]]$group_assign, 
+                  max_yaxis = 10)
          p2 = make_k_traceplot(k = with_sm_res[[x]]$k, 
-                     group_assign = with_sm_res[[x]]$group_assign)
+                     group_assign = with_sm_res[[x]]$group_assign, 
+                     max_yaxis = 10)
 
          grid.arrange(p1, p2, ncol=2)
-         
         })
 
 ```

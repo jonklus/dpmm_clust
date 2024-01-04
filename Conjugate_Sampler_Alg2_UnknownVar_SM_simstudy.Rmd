@@ -233,7 +233,7 @@ sim_results_UVV_no_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
         )}
       )
 
-saveRDS(object = sim_results_UVV_no_sm, file = "../MCMC_Runs/conjUVVsamp_minisimstudy_noSM_6_Dec_2023.rds")
+saveRDS(object = sim_results_UVV_no_sm, file = "../MCMC_Runs/conjUVVsamp_minisimstudy_noSM_4_Jan_2024.rds")
 
 # for(rep in 1:nreps){
 #   print(table(sim_results_DEE_with_sm[[rep]]$k))
@@ -247,41 +247,53 @@ saveRDS(object = sim_results_UVV_no_sm, file = "../MCMC_Runs/conjUVVsamp_minisim
 ##### with split-merge step
 
 ```{r}
-# start_time = Sys.time()
-# sim_results_UVV_with_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
-#       FUN = function(x){MVN_CRP_sampler_UVV(
-#         S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
-#         alpha = 1, r = 10, g = 1, h = 50, nu = 2,
-#         fix_r = FALSE,
-#         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-#         lambda0 = diag(x = 15, nrow = 2),
-#         k_init = 1, diag_weights = FALSE,
-#         verbose = FALSE, split_merge = TRUE, sm_iter = 10
-#         )}
-#       )
-# end_time = Sys.time()
-# run_time = difftime(end_time, start_time)
-# print(run_time)
-
-sim_results_UVV_with_sm = list()
-
-for(x in 1:nreps){
-        cat("Starting rep:", rep)
-        cat("\n")
-        rep_result = MVN_CRP_sampler_UVV(
+start_time = Sys.time()
+sim_results_UVV_with_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
+      FUN = function(x){MVN_CRP_sampler_UVV(
         S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
         alpha = 1, r = 10, g = 1, h = 50, nu = 2,
         fix_r = FALSE,
         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
         lambda0 = diag(x = 15, nrow = 2),
         k_init = 1, diag_weights = FALSE,
-        verbose = FALSE, split_merge = TRUE, sm_iter = 5)
+        verbose = FALSE, split_merge = TRUE, sm_iter = 10
+        )}
+      )
+end_time = Sys.time()
+run_time = difftime(end_time, start_time)
+print(run_time)
 
-        sim_results_UVV_with_sm[[x]] = rep_result
-  }
-      
+# sim_results_UVV_with_sm = list()
+# for(x in 1:nreps){
+#         cat("Starting rep:", rep)
+#         cat("\n")
+#         rep_result = MVN_CRP_sampler_UVV(
+#         S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+#         alpha = 1, r = 10, g = 1, h = 50, nu = 2,
+#         fix_r = FALSE,
+#         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+#         lambda0 = diag(x = 15, nrow = 2),
+#         k_init = 1, diag_weights = FALSE,
+#         verbose = FALSE, split_merge = TRUE, sm_iter = 5)
+# 
+#         sim_results_UVV_with_sm[[x]] = rep_result
+#   }
+        # rep = 7
+        # x= 7
+        # cat("Starting rep:", rep)
+        # cat("\n")
+        # rep_result = MVN_CRP_sampler_UVV(
+        #   S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+        #   alpha = 1, r = 10, g = 1, h = 50, nu = 2,
+        #   fix_r = FALSE,
+        #   mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        #   lambda0 = diag(x = 15, nrow = 2),
+        #   k_init = 1, diag_weights = FALSE,
+        #   verbose = FALSE, split_merge = TRUE, sm_iter = 5)
+        # 
+        # sim_results_UVV_with_sm[[x]] = rep_result
 
-# saveRDS(object = sim_results_UVV_with_sm, file = "../MCMC_Runs/conjUVVsamp_minisimstudy_withSM_3_Jan_2024.rds")
+saveRDS(object = sim_results_UVV_with_sm, file = "../MCMC_Runs/conjUVVsamp_minisimstudy_withSM_4_Jan_2024.rds")
 ```
 
 
@@ -507,7 +519,7 @@ sim_results_UVV_with_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
         )}
       )
 
-saveRDS(object = sim_results_UVV_with_sm, file = "../MCMC_Runs/conjUVVsamp_minisimstudy_close_withSM_6_Dec_2023.rds")
+saveRDS(object = sim_results_UVV_with_sm, file = "../MCMC_Runs/conjUVVsamp_minisimstudy_close_withSM_4_Jan_2024.rds")
 
 ```
 This took too long...over 1.5 hours. Had to kill job for time. Need to reexamine

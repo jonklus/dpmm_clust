@@ -1361,10 +1361,11 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   
   if(sigma_hyperprior == TRUE | fix_r == FALSE){
     
-    settings = list(S = S, y = y, alpha = alpha, a = a, b = b, mu0 = mu0, 
+    settings = list(S = S, alpha = alpha, a = a, b = b, mu0 = mu0, 
                     k_init = k_init, d = d, f = f, g = g, h = h, r = r)
     
     return_list = list(settings = settings,
+                       data = y,
                        k = num_groups, 
                        means = means,
                        vars = vars,
@@ -1379,11 +1380,12 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
     
   } else{
     
-    settings = list(S = S, seed = seed, y = y, alpha = alpha,
+    settings = list(S = S, seed = seed, alpha = alpha,
                     a = a, b = b, mu0 = mu0, k_init = k_init, 
                     d = d, f = f, r = r)
     
     return_list = list(settings = settings,
+                       data = y,
                        k = num_groups, 
                        means = means,
                        vars = vars,

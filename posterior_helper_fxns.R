@@ -716,7 +716,7 @@ pairwise_prob_mat <- function(burn_in = NULL, group_assign, probs = NULL, diag_w
 
 ################################ TRACEPLOTS ####################################
 
-make_k_traceplot <- function(k, group_assign, burn_in = NULL, show_min_obs = FALSE){
+make_k_traceplot <- function(k, group_assign, burn_in = NULL, show_min_obs = FALSE, max_yaxis = NULL){
   
   # function to make traceplot for number of groups at each mcmc iteration
   
@@ -730,6 +730,18 @@ make_k_traceplot <- function(k, group_assign, burn_in = NULL, show_min_obs = FAL
     group_assign = group_assign[-c(1:burn_in),]
     k = k[-c(1:burn_in)]
     
+  }
+  
+  if(is.null(max_yaxis) == TRUE){
+    
+    max_yaxis = max(k)+1
+    
+  } else{
+    # else use provided value unless not ideal
+    if(max_yaxis < (max(k)+1)){
+      stop(cat("Given maximum y axis value is less than observed max +1. Input a value of ", 
+               max(k)+1, " or larger, or allow function defaults."))
+    } # else proceed, all good!
   }
   
   min_obs = sapply(X = 1:nrow(group_assign), 
@@ -758,6 +770,7 @@ make_k_traceplot <- function(k, group_assign, burn_in = NULL, show_min_obs = FAL
       scale_y_continuous(
         # Features of the first axis
         name = "K",
+        breaks = seq(0, max_yaxis, by = 1), limits = c(0,max_yaxis),
         # Add a second axis and specify its features
         sec.axis = sec_axis(~ (. - a)/b, name="min # obs.", ))
     
@@ -766,6 +779,8 @@ make_k_traceplot <- function(k, group_assign, burn_in = NULL, show_min_obs = FAL
     ggplot(mapping = aes(x = 1:n_iter, y = k)) + 
       geom_line() +
       ggtitle("Traceplot of no. components K") +
+      scale_y_continuous(breaks = seq(0, max_yaxis, by = 1), 
+                         limits = c(0,max_yaxis)) + 
       xlab("iter") + 
       ylab("K") + 
       theme_classic()
