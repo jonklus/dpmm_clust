@@ -1438,10 +1438,11 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
   
   if(nu_hyperprior == TRUE | fix_r == FALSE){
     
-    settings = list(S = S, y = y, alpha = alpha, mu0 = mu0, lambda0 = lambda0,
+    settings = list(S = S, alpha = alpha, mu0 = mu0, lambda0 = lambda0,
                     k_init = k_init, g = g, h = h, r = r) # d = d, f = f,
     
     return_list = list(settings = settings,
+                       data = y,
                        k = num_groups, 
                        means = means,
                        vars = vars,
@@ -1456,10 +1457,11 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
     
   } else{
     
-    settings = list(S = S, seed = seed, y = y, alpha = alpha, lambda0 = lambda0,
+    settings = list(S = S, seed = seed, alpha = alpha, lambda0 = lambda0,
                     nu = nu, mu0 = mu0, k_init = k_init, g = g, h = h, r = r)
     
     return_list = list(settings = settings,
+                       data = y, 
                        k = num_groups, 
                        means = means,
                        vars = vars,

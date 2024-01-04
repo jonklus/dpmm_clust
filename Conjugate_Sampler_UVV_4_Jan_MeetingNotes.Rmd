@@ -1,0 +1,126 @@
+---
+title: "Jan 4 Meeting"
+author: "Jonathan Klus"
+date: "2024-01-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# load necessary functions
+source("./Multivariate_DPMM_unknownvar_conjugate.R")
+source("./posterior_helper_fxns.R")
+
+# load R libraries
+library(ggplot2)
+library(gridExtra)
+library(plotly)
+library(label.switching)
+library(LaplacesDemon)
+library(coda)
+library(tidyr)
+```
+
+### 2D Example - well separated
+
+Mixture of 3 multivariate normal densities all with diagonal variance structure
+and $\sigma^2 = 10$. The true means are $(-20,20)$, $(20,-20)$, and $(0,0)$, and
+$\sum_{j}n_j = 30$.
+
+```{r, echo=FALSE}
+################## simulate data ##############################################
+
+set.seed(516)
+nreps = 10
+seeds = sample(x = 1:10^4, size = nreps, replace = FALSE)
+
+w = c(0.4, 0.3, 0.3)
+means = list(
+  c(-20, 20),
+  c(20, -20),
+  c(0, 0)
+)
+
+var = diag(10, length(means[[1]])) # variances known, diagonal, and equal
+
+yreps = lapply(X = 1:nreps, 
+           FUN = function(x){
+             set.seed(seeds[x])
+             assign = sample(x = 1:length(means), size = 30, replace = TRUE, prob = w)
+             y = lapply(X = assign,
+                        FUN = function(x){
+                        t(mvtnorm::rmvnorm(n = 1, mean = means[[x]], sigma = var))
+                          })
+             return(list(y = y, assign = assign))
+           })
+
+# make a grid of plots
+pltlist = list()
+for(rep in 1:nreps){
+
+  y_matrix = matrix(data = unlist(yreps[[rep]]$y), ncol = 2, byrow = TRUE)
+  assign = yreps[[rep]]$assign
+
+  data = data.frame(
+    assign = assign,
+    y1 = y_matrix[,1],
+    y2 = y_matrix[,2]
+  )
+
+  p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
+    geom_point(color = assign, size = 0.75) +
+    #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+    # geom_text(size = 3, color = assign) +
+    theme_classic()
+
+  pltlist[[rep]] = p
+}
+
+do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignments")
+
+# drop params used to generate data, except for var which is assumed known
+rm(w, means)
+```
+
+## UVV sampler with and without split-merge step
+
+```{r}
+with_sm_res = readRDS(file = "../MCMC_Runs/conjUVVsamp_minisimstudy_withSM_4_Jan_2024.rds")
+no_sm_res = readRDS(file = "../MCMC_Runs/conjUVVsamp_minisimstudy_noSM_4_Jan_2024.rds")
+with_sm_res[[1]]$settings
+no_sm_res[[1]]$settings
+
+lapply(X = 1:length(with_sm_res), 
+       FUN = function(x){
+         
+         cat("No split-merge", "\n")
+         print(table(no_sm_res[[x]]$k))
+         
+         cat("With split-merge", "\n")
+         print(table(with_sm_res[[x]]$k))
+         
+         
+         ex1_df = data.frame(with_sm_res[[x]]$sm_results) %>%
+                  dplyr::filter(is.na(s) == FALSE) %>%
+                  dplyr::mutate(
+                    move_type = factor(move_type),
+                    s = as.integer(s),
+                    sm_iter = as.integer(sm_iter),
+                    accept = as.integer(accept),
+                    prob = as.numeric(prob)
+                  ) %>%
+                  dplyr::group_by(move_type) %>%
+                  dplyr::summarise(prob_Accept = round(mean(accept),3))
+         print(ex1_df)
+         
+         p1 = make_k_traceplot(k = no_sm_res[[x]]$k, 
+                  group_assign = no_sm_res[[x]]$group_assign)
+         p2 = make_k_traceplot(k = with_sm_res[[x]]$k, 
+                     group_assign = with_sm_res[[x]]$group_assign)
+
+         grid.arrange(p1, p2, ncol=2)
+         
+        })
+
+```

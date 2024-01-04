@@ -423,9 +423,9 @@ split_merge_prob_DEV <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
     }
     
   } else if(0 %in% sm_counts){
-    # if there is a singleton, take action to prevent issues with ybar and loss_ybar
+    # should only occur at very end when calculating merge transition prob
     # need to use prior predictive instead of posterior predictive for this group
-    
+    # cat("1 singleton", "\n")
     which_zero = which(sm_counts == 0)
     
     if(which_zero == 1){
@@ -458,7 +458,7 @@ split_merge_prob_DEV <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
     
   } else{
     # proceed as usual 
-    
+    # cat("normal", "\n")
     num = post_pred_DEV(obs = obs, which_group = 1, r = r, 
                         group_assign = group_assign, split_labs = split_labs,
                         sm_counts = sm_counts, y = y, ybar = ybar, 
@@ -761,8 +761,8 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       
       # bookkeeping - group labels
       subset_index = which(temp_group_assign[1,] %in% c(lab1, lab2)) 
-      anchor_obs_index = which(subset_index %in% sampled_obs)
-      subset_index_minus = subset_index[-anchor_obs_index] # except sampled observations i and j
+      # anchor_obs_index = which(subset_index %in% sampled_obs)
+      # subset_index_minus = subset_index[-anchor_obs_index] # except sampled observations i and j
       existing_group_index = which(label_assign == lab1) 
       
       # perform restricted Gibbs scans
@@ -773,10 +773,12 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         # specify random launch state
         split_lab = c(lab1, avail_labels[1]) # keep original label, new one for 2nd group
         
-        
         for(scan in 1:(sm_iter+1)){
           
-          for(obs in subset_index_minus){
+          cat("Scan #", scan)
+          cat("\n")
+          
+          for(obs in subset_index){
             
             if(scan == 1){
               
