@@ -491,7 +491,7 @@ sim_results_UVV_no_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
         )}
       )
 
-saveRDS(object = sim_results_UVV_no_sm, file = "../MCMC_Runs/conjUVVsamp_minisimstudy_close_noSM_6_Dec_2023.rds")
+saveRDS(object = sim_results_UVV_no_sm, file = "../MCMC_Runs/conjUVVsamp_minisimstudy_close_noSM_4_Jan_2024.rds")
 
 # sim_results_UVV_no_sm = readRDS(file = "../MCMC_Runs/conjUVVsamp_minisimstudy_close_noSM_6_Dec_2023.rds")
 
