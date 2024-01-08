@@ -928,7 +928,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           # update labels, etc
           count_assign = as.numeric(table(group_assign[s,]))
           label_assign = as.numeric(names(table(group_assign[s,])))
-          which_split_labs = which(label_assign == split_lab) 
+          which_split_labs = which(label_assign %in% split_lab) 
           num_groups[s,] = k
           
           # if new group created by split, give it a mean 

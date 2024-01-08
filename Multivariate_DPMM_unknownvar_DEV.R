@@ -967,9 +967,11 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           # update labels, etc
           count_assign = as.numeric(table(group_assign[s,]))
           label_assign = as.numeric(names(table(group_assign[s,])))
-          which_split_labs = which(label_assign == split_lab) 
+          which_split_labs = which(label_assign %in% split_lab) 
           num_groups[s,] = k
           
+          cat("count_assign", count_assign, "\n")
+          cat("which_split_labs", which_split_labs, "\n")
           # if new group created by split, give it a mean and variance
           
           ## draw variances for both groups - use marginal posterior variance 
@@ -1010,16 +1012,19 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           sigma2_temp = lapply(X = 1:2, 
                               FUN = function(x){
                                 n_k = count_assign[which_split_labs[x]]
-                                1/rgamma(n = 1, 
-                                       shape = p/2 + n_k + a, 
-                                       rate = emp_loss[[x]]/(2*(1+r)) + b)
+                                return(1/rgamma(n = 1, 
+                                               shape = p/2 + n_k + a, 
+                                               rate = emp_loss[[x]]/(2*(1+r)) + b))
                               })
           
+          cat("sigma2_temp \n")
+          print(sigma2_temp)
+          
           ## draw means for both groups conditional on empirical variances...
-          # cat("\n")
-          # cat("split_lab", split_lab)
-          # cat("\n")
-          # cat("grp_assgn", group_assign[s,])
+          cat("\n")
+          cat("split_lab", split_lab)
+          cat("\n")
+          cat("grp_assgn", group_assign[s,])
           sum_y_i = sapply(X = split_lab, 
                            FUN = function(x){
                              rowSums(matrix(unlist(y[group_assign[s,] == x]), nrow = p))
@@ -1038,6 +1043,10 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                              n_k = count_assign[which_split_labs[x]]
                              return((sum_y_i[,x] + mu0/r)/(1/r + n_k))
                            })
+          cat("mu_mean \n")
+          print(mu_mean)
+          cat("mu_cov \n")
+          print(mu_cov)
           
           mu_list = lapply(X = 1:2, 
                            FUN = function(x){

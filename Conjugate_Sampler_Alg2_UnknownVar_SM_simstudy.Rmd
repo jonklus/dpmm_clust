@@ -138,20 +138,33 @@ for(rep in 1:nreps){
 ##### with split-merge step
 
 ```{r}
-# sim_results_DEV_with_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
-#       FUN = function(x){MVN_CRP_sampler_DEV(
-#         S = n_iter, seed = seeds[x], y = yreps[[x]]$y, 
-#         alpha = 1, r = 10, g = 1, h = 50,
-#         sigma_hyperprior = FALSE, fix_r = FALSE, 
-#         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1), 
-#         a = 1, b = 50,
-#         k_init = 1, diag_weights = FALSE, 
-#         verbose = FALSE, split_merge = TRUE, sm_iter = 10
-#         )}
-#       )
-# 
-# saveRDS(object = sim_results_DEV_with_sm, file = "../MCMC_Runs/conjDEVsamp_minisimstudy_withSM_6_Dec_2023.rds")
-sim_results_DEV_with_sm = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_withSM_6_Dec_2023.rds")
+sim_results_DEV_with_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
+      FUN = function(x){MVN_CRP_sampler_DEV(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+        alpha = 1, r = 10, g = 1, h = 50,
+        sigma_hyperprior = FALSE, fix_r = FALSE,
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        a = 1, b = 50,
+        k_init = 1, diag_weights = FALSE,
+        verbose = FALSE, split_merge = TRUE, sm_iter = 10
+        )}
+      )
+
+for(x in 1:nreps){
+        cat("\n\n *****STARTING DATA SET", x, " ******", "\n")
+        MVN_CRP_sampler_DEV(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+        alpha = 1, r = 10, g = 1, h = 50,
+        sigma_hyperprior = FALSE, fix_r = FALSE,
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        a = 1, b = 50,
+        k_init = 1, diag_weights = FALSE,
+        verbose = TRUE, split_merge = TRUE, sm_iter = 10
+        )
+}
+
+saveRDS(object = sim_results_DEV_with_sm, file = "../MCMC_Runs/conjDEVsamp_minisimstudy_withSM_8_Jan_2024.rds")
+# sim_results_DEV_with_sm = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_withSM_6_Dec_2023.rds")
 
 for(rep in 1:nreps){
   print(table(sim_results_DEV_with_sm[[rep]]$k))
