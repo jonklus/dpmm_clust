@@ -737,6 +737,8 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
     
     if(split_merge == TRUE & (s %% sm_iter) == 0){
       
+      print(table(group_assign[s,]))
+      
       k_start = k
       
       temp_group_assign = matrix(data = NA, nrow = sm_iter + 1, ncol = length(group_assign[s,]))
@@ -751,11 +753,11 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       lab1 = temp_group_assign[1, sampled_obs[1]]
       lab2 = temp_group_assign[1, sampled_obs[2]]
       move_type = ifelse(lab1 == lab2, "SPLIT", "MERGE")
-      # cat("move_type:", move_type)
-      # cat("\n")
-      # cat("sampled_obs:", sampled_obs)
-      # cat("\n")
-      # cat("group_labs:", c(lab1, lab2))
+      cat("\n \n *****move_type:", move_type)
+      cat("\n")
+      cat("sampled_obs:", sampled_obs)
+      cat("\n")
+      cat("group_labs:", c(lab1, lab2))
       
       # bookkeeping - group labels
       subset_index = which(temp_group_assign[1,] %in% c(lab1, lab2)) 
@@ -913,6 +915,9 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         
         # calculate & evaluate acceptance prob
         sm_counts = table(temp_group_assign[sm_iter+1,]) # update counts after scans
+        cat("\n sm_counts \n")
+        print(sm_counts)
+        
         split_group_count_index = which(as.numeric(names(sm_counts)) %in% split_lab)
         
         ## proposal probability
@@ -1025,6 +1030,11 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           cat("split_lab", split_lab)
           cat("\n")
           cat("grp_assgn", group_assign[s,])
+          cat("\n")
+          cat("count_assgn", count_assign)
+          cat("\n")
+          cat("which_split_labs", which_split_labs)
+          cat("\n")
           sum_y_i = sapply(X = split_lab, 
                            FUN = function(x){
                              rowSums(matrix(unlist(y[group_assign[s,] == x]), nrow = p))
@@ -1034,7 +1044,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           mu_cov = lapply(X = 1:2, 
                           FUN = function(x){
                             n_k = count_assign[which_split_labs[x]]
-                            diag(sigma2[[x]]/(1/r + n_k), p)
+                            diag(sigma2_temp[[x]]/(1/r + n_k), p)
                             }) 
 
           
@@ -1043,7 +1053,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                              n_k = count_assign[which_split_labs[x]]
                              return((sum_y_i[,x] + mu0/r)/(1/r + n_k))
                            })
-          cat("mu_mean \n")
+          cat("\n mu_mean \n")
           print(mu_mean)
           cat("mu_cov \n")
           print(mu_cov)
@@ -1057,9 +1067,12 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           
           ## add new means and variances to relevant vectors/lists
           length_sigma2 = length(sigma2)
+          cat("length_sigma2", length_sigma2, "\n")
           sigma2[[which_split_labs[1]]] = sigma2_temp[[1]]
           sigma2[[length_sigma2+1]] = sigma2_temp[[2]]
           rm(sigma2_temp)
+          cat("\n sigma2 after split \n")
+          print(sigma2)
           
           mu[,which_split_labs[1]] = mu_list[[1]]
           mu = cbind(mu, mu_list[[2]])
@@ -1179,6 +1192,9 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           mu = matrix(mu[,-which_split_labs[2]], nrow = p)
           sigma2 = sigma2[-which_split_labs[2]]
           
+          cat("\n sigma2 after merge \n")
+          print(sigma2)
+          
           # count_assign = count_assign[-which_split_labs[2]]
           # label_assign = label_assign[-which_split_labs[2]]
           # avail_labels = c(temp_group_assign[1, sampled_obs[2]], avail_labels)
@@ -1248,6 +1264,8 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           ## add new means and variances to relevant vectors/lists
           length_sigma2 = length(sigma2)
           sigma2[[which_split_lab]] = sigma2_temp
+          cat("\n sigma2 after merge \n")
+          print(sigma2)
           
           mu[,which_split_lab] = mu_list
           #mu = matrix(data = unlist(x = mu_list), nrow = p) # put draws of mu back into same
@@ -1337,6 +1355,9 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                                shape = (p*(count_assign[x]+1) + 2*a)/2,
                                rate = sum(loss_y_i[,x])/2 + loss_mu_k[x]/(2*r) + b)
                     })
+    
+    cat("\n sigma2 after gibbs \n")
+    print(sigma2)
     
     # draw r parameter for variance of means
     if(fix_r == FALSE){
