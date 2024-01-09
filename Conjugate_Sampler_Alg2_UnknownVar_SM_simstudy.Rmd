@@ -103,6 +103,184 @@ do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignm
 rm(w, means)
 ```
 
+#### DEV sampler 
+
+##### without split-merge step
+
+```{r}
+n_iter = 5000
+use_cores = min(parallel::detectCores(), nreps)
+sim_results_DEV_no_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
+      FUN = function(x){MVN_CRP_sampler_DEV(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+        alpha = 1, r = 10, g = 1, h = 50,
+        sigma_hyperprior = FALSE, fix_r = FALSE,
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        a = 1, b = 50,
+        k_init = 1, diag_weights = FALSE,
+        verbose = FALSE, split_merge = FALSE
+        )}
+      )
+
+
+datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_noSM_", 
+                       stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
+saveRDS(object = sim_results_DEV_no_sm, file = datafile_name)
+# sim_results_DEV_no_sm = readRDS(file = datafile_name)
+
+for(rep in 1:nreps){
+  print(table(sim_results_DEV_no_sm[[rep]]$k))
+  p1 = make_k_traceplot(k = sim_results_DEV_no_sm[[rep]]$k, 
+                        group_assign = sim_results_DEV_no_sm[[rep]]$group_assign)
+  print(p1)
+}
+```
+
+
+##### with split-merge step
+
+```{r}
+sim_results_DEV_with_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
+      FUN = function(x){MVN_CRP_sampler_DEV(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+        alpha = 1, r = 10, g = 1, h = 50,
+        sigma_hyperprior = FALSE, fix_r = FALSE,
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        a = 1, b = 50,
+        k_init = 1, diag_weights = FALSE,
+        verbose = FALSE, split_merge = TRUE, sm_iter = 10
+        )}
+      )
+
+datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_withSM_", 
+                       stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
+saveRDS(object = sim_results_DEV_with_sm, file = datafile_name)
+# sim_results_DEV_with_sm = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_withSM_6_Dec_2023.rds")
+
+for(rep in 1:nreps){
+  print(table(sim_results_DEV_with_sm[[rep]]$k))
+  p1 = make_k_traceplot(k = sim_results_DEV_with_sm[[rep]]$k, 
+                        group_assign = sim_results_DEV_with_sm[[rep]]$group_assign)
+  print(p1)
+}
+```
+
+#### DEE sampler 
+
+##### without split-merge step
+
+```{r}
+sim_results_DEE_no_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
+      FUN = function(x){MVN_CRP_sampler_DEE(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+        alpha = 1, r = 10, g = 1, h = 50,
+        sigma_hyperprior = FALSE, fix_r = FALSE,
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        a = 1, b = 50,
+        k_init = 1, diag_weights = FALSE,
+        verbose = FALSE, split_merge = FALSE
+        )}
+      )
+
+
+datafile_name = paste0("../MCMC_Runs/conjDEEsamp_minisimstudy_noSM_", 
+                       stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
+saveRDS(object = sim_results_DEE_no_sm, file = datafile_name)
+# sim_results_DEE_no_sm = readRDS(file = "../MCMC_Runs/conjDEEsamp_minisimstudy_noSM_6_Dec_2023.rds")
+
+for(rep in 1:nreps){
+  print(table(sim_results_DEE_no_sm[[rep]]$k))
+  p1 = make_k_traceplot(k = sim_results_DEE_no_sm[[rep]]$k, 
+                        group_assign = sim_results_DEE_no_sm[[rep]]$group_assign)
+  print(p1)
+}
+```
+
+
+##### with split-merge step
+
+```{r, eval=FALSE}
+sim_results_DEE_with_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
+      FUN = function(x){MVN_CRP_sampler_DEE(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+        alpha = 1, r = 10, g = 1, h = 50,
+        sigma_hyperprior = FALSE, fix_r = FALSE,
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        a = 1, b = 50,
+        k_init = 1, diag_weights = FALSE,
+        verbose = FALSE, split_merge = TRUE, sm_iter = 10
+        )}
+      )
+
+datafile_name = paste0("../MCMC_Runs/conjDEEsamp_minisimstudy_withSM_", 
+                       stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
+saveRDS(object = sim_results_DEE_with_sm, file = datafile_name)
+# sim_results_DEE_with_sm = readRDS(file = "../MCMC_Runs/conjDEEsamp_minisimstudy_withSM_6_Dec_2023.rds")
+
+for(rep in 1:nreps){
+  print(table(sim_results_DEE_with_sm[[rep]]$k))
+  p1 = make_k_traceplot(k = sim_results_DEE_with_sm[[rep]]$k, 
+                        group_assign = sim_results_DEE_with_sm[[rep]]$group_assign)
+  print(p1)
+}
+```
+
+#### UVV sampler 
+
+##### without split-merge step
+
+```{r}
+sim_results_UVV_no_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
+      FUN = function(x){MVN_CRP_sampler_UVV(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y, 
+        alpha = 1, r = 10, g = 1, h = 50, nu = 2,
+        fix_r = FALSE, 
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1), 
+        lambda0 = diag(x = 15, nrow = 2),
+        k_init = 1, diag_weights = FALSE, 
+        verbose = FALSE, split_merge = FALSE
+        )}
+      )
+
+datafile_name = paste0("../MCMC_Runs/conjUVVsamp_minisimstudy_noSM_", 
+                       stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
+saveRDS(object = sim_results_UVV_no_sm, file = datafile_name)
+# saveRDS(object = sim_results_UVV_no_sm, file = "../MCMC_Runs/conjUVVsamp_minisimstudy_noSM_4_Jan_2024.rds")
+
+for(rep in 1:nreps){
+  print(table(sim_results_DEE_with_sm[[rep]]$k))
+  p1 = make_k_traceplot(k = sim_results_DEE_with_sm[[rep]]$k,
+                        group_assign = sim_results_DEE_with_sm[[rep]]$group_assign)
+  print(p1)
+}
+```
+
+
+##### with split-merge step
+
+```{r}
+start_time = Sys.time()
+sim_results_UVV_with_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
+      FUN = function(x){MVN_CRP_sampler_UVV(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+        alpha = 1, r = 10, g = 1, h = 50, nu = 2,
+        fix_r = FALSE,
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        lambda0 = diag(x = 15, nrow = 2),
+        k_init = 1, diag_weights = FALSE,
+        verbose = FALSE, split_merge = TRUE, sm_iter = 10
+        )}
+      )
+end_time = Sys.time()
+run_time = difftime(end_time, start_time)
+print(run_time)
+
+datafile_name = paste0("../MCMC_Runs/conjUVVsamp_minisimstudy_withSM_", 
+                       stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
+saveRDS(object = sim_results_UVV_with_sm, file = datafile_name)
+```
+
+
 ## 2D Example - close together
 
 Mixture of 3 multivariate normal densities all with diagonal variance structure
@@ -256,7 +434,7 @@ for(rep in 1:nreps){
 
 ##### with split-merge step
 
-```{r}
+```{r, eval=FALSE}
 sim_results_DEE_with_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
       FUN = function(x){MVN_CRP_sampler_DEE(
         S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
