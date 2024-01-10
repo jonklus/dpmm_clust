@@ -42,7 +42,7 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50){
   }
   
   drop_iters = unique(c(1:burn_in, singleton_iters))
-
+  
   # drop burn-in AND any singleton iterations before proceeding
   prob_list = probs[-drop_iters]
   final_k = n_groups[-drop_iters]
@@ -50,7 +50,7 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50){
   
   # check again for singletons because some may occur after burn in dropped (i.e.
   # dropping burn in may create singletons)
-  if(any(table(final_k == 1))){
+  if(any(table(final_k) == 1)){
     singleton_labs = as.numeric(names(which(table(final_k) == 1)))
     singleton_iters = which(final_k %in% singleton_labs)
     final_k = final_k[-singleton_iters]
@@ -61,6 +61,9 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50){
   
   print(table(final_k))
   print(length(prob_list))
+  
+  # filter out any k with less than the threshold number of iterations
+  k_count = as.numeric(table(final_k))
   
   unique_k = sort(unique(final_k))
   #print(unique_k)
@@ -77,13 +80,13 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50){
     
     k_index = which(final_k == unique_k[i]) # indices of all iters with k probs
     #print(k_index)
-
+    
     # preallocate list of arrays for results
     prob_list_by_k[[i]] = array(data = NA, 
                                 dim = c(length(k_index), # no. iterations with k groups
                                         nrow(prob_list[[1]]), # no. observations 
                                         k)  # no. groups in iteration
-                                )
+    )
     
     #print(dim(prob_list_by_k[[i]]))
     # iterate through all iterations that found the same unique k
@@ -189,19 +192,19 @@ get_assign_by_k <- function(assign, n_groups, burn_in = 50){
     # relabel so 1,...,k instead of skipping some numbers
     # label.switching package gets made if the max label is greater than k
     #print(dim(testlabs))
-
+    
     # causing problems if n_iter=1 for a particular k
     # need rows = no. iterations, cols = no. obs
     newlab_mat = matrix(data = 0, nrow = length(k_index), ncol = ncol(assign_mat))
     if(length(k_index) == 1){
       # if there is only a single iteration with k groups
       
-        curr_labs = as.numeric(names(table(testlabs)))
-        #new_labs = 1:length(curr_labs)
-        for(j in 1:length(curr_labs)){
-          # relabel in order from 1:k
-          newlab_mat[1,] = newlab_mat[1,] + (testlabs == curr_labs[j])*j
-        }
+      curr_labs = as.numeric(names(table(testlabs)))
+      #new_labs = 1:length(curr_labs)
+      for(j in 1:length(curr_labs)){
+        # relabel in order from 1:k
+        newlab_mat[1,] = newlab_mat[1,] + (testlabs == curr_labs[j])*j
+      }
       
     } else{
       
@@ -215,7 +218,7 @@ get_assign_by_k <- function(assign, n_groups, burn_in = 50){
       }
       
     }
-
+    
     
     assign_list_by_k[[x]] = newlab_mat
   }
@@ -232,7 +235,7 @@ get_stephens_result <- function(group_assign_list_by_k, prob_list_by_k){
   num_params = sapply(X = 1:length(group_assign_list_by_k),
                       FUN = function(x){
                         length(unique(group_assign_list_by_k[[x]][1,]))
-                        })
+                      })
   
   if(1 %in% num_params){
     start_apply = 2 # stephens function will fail if you input clustering w/ 1 group 
@@ -241,11 +244,11 @@ get_stephens_result <- function(group_assign_list_by_k, prob_list_by_k){
   }
   
   stephens_result = lapply(X = start_apply:length(group_assign_list_by_k), 
-                            FUN = function(x){
-                              label.switching(method = "STEPHENS", 
-                                              z = group_assign_list_by_k[[x]],
-                                              p = prob_list_by_k[[x]])
-                            }) 
+                           FUN = function(x){
+                             label.switching(method = "STEPHENS", 
+                                             z = group_assign_list_by_k[[x]],
+                                             p = prob_list_by_k[[x]])
+                           }) 
   
   return(stephens_result)
   
@@ -444,7 +447,7 @@ list_params_by_k <- function(draws, k_vec, burn_in = 50, relabel = FALSE, permut
     
     # drop burn-in AND any singleton iterations before proceeding
     param_list = draws[-drop_iters]
-      
+    
     length(param_list)
     
     param_symbol = "mu"
@@ -482,7 +485,7 @@ list_params_by_k <- function(draws, k_vec, burn_in = 50, relabel = FALSE, permut
     stop("param_type not recognized. Please specify Mean or Var only.")
     
   }
-
+  
   unique_k = sort(unique(num_params))
   #print(unique_k)
   npar = nrow(param_list[[1]]) # number of parameters per group, does not change with k
@@ -496,8 +499,8 @@ list_params_by_k <- function(draws, k_vec, burn_in = 50, relabel = FALSE, permut
     for(i in 1:length(unique_k)){
       k_index = which(num_params == unique_k[i]) # indices of all iters with k params
       param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
-                                              ncol = npar*unique_k[i],
-                                              byrow = TRUE))
+                                               ncol = npar*unique_k[i],
+                                               byrow = TRUE))
       # name columns i.e. mu23 is param for group 2, 3rd component 
       # (i.e. from a length 3 mean vector)
       col_header_names = unlist(lapply(X = 1:npar, 
@@ -532,11 +535,11 @@ list_params_by_k <- function(draws, k_vec, burn_in = 50, relabel = FALSE, permut
       # put the k=1 group names in here 
       k_index = which(num_params == 1)
       param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]),   
-                                              ncol = npar,                   
-                                              byrow = TRUE))
+                                               ncol = npar,                   
+                                               byrow = TRUE))
       # name columns i.e. mu23 is mean for group 2, 3rd component 
       # (i.e. from a length 3 mean vector)
-
+      
       names(param_list_by_k[[1]]) = paste0(param_symbol, 1, 1:npar)
       
     } else{
@@ -570,8 +573,8 @@ list_params_by_k <- function(draws, k_vec, burn_in = 50, relabel = FALSE, permut
       
       # reformat params now that order has been corrected
       param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
-                                              ncol = npar*unique_k[i], 
-                                              byrow = TRUE))
+                                               ncol = npar*unique_k[i], 
+                                               byrow = TRUE))
       # name columns i.e. mu23 is mean for group 2, 3rd component 
       # (i.e. from a length 3 mean vector)
       col_header_names = unlist(lapply(X = 1:npar, 
@@ -616,7 +619,7 @@ make_postsum <- function(mcmc_df, q = 0.95, digits = 2, caption = NULL){
                     FUN = function(x){mean(mcmc_df[,x], na.rm = TRUE)})
   
   postmed = sapply(X = 1:ncol(mcmc_df), 
-                    FUN = function(x){median(mcmc_df[,x], na.rm = TRUE)})
+                   FUN = function(x){median(mcmc_df[,x], na.rm = TRUE)})
   
   postvar = sapply(X = 1:ncol(mcmc_df), 
                    FUN = function(x){var(mcmc_df[,x], na.rm = TRUE)})
@@ -630,7 +633,7 @@ make_postsum <- function(mcmc_df, q = 0.95, digits = 2, caption = NULL){
   # postlower = sapply(X = mcmc_df, FUN = quantile, probs = lower_q)
   # postupper = sapply(X = mcmc_df, FUN = quantile, probs = upper_q)
   
-
+  
   
   postsum_df = round(data.frame(
     Mean = postmean,
@@ -675,7 +678,7 @@ pairwise_prob_mat <- function(burn_in = NULL, group_assign, probs = NULL, diag_w
     group_assign = group_assign[-(1:burn_in),]
     
   }
-
+  
   
   # preallocate list for results
   adj_matrix_list = vector(mode = "list", length = n_iter)
@@ -723,7 +726,7 @@ make_k_traceplot <- function(k, group_assign, burn_in = NULL, show_min_obs = FAL
   if(is.null(burn_in) == TRUE){
     
     n_iter = length(k)
-
+    
   } else{
     
     n_iter = length(k) - burn_in
@@ -745,9 +748,9 @@ make_k_traceplot <- function(k, group_assign, burn_in = NULL, show_min_obs = FAL
   }
   
   min_obs = sapply(X = 1:nrow(group_assign), 
-                FUN = function(x){
-                  min(table(group_assign[x,]))
-                })
+                   FUN = function(x){
+                     min(table(group_assign[x,]))
+                   })
   
   # ref: https://stackoverflow.com/questions/3099219/ggplot-with-2-y-axes-on-each-side-and-different-scales
   
@@ -851,7 +854,7 @@ make_traceplot <- function(param_list_by_k, k, component_no, param_type, p, log_
     
   }
   
-
+  
 }
 
 make_mean_traceplot <- function(mean_list_by_k, k_index, component_no, title_note){
