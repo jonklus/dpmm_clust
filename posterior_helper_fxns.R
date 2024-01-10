@@ -19,7 +19,7 @@ library(tidyr)
 # pivoted -- there needs to be some functionality to do this 
 # seem to have solved this above -- we'll see...
 
-get_probs_by_k <- function(probs, n_groups, burn_in = 50){
+get_probs_by_k <- function(probs, n_groups, burn_in = 50, iter_threshold = 0){
   ## Function takes a list of length no. MCMC iterations and outputs a list of 
   ## data frames where each list element is the contains the draws for iterations
   ## That found a specified number of groups k. columns in output are each parameter.
@@ -29,6 +29,8 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50){
   # n_groups is an array of length no. of MCMC iterations that describes the no. 
   # of groups found at the end of the iteration (i.e. the final k for the ith iteration)
   # burn-in is the number of initial MCMC iterations to discard
+  # iter_threshold is the minimum number of iterations where a particular k was visited
+  # need to cause the function to return results
   
   
   # for debugging purposes
@@ -59,11 +61,25 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50){
   } 
   
   
-  print(table(final_k))
-  print(length(prob_list))
+  # print(table(final_k))
+  # print(length(prob_list))
   
   # filter out any k with less than the threshold number of iterations
   k_count = as.numeric(table(final_k))
+  if(any(k_count < iter_threshold)){
+    if(sum(k_count < iter_threshold) == length(k_count)){
+      # if all k have n_iter < iter_threshold
+      stop("Error: iter_threshold has not been met by any component k. Choose a 
+           lower threshold or set iter_threshold = 0 for results.")
+    } else{
+      
+      threshold_labs = as.numeric(names(which(table(final_k) < iter_threshold)))
+      threshold_iters = which(final_k %in% threshold_labs)
+      final_k = final_k[-threshold_iters]
+      prob_list = prob_list[-threshold_iters]
+      original_index = original_index[-threshold_iters]
+    }
+  }
   
   unique_k = sort(unique(final_k))
   #print(unique_k)
@@ -76,7 +92,7 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50){
   for(i in 1:length(unique_k)){
     
     k = unique_k[i]
-    print(k)
+    # print(k)
     
     k_index = which(final_k == unique_k[i]) # indices of all iters with k probs
     #print(k_index)
@@ -126,10 +142,10 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50){
   return(prob_list_by_k)
 }
 
-get_assign_by_k <- function(assign, n_groups, burn_in = 50){
+get_assign_by_k <- function(assign, n_groups, burn_in = 50, iter_threshold = 0){
   ## Function takes a list of length no. MCMC iterations and outputs a list of 
-  ## data frames where each list element is the contains the draws for iterations
-  ## That found a specified number of groups k. columns in output are each  observation.
+  ## data frames where each list element contains the draws for iterations
+  ## that found a specified number of groups k. columns in output are each  observation.
   
   # assign in a matrix of length # of MCMC iterations where each row is an
   # iteration and each column is an observation
@@ -152,42 +168,29 @@ get_assign_by_k <- function(assign, n_groups, burn_in = 50){
   # drop burn-in AND any singleton iterations before proceeding
   assign_mat = assign[-drop_iters,]
   final_k = n_groups[-drop_iters]
-  
+
   unique_k = sort(unique(final_k))
-  # print(length(final_k))
-  # print(unique_k)
-  
-  # print(nrow(assign_mat))
-  # print(length(final_k))
-  # print(table(final_k))
-  
-  # need to create separate MCMC object for each # of groups k 
-  # assign_list_by_k = vector(mode = "list", length = length(unique_k))
-  
-  # iterate through unique k
-  # assign_list_by_k = lapply(X = 1:length(unique_k), 
-  #                            FUN = function(x){
-  #                              # grab indices of all iters with k probs
-  #                              testlabs = assign_mat[which(final_k == unique_k[x]) ,]
-  #                              # relabel so 1,...,k instead of skipping some numbers
-  #                              # label.switching package gets made if the max label is greater than k
-  #                              newlab_mat = matrix(data = 0, nrow = nrow(testlabs), ncol = ncol(testlabs))
-  #                              for(i in 1:nrow(testlabs)){
-  #                                curr_labs = as.numeric(names(table(testlabs[i,])))
-  #                                #new_labs = 1:length(curr_labs)
-  #                                for(j in 1:length(curr_labs)){
-  #                                  # relabel in order from 1:k
-  #                                  newlab_mat[i,] = newlab_mat[i,] + (testlabs[i,] == curr_labs[j])*j
-  #                                }
-  #                              }
-  #                              return(newlab_mat)
-  #                            })
-  
-  assign_list_by_k = vector(mode = "list", length = length(unique_k))
+  threshold_index = c()
   for(x in 1:length(unique_k)){
+    k_index = which(final_k == unique_k[x])
+    if(length(k_index) >= iter_threshold){
+      threshold_index = c(threshold_index, x)
+    }
+  }
+  
+  if(is.null(threshold_index) == TRUE){
+    # if all groups are below threshold
+    stop("Error: iter_threshold has not been met by any component k. Choose a 
+          lower threshold or set iter_threshold = 0 for results.")
+  }
+ 
+  assign_list_by_k = vector(mode = "list", length = length(threshold_index))
+  for(index in 1:length(threshold_index)){
     
+    x = threshold_index[index]
     # grab indices of all iters with k probs
     k_index = which(final_k == unique_k[x])
+
     testlabs = assign_mat[k_index,]
     # relabel so 1,...,k instead of skipping some numbers
     # label.switching package gets made if the max label is greater than k
@@ -220,7 +223,7 @@ get_assign_by_k <- function(assign, n_groups, burn_in = 50){
     }
     
     
-    assign_list_by_k[[x]] = newlab_mat
+    assign_list_by_k[[index]] = newlab_mat
   }
   
   return(assign_list_by_k)

@@ -247,12 +247,12 @@ datafile_name = paste0("../MCMC_Runs/conjUVVsamp_minisimstudy_noSM_",
 saveRDS(object = sim_results_UVV_no_sm, file = datafile_name)
 # saveRDS(object = sim_results_UVV_no_sm, file = "../MCMC_Runs/conjUVVsamp_minisimstudy_noSM_4_Jan_2024.rds")
 
-for(rep in 1:nreps){
-  print(table(sim_results_DEE_with_sm[[rep]]$k))
-  p1 = make_k_traceplot(k = sim_results_DEE_with_sm[[rep]]$k,
-                        group_assign = sim_results_DEE_with_sm[[rep]]$group_assign)
-  print(p1)
-}
+# for(rep in 1:nreps){
+#   print(table(sim_results_UVV_with_sm[[rep]]$k))
+#   p1 = make_k_traceplot(k = sim_results_UVV_with_sm[[rep]]$k,
+#                         group_assign = sim_results_DEE_with_sm[[rep]]$group_assign)
+#   print(p1)
+# }
 ```
 
 
@@ -363,12 +363,12 @@ datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_",
 saveRDS(object = sim_results_DEV_no_sm, file = datafile_name)
 # sim_results_DEV_no_sm = readRDS(file = datafile_name)
 
-for(rep in 1:nreps){
-  print(table(sim_results_DEV_no_sm[[rep]]$k))
-  p1 = make_k_traceplot(k = sim_results_DEV_no_sm[[rep]]$k, 
-                        group_assign = sim_results_DEV_no_sm[[rep]]$group_assign)
-  print(p1)
-}
+# for(rep in 1:nreps){
+#   print(table(sim_results_DEV_no_sm[[rep]]$k))
+#   p1 = make_k_traceplot(k = sim_results_DEV_no_sm[[rep]]$k, 
+#                         group_assign = sim_results_DEV_no_sm[[rep]]$group_assign)
+#   print(p1)
+# }
 ```
 
 
@@ -392,12 +392,12 @@ datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_close_withSM_",
 saveRDS(object = sim_results_DEV_with_sm, file = datafile_name)
 # sim_results_DEV_with_sm = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_close_withSM_6_Dec_2023.rds")
 
-for(rep in 1:nreps){
-  print(table(sim_results_DEV_with_sm[[rep]]$k))
-  p1 = make_k_traceplot(k = sim_results_DEV_with_sm[[rep]]$k, 
-                        group_assign = sim_results_DEV_with_sm[[rep]]$group_assign)
-  print(p1)
-}
+# for(rep in 1:nreps){
+#   print(table(sim_results_DEV_with_sm[[rep]]$k))
+#   p1 = make_k_traceplot(k = sim_results_DEV_with_sm[[rep]]$k, 
+#                         group_assign = sim_results_DEV_with_sm[[rep]]$group_assign)
+#   print(p1)
+# }
 ```
 
 #### DEE sampler 
@@ -422,13 +422,13 @@ datafile_name = paste0("../MCMC_Runs/conjDEEsamp_minisimstudy_close_noSM_",
                        stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
 saveRDS(object = sim_results_DEE_no_sm, file = datafile_name)
 # sim_results_DEE_no_sm = readRDS(file = "../MCMC_Runs/conjDEEsamp_minisimstudy_close_noSM_6_Dec_2023.rds")
-
-for(rep in 1:nreps){
-  print(table(sim_results_DEE_no_sm[[rep]]$k))
-  p1 = make_k_traceplot(k = sim_results_DEE_no_sm[[rep]]$k, 
-                        group_assign = sim_results_DEE_no_sm[[rep]]$group_assign)
-  print(p1)
-}
+# 
+# for(rep in 1:nreps){
+#   print(table(sim_results_DEE_no_sm[[rep]]$k))
+#   p1 = make_k_traceplot(k = sim_results_DEE_no_sm[[rep]]$k, 
+#                         group_assign = sim_results_DEE_no_sm[[rep]]$group_assign)
+#   print(p1)
+# }
 ```
 
 
@@ -452,12 +452,12 @@ datafile_name = paste0("../MCMC_Runs/conjDEEsamp_minisimstudy_close_withSM_",
 saveRDS(object = sim_results_DEE_with_sm, file = datafile_name)
 # sim_results_DEE_with_sm = readRDS(file = "../MCMC_Runs/conjDEEsamp_minisimstudy_close_withSM_6_Dec_2023.rds")
 
-for(rep in 1:nreps){
-  print(table(sim_results_DEE_with_sm[[rep]]$k))
-  p1 = make_k_traceplot(k = sim_results_DEE_with_sm[[rep]]$k, 
-                        group_assign = sim_results_DEE_with_sm[[rep]]$group_assign)
-  print(p1)
-}
+# for(rep in 1:nreps){
+#   print(table(sim_results_DEE_with_sm[[rep]]$k))
+#   p1 = make_k_traceplot(k = sim_results_DEE_with_sm[[rep]]$k, 
+#                         group_assign = sim_results_DEE_with_sm[[rep]]$group_assign)
+#   print(p1)
+# }
 ```
 
 #### UVV sampler 
@@ -482,12 +482,12 @@ datafile_name = paste0("../MCMC_Runs/conjUVVsamp_minisimstudy_close_noSM_",
 saveRDS(object = sim_results_UVV_no_sm, file = datafile_name)
 # saveRDS(object = sim_results_UVV_no_sm, file = "../MCMC_Runs/conjUVVsamp_minisimstudy_close_noSM_4_Jan_2024.rds")
 
-for(rep in 1:nreps){
-  print(table(sim_results_DEE_with_sm[[rep]]$k))
-  p1 = make_k_traceplot(k = sim_results_DEE_with_sm[[rep]]$k,
-                        group_assign = sim_results_DEE_with_sm[[rep]]$group_assign)
-  print(p1)
-}
+# for(rep in 1:nreps){
+#   print(table(sim_results_DEE_with_sm[[rep]]$k))
+#   p1 = make_k_traceplot(k = sim_results_DEE_with_sm[[rep]]$k,
+#                         group_assign = sim_results_DEE_with_sm[[rep]]$group_assign)
+#   print(p1)
+# }
 ```
 
 
