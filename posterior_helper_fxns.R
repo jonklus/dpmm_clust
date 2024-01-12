@@ -495,8 +495,12 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
     for(i in 1:length(num_params)){
       
       param_list[[i]] = sapply(X = 1:num_params[i], 
-                               FUN = function(x){
-                                 diag(temp_param_list[[i]][[x]])
+                               FUN = function(x){ # if a scalar -- diag will cause weird results
+                                 if(is.null(dim(temp_param_list[[i]][[x]])) == TRUE){
+                                   temp_param_list[[i]][[x]]
+                                 } else{ # if a matrix
+                                   diag(temp_param_list[[i]][[x]])
+                                 }
                                })
       
     }
@@ -507,12 +511,12 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
     
   }
   
-  # need to add an option for covariance here --- capture off-diagonal elements
+  # need to add an option for covariance here --- capture off-diagonal elements as well
   
   unique_k = sort(unique(num_params))
 
   npar = nrow(param_list[[1]]) # number of parameters per group, does not change with k
-  #print(npar)
+  print(npar)
   # need to create separate object for each # of groups k 
   param_list_by_k = vector(mode = "list", length = length(unique_k))
   
@@ -581,21 +585,55 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
       # fix label switching before reformatting params
       for(j in 1:length(k_index)){
  
-        param_list[[k_index[j]]] =  param_list[[k_index[j]]][,new_labs[j,]]
+        # cat("\n k_index[j]", k_index[j], "\n")
+        # cat("param_vals", "\n")
+        # print(param_list[[k_index[j]]])
+        # cat("\n")
+        # cat("new_labs", new_labs[j,], "\n")
+        
+        if(is.null(dim(param_list[[k_index[j]]])) == TRUE){
+          # if scalar -- will return an array not a matrix
+          
+          param_list[[k_index[j]]] =  param_list[[k_index[j]]][new_labs[j,]]
+          
+        } else{
+          # matrix
+          
+          param_list[[k_index[j]]] =  param_list[[k_index[j]]][,new_labs[j,]]
+          
+        }
+        
 
       }
       
       # reformat params now that order has been corrected
-      param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
-                                               ncol = npar*unique_k[i], 
-                                               byrow = TRUE))
-      # name columns i.e. mu23 is mean for group 2, 3rd component 
-      # (i.e. from a length 3 mean vector)
-      col_header_names = unlist(lapply(X = 1:npar, 
-                                       FUN = function(x){
-                                         paste0(param_symbol, 1:unique_k[i], x)
-                                       }))
-      names(param_list_by_k[[i]]) = sort(col_header_names)
+      if(is.null(npar) == TRUE){
+        
+        param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
+                                                 ncol = unique_k[i], 
+                                                 byrow = TRUE))
+        
+        # name columns i.e. mu23 is mean for group 2, 3rd component 
+        # (i.e. from a length 3 mean vector)
+        col_header_names = paste0(param_symbol, 1:unique_k[i])
+        names(param_list_by_k[[i]]) = sort(col_header_names)
+        
+      } else{
+        
+        param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
+                                                 ncol = npar*unique_k[i], 
+                                                 byrow = TRUE))
+        
+        # name columns i.e. mu23 is mean for group 2, 3rd component 
+        # (i.e. from a length 3 mean vector)
+        col_header_names = unlist(lapply(X = 1:npar, 
+                                         FUN = function(x){
+                                           paste0(param_symbol, 1:unique_k[i], x)
+                                         }))
+        names(param_list_by_k[[i]]) = sort(col_header_names)
+        
+      }
+      
       #print(unique_k[i])
       #print(col_header_names)
       # this format isn't super helpful - need to get in data frame format
