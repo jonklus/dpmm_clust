@@ -32,73 +32,83 @@ simstudy_summary <- function(output, dataset = NULL, sum_all = TRUE, print_resul
   
   # filter by number of iterations for each k and address label switching
   
+  
   # summarize means
+  
   
   # summarize variances
   
+  
   # compute KL divergence
+  
   
 }
 
 output = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_noSM_2024_01_09.rds")
 burn_in = 1000
+thold = 1000
 prob_list_by_k = get_probs_by_k(probs = output[[1]]$group_probs, 
                                 n_groups = output[[1]]$k, 
-                                burn_in = burn_in, iter_threshold = 100)
+                                burn_in = burn_in, iter_threshold = thold)
 group_assign_list_by_k = get_assign_by_k(assign = output[[1]]$group_assign, 
                                          n_groups = output[[1]]$k, 
-                                         burn_in = burn_in, iter_threshold = 100)
+                                         burn_in = burn_in, iter_threshold = thold)
 ## deal with label switching for each k
 
 ## in this case need to skip first result bc only one group was found -- can't 
 ## have label switching when there is only 1 group so the function fails
-stephens_result = lapply(X = 1:length(group_assign_list_by_k), 
-                         FUN = function(x){
-                           label.switching(method = "STEPHENS", 
-                                           z = group_assign_list_by_k[[x]],
-                                           p = prob_list_by_k[[x]])
-                         }) 
+# stephens_result = lapply(X = 1:length(group_assign_list_by_k), 
+#                          FUN = function(x){
+#                            label.switching(method = "STEPHENS", 
+#                                            z = group_assign_list_by_k[[x]],
+#                                            p = prob_list_by_k$prob_list[[x]])
+#                          }) 
+
+stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
+                                      prob_list_by_k = prob_list_by_k$prob_list)
 
 ## now reorder means to deal with label switching and redo posterior inference and 
 ## traceplots
 mean_list_by_k_stephens = list_params_by_k(draws = output[[1]]$means, 
-                                           k_vec = output[[1]]$k,
-                                           burn_in = burn_in,
+                                           # k_vec = output[[1]]$k,
+                                           # burn_in = burn_in, 
+                                           # iter_threshold = thold,
+                                           iter_list = prob_list_by_k$iter_list,
                                            relabel = TRUE,
                                            permutation = stephens_result, 
                                            param_type = "Mean")
+
 var_list_by_k_stephens = list_params_by_k(draws = output[[1]]$vars, 
-                                          k_vec = output[[1]]$k,
-                                          burn_in = 1000,
+                                          iter_list = prob_list_by_k$iter_list,
                                           relabel = TRUE,
                                           permutation = stephens_result,
                                           param_type = "Var")
 
-make_postsum(mcmc_df = mean_list_by_k_stephens3[[1]], digits = 2)
-make_postsum(mcmc_df = mean_list_by_k_stephens3[[2]], digits = 2)
-make_postsum(mcmc_df = mean_list_by_k_stephens3[[3]], digits = 2)
+make_postsum(mcmc_df = mean_list_by_k_stephens[[1]], digits = 2)
+make_postsum(mcmc_df = mean_list_by_k_stephens[[2]], digits = 2)
+make_postsum(mcmc_df = mean_list_by_k_stephens[[3]], digits = 2)
 
-make_postsum(mcmc_df = var_list_by_k_stephens3[[1]], digits = 2)
-make_postsum(mcmc_df = var_list_by_k_stephens3[[2]], digits = 2)
-make_postsum(mcmc_df = var_list_by_k_stephens3[[3]], digits = 2)
+make_postsum(mcmc_df = var_list_by_k_stephens[[1]], digits = 2)
+make_postsum(mcmc_df = var_list_by_k_stephens[[2]], digits = 2)
+make_postsum(mcmc_df = var_list_by_k_stephens[[3]], digits = 2)
 
-make_traceplot(param_list_by_k = mean_list_by_k_stephens3, 
+make_traceplot(param_list_by_k = mean_list_by_k_stephens, 
                k_index = 3, 
                component_no = 1,
                title_note = "K=3",
                param_type = "Mean")
-make_traceplot(param_list_by_k = mean_list_by_k_stephens3, 
+make_traceplot(param_list_by_k = mean_list_by_k_stephens, 
                k_index = 3, 
                component_no = 2,
                title_note = "K=3",
                param_type = "Mean")
 
-make_traceplot(param_list_by_k = var_list_by_k_stephens3, 
+make_traceplot(param_list_by_k = var_list_by_k_stephens, 
                k_index = 3, 
                component_no = 1,
                title_note = "K=3",
                param_type = "Var")
-make_traceplot(param_list_by_k = var_list_by_k_stephens3, 
+make_traceplot(param_list_by_k = var_list_by_k_stephens, 
                k_index = 3, 
                component_no = 2,
                title_note = "K=3",

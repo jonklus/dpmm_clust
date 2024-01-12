@@ -85,6 +85,7 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50, iter_threshold = 0){
   #print(unique_k)
   # need to create separate MCMC object for each # of groups k 
   prob_list_by_k = vector(mode = "list", length = length(unique_k))
+  iter_list_by_k = vector(mode = "list", length = length(unique_k))
   
   #print(unique_k)
   
@@ -102,7 +103,10 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50, iter_threshold = 0){
                                 dim = c(length(k_index), # no. iterations with k groups
                                         nrow(prob_list[[1]]), # no. observations 
                                         k)  # no. groups in iteration
-    )
+                                )
+    
+    # also save iterations for each element to allow for easier referencing later in label switching!
+    iter_list_by_k[[i]] = original_index[k_index]
     
     #print(dim(prob_list_by_k[[i]]))
     # iterate through all iterations that found the same unique k
@@ -139,7 +143,7 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50, iter_threshold = 0){
     #           )
   }
   
-  return(prob_list_by_k)
+  return(list(iter_list = iter_list_by_k, prob_list = prob_list_by_k))
 }
 
 get_assign_by_k <- function(assign, n_groups, burn_in = 50, iter_threshold = 0){
@@ -411,17 +415,11 @@ relabel_groups <- function(curr_label_mat, permutations, means){
 #   return(mean_list_by_k)
 # }
 
-var_by_k_helper <- function(draws){
-  # function to take list output of p*p variance matrices and return in a tabular
-  # format similar to mean output
-  
-  
-}
 
-
-list_params_by_k <- function(draws, k_vec, burn_in = 50, relabel = FALSE, permutation = NULL, param_type){
+list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_threshold = 0, 
+                             relabel = FALSE, permutation = NULL, param_type){
   ## Function takes a list of length no. MCMC iterations and outputs a list of 
-  ## data frames where each list element is the contains the draws for iterations
+  ## data frames where each list element contains the draws for iterations
   ## That found a specified number of groups k. columns in output are each parameter.
   
   # draws in a list of length # of MCMC iterations where each list element
@@ -433,25 +431,45 @@ list_params_by_k <- function(draws, k_vec, burn_in = 50, relabel = FALSE, permut
   # package
   # param_type is a string, either mean or var
   
-  k_vec_bi = k_vec[(burn_in+1):length(k_vec)]
-  if(any(table(k_vec_bi == 1))){
-    singleton_labs = as.numeric(names(which(table(k_vec_bi) == 1)))
-    singleton_iters = which(k_vec_bi %in% singleton_labs)
-    #print(singleton_iters)
-  } else{
-    singleton_iters = NULL
-  }
+  # k_vec_bi = k_vec[(burn_in+1):length(k_vec)]
+  # if(any(table(k_vec_bi == 1))){
+  #   singleton_labs = as.numeric(names(which(table(k_vec_bi) == 1)))
+  #   singleton_iters = which(k_vec_bi %in% singleton_labs)
+  #   #print(singleton_iters)
+  # } else{
+  #   singleton_iters = NULL
+  # }
+  # 
+  # 
+  # # filter out any k with less than the threshold number of iterations
+  # k_count = as.numeric(table(k_vec)) #as.numeric(table(k_vec_bi))
+  # if(any(k_count < iter_threshold)){
+  #   if(sum(k_count < iter_threshold) == length(k_count)){
+  #     # if all k have n_iter < iter_threshold
+  #     stop("Error: iter_threshold has not been met by any component k. Choose a 
+  #          lower threshold or set iter_threshold = 0 for results.")
+  #   } else{
+  #     
+  #     threshold_labs = as.numeric(names(which(table(k_vec_bi) < iter_threshold)))
+  #     threshold_iters = which(k_vec_bi %in% threshold_labs)
+  #     # final_k = k_vec_bi[-threshold_iters]
+  #     # original_index = original_index[-threshold_iters]
+  #   }
+  # } else{
+  #   threshold_iters = NULL
+  # }
+  # # all iterations to drop, including burn-in and singletons
+  # # include unique function bc some singletons may come in during burn-in iterations
+  # 
+  # drop_iters = unique(c(1:burn_in, singleton_iters, threshold_iters))
   
-  # all iterations to drop, including burn-in and singletons
-  # include unique function bc some singletons may come in during burn-in iterations
-  
-  drop_iters = unique(c(1:burn_in, singleton_iters))
+  keep_iters = unlist(iter_list)
   if(param_type == "Mean"){
     
     # drop burn-in AND any singleton iterations before proceeding
-    param_list = draws[-drop_iters]
+    param_list = draws[keep_iters]
     
-    length(param_list)
+    # length(param_list)
     
     param_symbol = "mu"
     num_params = sapply(X = 1:length(param_list),
@@ -464,7 +482,7 @@ list_params_by_k <- function(draws, k_vec, burn_in = 50, relabel = FALSE, permut
   } else if(param_type == "Var"){
     
     # drop burn-in AND any singleton iterations before proceeding
-    temp_param_list = draws[-drop_iters]
+    temp_param_list = draws[keep_iters]
     
     param_symbol = "sigma"
     num_params = sapply(X = 1:length(temp_param_list),
@@ -489,8 +507,10 @@ list_params_by_k <- function(draws, k_vec, burn_in = 50, relabel = FALSE, permut
     
   }
   
+  # need to add an option for covariance here --- capture off-diagonal elements
+  
   unique_k = sort(unique(num_params))
-  #print(unique_k)
+
   npar = nrow(param_list[[1]]) # number of parameters per group, does not change with k
   #print(npar)
   # need to create separate object for each # of groups k 
@@ -560,18 +580,9 @@ list_params_by_k <- function(draws, k_vec, burn_in = 50, relabel = FALSE, permut
       
       # fix label switching before reformatting params
       for(j in 1:length(k_index)){
-        
-        #print(param_list[[k_index[j]]]) # before fix
-        #print(new_labs[j,]) # new order
-        
-        # print(unique_k[i])
-        # print(k_index[j])
-        # print(param_list[[k_index[j]]])
-        # print(new_labs[j,])
-        
+ 
         param_list[[k_index[j]]] =  param_list[[k_index[j]]][,new_labs[j,]]
-        
-        # print(param_list[[k_index[j]]]) # after fix
+
       }
       
       # reformat params now that order has been corrected
