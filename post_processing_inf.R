@@ -25,90 +25,92 @@ library(stringr)
 
 ######################## DEFINE NEW FUNCTIONS ##################################
 
-simstudy_summary <- function(output, dataset = NULL, sum_all = TRUE, print_result = TRUE, burn_in = 1000){
+dpmm_summary <- function(output, dataset_ind = 1, 
+                         print_result = TRUE, make_traceplot = TRUE,
+                         burn_in = 1000, t_hold = 0, num_dims = 2){
   # output is the list of results from the DPMM simulation study function
   # dataset is a numeric argument to summarize a specific result in the output, the desired index
-  # sum_all is a logical argument to provide a summary of all data sets
+  # sum_all is a logical argument to provide a summary of all data sets --- NOT CURRENTLY IMPLEMENTED
+  # print_result is a logical, if TRUE print summary in addition to outputting saved result
+  # burn_in is # of burn in iterations to discard
+  # t_hold is the threshold # of iterations for a given k in order to report results
+  # num_dims is the dimensionality of the problem (i.e. a bivariate normal is dim 2)
   
   # filter by number of iterations for each k and address label switching
-  
-  
-  # summarize means
-  
-  
-  # summarize variances
-  
-  
-  # compute KL divergence
-  
+    prob_list_by_k = get_probs_by_k(probs = output[[dataset_ind]]$group_probs, 
+                                    n_groups = output[[dataset_ind]]$k, 
+                                    burn_in = burn_in, 
+                                    iter_threshold = t_hold)
+    group_assign_list_by_k = get_assign_by_k(assign = output[[dataset_ind]]$group_assign, 
+                                             n_groups = output[[dataset_ind]]$k, 
+                                             burn_in = burn_in, 
+                                             iter_threshold = t_hold)
+    
+    # correct label switching 
+    stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
+                                          prob_list_by_k = prob_list_by_k$prob_list)
+    
+    # summarize means & variances
+    mean_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$means, 
+                                               # k_vec = output[[1]]$k,
+                                               # burn_in = burn_in, 
+                                               # iter_threshold = thold,
+                                               iter_list = prob_list_by_k$iter_list,
+                                               relabel = TRUE,
+                                               permutation = stephens_result, 
+                                               param_type = "Mean")
+    
+    var_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$vars, 
+                                              iter_list = prob_list_by_k$iter_list,
+                                              relabel = TRUE,
+                                              permutation = stephens_result,
+                                              param_type = "Var")
+    
+    mean_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
+    var_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
+    for(k in 1:length(mean_list_by_k_stephens)){
+      # make mean summary table
+      mean_summary[[k]] = make_postsum(mcmc_df = mean_list_by_k_stephens[[k]], digits = 2)
+      
+      # make variance summary table
+      var_summary[[k]] = make_postsum(mcmc_df = var_list_by_k_stephens[[k]], digits = 2)
+      
+      k_i = ncol(var_list_by_k_stephens[[k]])
+      if(print_result == TRUE){
+        cat("\n K=", k_i,"\n")
+        print(mean_summary[[k]])
+        print(var_summary[[k]])
+      }
+      
+      if(make_traceplot == TRUE){
+        for(dim_i in 1:num_dims){
+          make_traceplot(param_list_by_k = mean_list_by_k_stephens, 
+                         k_index = k, 
+                         component_no = dim_i,
+                         title_note = cat("K=", k_i),
+                         param_type = "Mean")
+        }
+      }
+    }
+    
+    # compute KL divergence
+    kl_div = 0 # placeholder for now
+    
+    
+  # return summary of all results
+  return(list(
+    mean_list_by_k_stephens = mean_list_by_k_stephens,
+    var_list_by_k_stephens = var_list_by_k_stephens,
+    mean_summary = mean_summary,
+    var_summary = var_summary,
+    kl_div = kl_div
+  ))
   
 }
 
-output = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_noSM_2024_01_09.rds")
-burn_in = 1000
-thold = 100
-prob_list_by_k = get_probs_by_k(probs = output[[1]]$group_probs, 
-                                n_groups = output[[1]]$k, 
-                                burn_in = burn_in, iter_threshold = thold)
-group_assign_list_by_k = get_assign_by_k(assign = output[[1]]$group_assign, 
-                                         n_groups = output[[1]]$k, 
-                                         burn_in = burn_in, iter_threshold = thold)
-## deal with label switching for each k
 
-## in this case need to skip first result bc only one group was found -- can't 
-## have label switching when there is only 1 group so the function fails
-# stephens_result = lapply(X = 1:length(group_assign_list_by_k), 
-#                          FUN = function(x){
-#                            label.switching(method = "STEPHENS", 
-#                                            z = group_assign_list_by_k[[x]],
-#                                            p = prob_list_by_k$prob_list[[x]])
-#                          }) 
-
-stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
-                                      prob_list_by_k = prob_list_by_k$prob_list)
-
-## now reorder means to deal with label switching and redo posterior inference and 
-## traceplots
-mean_list_by_k_stephens = list_params_by_k(draws = output[[1]]$means, 
-                                           # k_vec = output[[1]]$k,
-                                           # burn_in = burn_in, 
-                                           # iter_threshold = thold,
-                                           iter_list = prob_list_by_k$iter_list,
-                                           relabel = TRUE,
-                                           permutation = stephens_result, 
-                                           param_type = "Mean")
-
-var_list_by_k_stephens = list_params_by_k(draws = output[[1]]$vars, 
-                                          iter_list = prob_list_by_k$iter_list,
-                                          relabel = TRUE,
-                                          permutation = stephens_result,
-                                          param_type = "Var")
-
-make_postsum(mcmc_df = mean_list_by_k_stephens[[1]], digits = 2)
-make_postsum(mcmc_df = mean_list_by_k_stephens[[2]], digits = 2)
-
-make_postsum(mcmc_df = var_list_by_k_stephens[[1]], digits = 2)
-make_postsum(mcmc_df = var_list_by_k_stephens[[2]], digits = 2)
-
-
-make_traceplot(param_list_by_k = mean_list_by_k_stephens, 
-               k_index = 3, 
-               component_no = 1,
-               title_note = "K=3",
-               param_type = "Mean")
-make_traceplot(param_list_by_k = mean_list_by_k_stephens, 
-               k_index = 3, 
-               component_no = 2,
-               title_note = "K=3",
-               param_type = "Mean")
-
-make_traceplot(param_list_by_k = var_list_by_k_stephens, 
-               k_index = 3, 
-               component_no = 1,
-               title_note = "K=3",
-               param_type = "Var")
-make_traceplot(param_list_by_k = var_list_by_k_stephens, 
-               k_index = 3, 
-               component_no = 2,
-               title_note = "K=3",
-               param_type = "Var")
+# test function
+output = readRDS("../MCMC_Runs/conjDEVsamp_minisimstudy_close_withSM_2024_01_10.rds")
+test = dpmm_summary(output = output, dataset = 1, 
+                      print_result = TRUE, make_traceplot = TRUE,
+                      burn_in = 1000, t_hold = 100, num_dims = 2)

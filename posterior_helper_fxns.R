@@ -93,10 +93,10 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50, iter_threshold = 0){
   for(i in 1:length(unique_k)){
     
     k = unique_k[i]
-    # print(k)
+    print(k)
     
     k_index = which(final_k == unique_k[i]) # indices of all iters with k probs
-    #print(k_index)
+    # print(k_index)
     
     # preallocate list of arrays for results
     prob_list_by_k[[i]] = array(data = NA, 
@@ -104,6 +104,7 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50, iter_threshold = 0){
                                         nrow(prob_list[[1]]), # no. observations 
                                         k)  # no. groups in iteration
                                 )
+    cat("\n dim prob_list", dim(prob_list_by_k[[i]]))
     
     # also save iterations for each element to allow for easier referencing later in label switching!
     iter_list_by_k[[i]] = original_index[k_index]
@@ -114,8 +115,9 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50, iter_threshold = 0){
       
       # need to output a n_iter*n_obs*k array (n_iter*n_obs*n_groups)
       # print(dim(prob_list[[k_index[j]]]))
-      # print(k_index[j])
+      print(k_index[j])
       probs_kij = prob_list[[k_index[j]]]
+      cat("\n dim(probs_kij) #1", dim(probs_kij), "\n")
       
       # check if prob_list has col for new group prob. if so, rectify situation
       # by dropping "new" column
@@ -130,6 +132,8 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50, iter_threshold = 0){
         stop("Error: number of group membership probs provided > (k+1)")
         
       } # else continue
+      
+      cat("\n dim(probs_kij) #2", dim(probs_kij), "\n")
       
       prob_list_by_k[[i]][j,,] = probs_kij
       
