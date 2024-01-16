@@ -1437,12 +1437,17 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                       singleton = 0, curr_group_assign = group_assign[s,x], 
                       curr_labels = curr_labels)
     }) # result is a k*n matrix
+
+    # cat("\n Final prob calc dimension dim:", dim(pr_c), " length:", length(pr_c), "\n")
     
     #print(dim(pr_c))
     if(k == 1){
       
-      probs[[s]] = matrix(pr_c, ncol = 1)  # fixing issue with dimensions of prob matrix
+      probs[[s]] = matrix(pr_c, nrow=length(y))  # fixing issue with dimensions of prob matrix
       # when only one group is found
+      
+      # previously were fixing number of cols but this was an issue when the pr_new
+      # was included -- - R coerced number of rows to be 2*n when ncol set to 1 for k=1
       
     } else{
       
