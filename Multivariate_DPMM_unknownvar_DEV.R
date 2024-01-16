@@ -219,9 +219,9 @@ post_pred_DEV <- function(obs, which_group, group_assign, split_labs, r, sm_coun
   # print(nu_n)
   
   val = n_minus*LaplacesDemon::dmvt(x = y[[obs]][,1], 
-                                                   mu = mu_n[,1], 
-                                                   S = lambda_n, 
-                                                   df = 2*a_n)
+                                    mu = mu_n[,1], 
+                                    S = lambda_n, 
+                                    df = 2*a_n)
   
   return(val)
   

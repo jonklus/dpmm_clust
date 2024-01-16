@@ -114,3 +114,5 @@ output = readRDS("../MCMC_Runs/conjDEVsamp_minisimstudy_close_withSM_2024_01_10.
 test = dpmm_summary(output = output, dataset = 1, 
                       print_result = TRUE, make_traceplot = TRUE,
                       burn_in = 1000, t_hold = 100, num_dims = 2)
+
+output2 = readRDS("../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_2024_01_10.rds")

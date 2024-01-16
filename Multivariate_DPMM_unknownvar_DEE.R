@@ -166,6 +166,7 @@ post_pred_DEE <- function(obs, which_group, group_assign, split_labs, r, sm_coun
   # or PDF in references folder
   
   # restricted gibbs sampling scans
+  n_minus = sm_counts[which_group] - 1 
   
   sum_ysq = lapply(X = 1:2, 
                    FUN = function(x){
@@ -183,9 +184,12 @@ post_pred_DEE <- function(obs, which_group, group_assign, split_labs, r, sm_coun
                      
                    })
   
+  cat("\n sum_ysq \n")
+  print(sum_ysq)
+  
   loss_mu0 = (ybar[[which_group]] - mu0)%*%t(ybar[[which_group]] - mu0)
   
-  mu_n = ((1/r)*mu0 + sm_counts[which_group]*ybar[[which_group]])/((1/r) + sm_counts[which_group])
+  mu_n = ((1/r)*mu0 + n_minus*ybar[[which_group]])/((1/r) + n_minus)
   
   # cat("obs:", obs)
   # cat("\n")
@@ -205,18 +209,20 @@ post_pred_DEE <- function(obs, which_group, group_assign, split_labs, r, sm_coun
   # need to recalculate the posterior predictives yourself...not super confident
   # in PDF this came from
   
-  a_n = a + sm_counts[which_group]/2
+  a_n = a + n_minus/2
   
-  b_n = b + (t(mu0)%*%mu0/r + sum_ysq[[which_group]] - (1/r + sm_counts[which_group])*t(mu_n)%*%mu_n)/2
+  b_n = b + (t(mu0)%*%mu0/r + sum_ysq[[which_group]] - (1/r + n_minus)*t(mu_n)%*%mu_n)/2
   
-  lambda_n = diag(b_n[,1]*(1+(1/r + sm_counts[which_group])^(-1))/a_n, length(mu_n[,1]))
+  lambda_n = diag(b_n[,1]*(1+(1/r + n_minus)^(-1))/a_n, length(mu_n[,1]))
+  cat("\n lambda_n")
+  print(lambda_n)
   # take first "column" of scalar b_n snce R was still recognizing as a matrix
   
   # print(mu_n)
   # print(lambda_n)
   # print(nu_n)
   
-  val = sm_counts[which_group]*LaplacesDemon::dmvt(x = y[[obs]][,1], 
+  val = n_minus*LaplacesDemon::dmvt(x = y[[obs]][,1], 
                                                    mu = mu_n[,1], 
                                                    S = lambda_n, 
                                                    df = 2*a_n)
@@ -313,10 +319,10 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
   
   sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign == x)})
   
-  # cat("\n")
-  # cat("sm_counts:", sm_counts)
-  # cat("\n")
-  # print(group_assign)
+  cat("\n")
+  cat("sm_counts:", sm_counts)
+  cat("\n")
+  print(group_assign)
   
   ybar = lapply(X = split_labs, 
                 FUN = function(x){
@@ -333,9 +339,9 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
                   return(ysum/length(group_ind))
                 })
   
-  # cat("ybar:")
-  # print(ybar)
-  # cat("\n")
+  cat("ybar:")
+  print(ybar)
+  cat("\n")
   
   loss_ybar = lapply(X = 1:2, 
                      FUN = function(x){
@@ -353,9 +359,9 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
                        
                      })
   
-  # cat("loss_ybar:")
-  # print(loss_ybar)
-  # cat("\n")
+  cat("loss_ybar:")
+  print(loss_ybar)
+  cat("\n")
   
   
   
@@ -381,7 +387,7 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
     # check length of which_zero
     if(length(which_one) == 1){
       # proceed as usual
-      # cat("1 singleton", "\n")
+      cat("1 singleton", "\n")
       if(which_one == 1){
         
         num = prior_pred_NinvGa(y_i = y[[obs]], mu0 = mu0, r = r, 
@@ -409,7 +415,7 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
       
     } else{
       # two singletons being considered
-      # cat("2 singleton", "\n")
+      cat("2 singleton", "\n")
       num = prior_pred_NinvGa(y_i = y[[obs]], mu0 = mu0, r = r, 
                               a = a, b = b)
       
@@ -454,7 +460,7 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
     
   } else{
     # proceed as usual 
-    # cat("normal", "\n")
+    cat("normal", "\n")
     num = post_pred_DEE(obs = obs, which_group = 1, r = r, 
                         group_assign = group_assign, split_labs = split_labs,
                         sm_counts = sm_counts, y = y, ybar = ybar, 
@@ -1011,6 +1017,9 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           
           # current observation under consideration cannot be included here
           
+          cat("\n y_obs", y[[obs]])
+          cat("\n group_assign")
+          print(temp_group_assign[scan,])
           split_assign_prob = split_merge_prob_DEE(obs = obs, split_labs = split_lab, r=r, 
                                                    group_assign = temp_group_assign[scan,], 
                                                    y = y, mu0 = mu0, a = a, b = b)
