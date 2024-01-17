@@ -421,7 +421,7 @@ relabel_groups <- function(curr_label_mat, permutations, means){
 
 
 list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_threshold = 0, 
-                             relabel = FALSE, permutation = NULL, param_type){
+                             relabel = FALSE, permutation = NULL, param_type, equal_var = FALSE){
   ## Function takes a list of length no. MCMC iterations and outputs a list of 
   ## data frames where each list element contains the draws for iterations
   ## That found a specified number of groups k. columns in output are each parameter.
@@ -434,6 +434,8 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
   # permutation is a list sorted by k (# groups) resulting from the label.switching
   # package
   # param_type is a string, either mean or var
+  # equal_var is a logical argument of whether the equal variance assumption is being made
+  # it means there will be only a single variance param for each group
   
   # k_vec_bi = k_vec[(burn_in+1):length(k_vec)]
   # if(any(table(k_vec_bi == 1))){
@@ -565,9 +567,19 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
       
       # put the k=1 group names in here 
       k_index = which(num_params == 1)
-      param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]),   
-                                               ncol = npar,                   
-                                               byrow = TRUE))
+      if(equal_var == TRUE){
+        
+        param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]),   
+                                                 ncol = 1,                   
+                                                 byrow = TRUE))
+        
+      } else{
+        
+        param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]),   
+                                                 ncol = npar,                   
+                                                 byrow = TRUE))
+      }
+      
       # name columns i.e. mu23 is mean for group 2, 3rd component 
       # (i.e. from a length 3 mean vector)
       
@@ -624,17 +636,35 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
         
       } else{
         
-        param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
-                                                 ncol = npar*unique_k[i], 
-                                                 byrow = TRUE))
+        if(equal_var == TRUE){
+          
+          param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
+                                                   ncol = unique_k[i], 
+                                                   byrow = TRUE))
+          
+          # name columns i.e. mu23 is mean for group 2, 3rd component 
+          # (i.e. from a length 3 mean vector)
+          col_header_names = paste0(param_symbol, 1:unique_k[i])
+          names(param_list_by_k[[i]]) = sort(col_header_names)
+          
+        } else{
+          
+          param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
+                                                   ncol = npar*unique_k[i], 
+                                                   byrow = TRUE))
+          
+          # name columns i.e. mu23 is mean for group 2, 3rd component 
+          # (i.e. from a length 3 mean vector)
+          col_header_names = unlist(lapply(X = 1:npar, 
+                                           FUN = function(x){
+                                             paste0(param_symbol, 1:unique_k[i], x)
+                                           }))
+          names(param_list_by_k[[i]]) = sort(col_header_names)
+          
+        }
         
-        # name columns i.e. mu23 is mean for group 2, 3rd component 
-        # (i.e. from a length 3 mean vector)
-        col_header_names = unlist(lapply(X = 1:npar, 
-                                         FUN = function(x){
-                                           paste0(param_symbol, 1:unique_k[i], x)
-                                         }))
-        names(param_list_by_k[[i]]) = sort(col_header_names)
+        
+
         
       }
       
@@ -947,4 +977,101 @@ make_mean_traceplot <- function(mean_list_by_k, k_index, component_no, title_not
 # perform model diagnostics - gelman rubin?
 # how to do multichain diagnostics when the number of draws for each k
 # varies from chain to chain (i.e. the data won't be the same length!)
+
+
+
+################################# METRICS ######################################
+
+calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, mu_true, 
+                           Sigma_true, equal_var_assump = FALSE){
+  
+  # function to calculate KL divergence between truth and posterior mean for
+  # a particular clustering (e.g. k=3) after running MCMC
+  
+  # y, mu_est, Sigma_est are lists - mu and sigma are MCMC output that has been
+  # if equal var assumption is true -- Sigma_est and Sigma_true are matrices
+  # filtered by k and processed to correct label switching so that they are aligned
+  # mu_true, and Sigma_true are the ground truth from which data were simulated
+  # truth is a vector of true group assignments
+  # group_assign is a S*n matrix of estimated group assignments
+  # equal_var_assump is a logical that determines whether we assume the groups
+  # had unique variances estimated as part of the MCMC
+  
+  # assumes MV normal likelihood
+  
+  if(equal_var_assump == FALSE){
+    # each group has its own estimated variance
+    
+    # calculate density of truth
+    true_dens = sapply(X = 1:length(y), 
+                       FUN = function(x){
+                         mvtnorm::dmvnorm(x = y[[x]][,1], 
+                                          mean = mu_true[[true_assign[x]]][,1], 
+                                          sigma = Sigma_true[[true_assign[x]]])
+                         
+                       })
+    
+    
+    
+    # calculate density of estimates
+    est_dens_i = matrix(data = NA, nrow = length(mu), ncol = length(y))
+    for(iter in 1:length(mu)){
+      
+      est_dens_i[iter,] = sapply(X = 1:length(y), 
+                                 FUN = function(x){
+                                   mvtnorm::dmvnorm(x = y[[x]][,1], 
+                                                    mean = mu_est[[group_assign[iter,x]]][,1], 
+                                                    sigma = Sigma_est[[group_assign[iter,x]]])
+                                   
+                                 })
+      
+    }
+    
+    est_dens = colMeans(est_dens_i) # average over all iterations
+    
+  } else{
+    # pooled variance, assumed equal across groups
+    
+    # calculate density of truth
+    true_dens = sapply(X = 1:length(y), 
+                       FUN = function(x){
+                         mvtnorm::dmvnorm(x = y[[x]][,1], 
+                                          mean = mu_true[[true_assign[x]]][,1], 
+                                          sigma = Sigma_true[[true_assign[x]]])
+                         
+                       })
+    
+    
+    
+    
+    # calculate density of estimates
+    est_dens_i = matrix(data = NA, nrow = length(mu), ncol = length(y))
+    for(iter in 1:length(mu)){
+      
+      est_dens_i[iter,] = sapply(X = 1:length(y), 
+                                 FUN = function(x){
+                                   mvtnorm::dmvnorm(x = y[[x]][,1], 
+                                                    mean = mu_est[[group_assign[iter,x]]][,1], 
+                                                    sigma = Sigma_est)
+                                   
+                                 })
+      
+    }
+    
+    est_dens = colMeans(est_dens_i) # average over all iterations
+    
+  }
+  
+  # now do we average over densities in estimates then calc KL div, or  calculate KL divergence
+  # at each iteration and then average over all iterations?
+  
+  # option 1 - average over densities, then calculate KL
+  
+  
+  # option 2 - calculate KL divergence at each iteration
+  
+  kl_div = LaplacesDemon::KLD(px = true_dens, py = est_dens)
+  
+  return(kl_div)
+}
 

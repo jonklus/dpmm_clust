@@ -27,7 +27,8 @@ library(stringr)
 
 dpmm_summary <- function(output, dataset_ind = 1, 
                          print_result = TRUE, make_traceplot = TRUE,
-                         burn_in = 1000, t_hold = 0, num_dims = 2){
+                         burn_in = 1000, t_hold = 0, num_dims = 2,
+                         ){
   # output is the list of results from the DPMM simulation study function
   # dataset is a numeric argument to summarize a specific result in the output, the desired index
   # sum_all is a logical argument to provide a summary of all data sets --- NOT CURRENTLY IMPLEMENTED
@@ -94,7 +95,14 @@ dpmm_summary <- function(output, dataset_ind = 1,
     }
     
     # compute KL divergence
-    kl_div = 0 # placeholder for now
+    kl_div = calc_KL_diverg(y = output[[dataset_ind]]$data, 
+                            mu_est = mean_list_by_k_stephens, 
+                            Sigma_est = var_list_by_k_stephens, 
+                            group_assign = stephens_result, 
+                            true_assign = , 
+                            mu_true, 
+                            Sigma_true, 
+                            equal_var_assump = FALSE)
     
     
   # return summary of all results
@@ -110,9 +118,45 @@ dpmm_summary <- function(output, dataset_ind = 1,
 
 
 # test function
-output = readRDS("../MCMC_Runs/conjDEVsamp_minisimstudy_close_withSM_2024_01_10.rds")
-test = dpmm_summary(output = output, dataset = 1, 
-                      print_result = TRUE, make_traceplot = TRUE,
-                      burn_in = 1000, t_hold = 100, num_dims = 2)
-
+output = readRDS("../MCMC_Runs/conjDEVsamp_minisimstudy_close_withSM_2024_01_16.rds")
+# test = dpmm_summary(output = output, dataset = 1, 
+#                       print_result = TRUE, make_traceplot = TRUE,
+#                       burn_in = 1000, t_hold = 100, num_dims = 2)
+# 
 output2 = readRDS("../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_2024_01_10.rds")
+
+dataset_ind = 1 
+print_result = TRUE
+burn_in = 1000
+t_hold = 100
+num_dims = 2
+
+prob_list_by_k = get_probs_by_k(probs = output[[dataset_ind]]$group_probs, 
+                                n_groups = output[[dataset_ind]]$k, 
+                                burn_in = burn_in, 
+                                iter_threshold = t_hold)
+group_assign_list_by_k = get_assign_by_k(assign = output[[dataset_ind]]$group_assign, 
+                                         n_groups = output[[dataset_ind]]$k, 
+                                         burn_in = burn_in, 
+                                         iter_threshold = t_hold)
+
+# correct label switching 
+stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
+                                      prob_list_by_k = prob_list_by_k$prob_list)
+
+# summarize means & variances
+mean_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$means, 
+                                           # k_vec = output[[1]]$k,
+                                           # burn_in = burn_in, 
+                                           # iter_threshold = thold,
+                                           iter_list = prob_list_by_k$iter_list,
+                                           relabel = TRUE,
+                                           permutation = stephens_result, 
+                                           param_type = "Mean")
+
+var_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$vars, 
+                                          iter_list = prob_list_by_k$iter_list,
+                                          relabel = TRUE,
+                                          permutation = stephens_result,
+                                          param_type = "Var")
+
