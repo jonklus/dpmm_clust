@@ -508,6 +508,7 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
                                    diag(temp_param_list[[i]][[x]])
                                  }
                                })
+      print(param_list[[i]])
       
     }
     
@@ -521,7 +522,8 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
   
   unique_k = sort(unique(num_params))
 
-  npar = nrow(param_list[[1]]) # number of parameters per group, does not change with k
+  # number of parameters per group, does not change with k
+  npar = ifelse(is.null(nrow(param_list[[1]])) == TRUE, 1, nrow(param_list[[1]]))
   print(npar)
   # need to create separate object for each # of groups k 
   param_list_by_k = vector(mode = "list", length = length(unique_k))
@@ -567,23 +569,16 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
       
       # put the k=1 group names in here 
       k_index = which(num_params == 1)
-      if(equal_var == TRUE){
-        
-        param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]),   
-                                                 ncol = 1,                   
-                                                 byrow = TRUE))
-        
-      } else{
-        
-        param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]),   
-                                                 ncol = npar,                   
-                                                 byrow = TRUE))
-      }
+     
+      param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]),   
+                                               ncol = npar,                   
+                                               byrow = TRUE))
+      
       
       # name columns i.e. mu23 is mean for group 2, 3rd component 
       # (i.e. from a length 3 mean vector)
       
-      names(param_list_by_k[[1]]) = paste0(param_symbol, 1, 1:npar)
+      names(param_list_by_k[[1]]) = paste0(param_symbol, 1:npar)
       
     } else{
       
@@ -623,7 +618,7 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
       }
       
       # reformat params now that order has been corrected
-      if(is.null(npar) == TRUE){
+      if(npar == 1){
         
         param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
                                                  ncol = unique_k[i], 
@@ -636,19 +631,6 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
         
       } else{
         
-        if(equal_var == TRUE){
-          
-          param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
-                                                   ncol = unique_k[i], 
-                                                   byrow = TRUE))
-          
-          # name columns i.e. mu23 is mean for group 2, 3rd component 
-          # (i.e. from a length 3 mean vector)
-          col_header_names = paste0(param_symbol, 1:unique_k[i])
-          names(param_list_by_k[[i]]) = sort(col_header_names)
-          
-        } else{
-          
           param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
                                                    ncol = npar*unique_k[i], 
                                                    byrow = TRUE))
@@ -661,13 +643,8 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
                                            }))
           names(param_list_by_k[[i]]) = sort(col_header_names)
           
-        }
-        
-        
-
-        
       }
-      
+        
       #print(unique_k[i])
       #print(col_header_names)
       # this format isn't super helpful - need to get in data frame format
