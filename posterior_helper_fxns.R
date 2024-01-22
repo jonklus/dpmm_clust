@@ -93,8 +93,7 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50, iter_threshold = 0){
   for(i in 1:length(unique_k)){
     
     k = unique_k[i]
-    print(k)
-    
+
     k_index = which(final_k == unique_k[i]) # indices of all iters with k probs
     # print(k_index)
     
@@ -104,7 +103,7 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50, iter_threshold = 0){
                                         nrow(prob_list[[1]]), # no. observations 
                                         k)  # no. groups in iteration
                                 )
-    cat("\n dim prob_list", dim(prob_list_by_k[[i]]))
+    # cat("\n dim prob_list", dim(prob_list_by_k[[i]]))
     
     # also save iterations for each element to allow for easier referencing later in label switching!
     iter_list_by_k[[i]] = original_index[k_index]
@@ -115,9 +114,8 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50, iter_threshold = 0){
       
       # need to output a n_iter*n_obs*k array (n_iter*n_obs*n_groups)
       # print(dim(prob_list[[k_index[j]]]))
-      print(k_index[j])
+      # print(k_index[j])
       probs_kij = prob_list[[k_index[j]]]
-      cat("\n dim(probs_kij) #1", dim(probs_kij), "\n")
       
       # check if prob_list has col for new group prob. if so, rectify situation
       # by dropping "new" column
@@ -133,7 +131,7 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50, iter_threshold = 0){
         
       } # else continue
       
-      cat("\n dim(probs_kij) #2", dim(probs_kij), "\n")
+      # cat("\n dim(probs_kij) #2", dim(probs_kij), "\n")
       
       prob_list_by_k[[i]][j,,] = probs_kij
       
@@ -161,7 +159,7 @@ get_assign_by_k <- function(assign, n_groups, burn_in = 50, iter_threshold = 0){
   # of groups found at the end of the iteration (i.e. the final k for the ith iteration)
   # burn-in is the number of initial MCMC iterations to discard
   
-  k_vec_bi = n_groups[(burn_in+1):nrow(assign)]
+  k_vec_bi = n_groups # [(burn_in+1):nrow(assign)]
   if(any(table(k_vec_bi == 1))){
     singleton_labs = as.numeric(names(which(table(k_vec_bi) == 1)))
     singleton_iters = which(k_vec_bi %in% singleton_labs)
@@ -176,6 +174,15 @@ get_assign_by_k <- function(assign, n_groups, burn_in = 50, iter_threshold = 0){
   # drop burn-in AND any singleton iterations before proceeding
   assign_mat = assign[-drop_iters,]
   final_k = n_groups[-drop_iters]
+  
+  # check again for singletons because some may occur after burn in dropped (i.e.
+  # dropping burn in may create singletons)
+  if(any(table(final_k) == 1)){
+    singleton_labs = as.numeric(names(which(table(final_k) == 1)))
+    singleton_iters = which(final_k %in% singleton_labs)
+    final_k = final_k[-singleton_iters]
+    assign_mat = assign[-singleton_iters,]
+  } 
 
   unique_k = sort(unique(final_k))
   threshold_index = c()
@@ -508,7 +515,7 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
                                    diag(temp_param_list[[i]][[x]])
                                  }
                                })
-      print(param_list[[i]])
+      # print(param_list[[i]])
       
     }
     
@@ -524,7 +531,7 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
 
   # number of parameters per group, does not change with k
   npar = ifelse(is.null(nrow(param_list[[1]])) == TRUE, 1, nrow(param_list[[1]]))
-  print(npar)
+  # print(npar)
   # need to create separate object for each # of groups k 
   param_list_by_k = vector(mode = "list", length = length(unique_k))
   
@@ -983,28 +990,46 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, mu_t
     true_dens = sapply(X = 1:length(y), 
                        FUN = function(x){
                          mvtnorm::dmvnorm(x = y[[x]][,1], 
-                                          mean = mu_true[[true_assign[x]]][,1], 
+                                          mean = mu_true[[true_assign[x]]], 
                                           sigma = Sigma_true[[true_assign[x]]])
                          
                        })
-    
-    
-    
+
     # calculate density of estimates
-    est_dens_i = matrix(data = NA, nrow = length(mu), ncol = length(y))
-    for(iter in 1:length(mu)){
-      
-      est_dens_i[iter,] = sapply(X = 1:length(y), 
-                                 FUN = function(x){
-                                   mvtnorm::dmvnorm(x = y[[x]][,1], 
-                                                    mean = mu_est[[group_assign[iter,x]]][,1], 
-                                                    sigma = Sigma_est[[group_assign[iter,x]]])
-                                   
-                                 })
+    est_dens = vector(mode = "list", length = length(mu_est))
+    for(k in 1:length(mu_est)){
+      est_dens_k = matrix(data = NA, nrow = nrow(mu_est[[k]]), ncol = length(y))
+      for(iter in 1:nrow(mu_est[[k]])){
+        
+        est_dens_k[iter,] = sapply(X = 1:length(y), 
+                                   FUN = function(x){
+                                     mean_ind = grep(
+                                       pattern = paste0("mu", group_assign[iter,x]), 
+                                       x = names(mu_est))
+                                     var_ind = grep(
+                                       pattern = paste0("sigma", group_assign[iter,x]), 
+                                       x = names(Sigma_est))
+                                     mvtnorm::dmvnorm(x = y[[x]][,1], 
+                                                      mean = mu_est[[k]][iter,mean_ind], 
+                                                      sigma = diag(Sigma_est[[k]][iter,var_ind]))
+                                   })
+        
+      }
+
+      est_dens[[k]] = est_dens_k # save results for kth element to list
       
     }
     
-    est_dens = colMeans(est_dens_i) # average over all iterations
+    # clean up
+    est_dens_combined = est_dens[[1]] 
+    if(length(est_dens) > 1){
+      for(k in 2:length(est_dens)){
+        est_dens_combined = rbind(est_dens_combined, est_dens[[k]])
+      }
+    }
+    
+    # average over all iterations
+    final_est_dens = colMeans(est_dens_combined)
     
   } else{
     # pooled variance, assumed equal across groups
@@ -1013,31 +1038,48 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, mu_t
     true_dens = sapply(X = 1:length(y), 
                        FUN = function(x){
                          mvtnorm::dmvnorm(x = y[[x]][,1], 
-                                          mean = mu_true[[true_assign[x]]][,1], 
-                                          sigma = Sigma_true[[true_assign[x]]])
+                                          mean = mu_true[[true_assign[x]]], 
+                                          sigma = Sigma_true)
                          
                        })
-    
-    
-    
-    
-    # calculate density of estimates
-    est_dens_i = matrix(data = NA, nrow = length(mu), ncol = length(y))
-    for(iter in 1:length(mu)){
+  
+  # calculate density of estimates
+  est_dens = vector(mode = "list", length = length(mu_est))
+  for(k in 1:length(mu_est)){
+    est_dens_k = matrix(data = NA, nrow = nrow(mu_est[[k]]), ncol = length(y))
+    for(iter in 1:nrow(mu_est[[k]])){
       
-      est_dens_i[iter,] = sapply(X = 1:length(y), 
+      est_dens_k[iter,] = sapply(X = 1:length(y), 
                                  FUN = function(x){
+                                   mean_ind = grep(
+                                     pattern = paste0("mu", group_assign[iter,x]), 
+                                     x = names(mu_est))
+                                   var_ind = grep(
+                                     pattern = paste0("sigma", group_assign[iter,x]), 
+                                     x = names(Sigma_est))
                                    mvtnorm::dmvnorm(x = y[[x]][,1], 
-                                                    mean = mu_est[[group_assign[iter,x]]][,1], 
-                                                    sigma = Sigma_est)
-                                   
+                                                    mean = mu_est[[k]][iter,mean_ind], 
+                                                    sigma = diag(Sigma_est[[k]][iter,var_ind], 
+                                                                 ength(mu_est[[k]][iter,mean_ind]))
+                                                    )
                                  })
       
     }
     
-    est_dens = colMeans(est_dens_i) # average over all iterations
+    est_dens[[k]] = est_dens_k # save results for kth element to list
     
   }
+  
+  # clean up
+  est_dens_combined = est_dens[[1]] 
+  if(length(est_dens) > 1){
+    for(k in 2:length(est_dens)){
+      est_dens_combined = rbind(est_dens_combined, est_dens[[k]])
+    }
+  }
+  
+  # average over all iterations
+  final_est_dens = colMeans(est_dens_combined)
   
   # now do we average over densities in estimates then calc KL div, or  calculate KL divergence
   # at each iteration and then average over all iterations?
@@ -1050,5 +1092,7 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, mu_t
   kl_div = LaplacesDemon::KLD(px = true_dens, py = est_dens)
   
   return(kl_div)
+  
+  }
 }
 
