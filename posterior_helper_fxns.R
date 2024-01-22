@@ -181,9 +181,9 @@ get_assign_by_k <- function(assign, n_groups, burn_in = 50, iter_threshold = 0){
     singleton_labs = as.numeric(names(which(table(final_k) == 1)))
     singleton_iters = which(final_k %in% singleton_labs)
     final_k = final_k[-singleton_iters]
-    assign_mat = assign[-singleton_iters,]
+    assign_mat = assign_mat[-singleton_iters,]
   } 
-
+  
   unique_k = sort(unique(final_k))
   threshold_index = c()
   for(x in 1:length(unique_k)){
