@@ -37,6 +37,18 @@ dpmm_summary <- function(output, dataset_ind = 1,
   # t_hold is the threshold # of iterations for a given k in order to report results
   # num_dims is the dimensionality of the problem (i.e. a bivariate normal is dim 2)
   
+  # show basic summary
+  if(print_result == TRUE){
+    cat("\n Frequency of MCMC iterations finding K groups:")
+    print(table(output[[dataset_ind]]$k))
+    
+    cat("\n Percentage of MCMC iterations finding K groups:")
+    round((table(output[[dataset_ind]]$k)/sum(table(output[[dataset_ind]]$k)))*100,1)
+    
+    cat("\n *Note that above frequency summaries of MCMC iterations were made before burn-in or thresholds were applied. 
+  All inference below will be made after accounting for burn-in and thresholding.")
+  }
+  
   # filter by number of iterations for each k and address label switching
     prob_list_by_k = get_probs_by_k(probs = output[[dataset_ind]]$group_probs, 
                                     n_groups = output[[dataset_ind]]$k, 
@@ -70,6 +82,7 @@ dpmm_summary <- function(output, dataset_ind = 1,
     mean_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
     var_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
     for(k in 1:length(mean_list_by_k_stephens)){
+      
       # make mean summary table
       mean_summary[[k]] = make_postsum(mcmc_df = mean_list_by_k_stephens[[k]], digits = 2)
       
@@ -78,7 +91,8 @@ dpmm_summary <- function(output, dataset_ind = 1,
       
       k_i = ncol(var_list_by_k_stephens[[k]])
       if(print_result == TRUE){
-        cat("\n K=", k_i,"\n")
+        # give summary of counts after thresholding
+        cat("\n K=", k_i, " n_k=", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
         print(mean_summary[[k]])
         print(var_summary[[k]])
       }

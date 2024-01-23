@@ -189,15 +189,19 @@ sim_results_DEV_with_sm = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_
 
 # got an error here with data set 1 that I haven't seen before -- need to investigate
 # further
-DEV_with_sm_sum = dpmm_summary(output = sim_results_DEV_with_sm, 
-                             dataset_ind = 1, 
+DEV_with_sm_sum = lapply(X = 1:length(sim_results_DEV_with_sm), 
+                         FUN = function(x){
+                           cat("\n Dataset #", x)
+                           dpmm_summary(output = sim_results_DEV_with_sm, 
+                             dataset_ind = x, 
                              print_result = TRUE, 
                              make_traceplot = TRUE,
                              burn_in = 1000, t_hold = 100, 
                              num_dims = 2)
+                           })
 
 output = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_withSM_2024_01_16.rds")
-dataset_ind = 1
+dataset_ind = 8
 print_result = TRUE
 burn_in = 1000
 t_hold = 100
