@@ -1035,12 +1035,8 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
     # calculate density of estimates
     est_dens = vector(mode = "list", length = length(mu_est))
     for(k in 1:length(mu_est)){
-      cat("\n K=",k,"\n")
+
       est_dens_k = matrix(data = NA, nrow = nrow(mu_est[[k]]), ncol = length(y))
-      
-      print(head(mu_est[[k]]))
-      print(head(Sigma_est[[k]]))
-      
       for(iter in 1:nrow(mu_est[[k]])){
 
         est_dens_k[iter,] = sapply(X = 1:length(y), 
@@ -1098,7 +1094,6 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
     # calculate density of estimates
     est_dens = vector(mode = "list", length = length(mu_est))
     for(k in 1:length(mu_est)){
-      cat("\n K=",k,"\n")
       est_dens_k = matrix(data = NA, nrow = nrow(mu_est[[k]]), ncol = length(y))
       for(iter in 1:nrow(mu_est[[k]])){
         
@@ -1141,13 +1136,6 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
     # average over all iterations
     final_est_dens = colMeans(est_dens_combined)
     
-    # final_est_dens = est_dens_combined
-    true_dens_mat = matrix(data = true_dens,
-                           nrow = nrow(final_est_dens),
-                           ncol = length(true_dens),
-                           byrow = TRUE) # repeat
-    # true density for as many rows as there are in est_dens_combined
-    
     # now do we average over densities in estimates then calc KL div, or  calculate KL divergence
     # at each iteration and then average over all iterations?
     
@@ -1155,7 +1143,9 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
     
     
     # option 2 - calculate KL divergence at each iteration
-    kl_div = LaplacesDemon::KLD(px = est_dens, py = true_dens_mat)
+    print(final_est_dens)
+    print(true_dens)
+    kl_div = LaplacesDemon::KLD(px = final_est_dens, py = true_dens)
     
     return(kl_div)
   

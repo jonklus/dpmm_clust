@@ -110,15 +110,20 @@ dpmm_summary <- function(output, dataset_ind = 1,
     }
     
     # compute KL divergence
-    # kl_div = calc_KL_diverg(y = output[[dataset_ind]]$data, 
-    #                         mu_est = mean_list_by_k_stephens, 
-    #                         Sigma_est = var_list_by_k_stephens, 
-    #                         group_assign = stephens_result, 
-    #                         true_assign = , 
-    #                         mu_true, 
-    #                         Sigma_true, 
-    #                         equal_var_assump = FALSE)
-    kl_div = NA # placeholder for now
+    group_assign_list_by_k_corr = correct_group_assign(
+          group_assign_list_by_k = group_assign_list_by_k, 
+          stephens_result = stephens_result)
+    
+    kl_res = calc_KL_diverg(y = output[[dataset_ind]]$data,
+                           mu_est = mean_list_by_k_stephens,
+                           Sigma_est = var_list_by_k_stephens,
+                           group_assign = group_assign_list_by_k_corr,
+                           true_assign = yreps[[dataset_ind]]$assign,
+                           mu_true = mu_true,
+                           Sigma_true = var_true,
+                           equal_var_assump = TRUE)
+    kl_div = kl_res$mean.sum.KLD # placeholder for now, decide which metric is the
+    # appropriate one to return!!!
     
   # return summary of all results
   return(list(
