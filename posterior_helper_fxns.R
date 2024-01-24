@@ -966,8 +966,42 @@ make_mean_traceplot <- function(mean_list_by_k, k_index, component_no, title_not
 
 ################################# METRICS ######################################
 
-calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, mu_true, 
-                           Sigma_true, equal_var_assump = FALSE){
+correct_group_assign <- function(group_assign_list_by_k, stephens_result){
+  # need to update group labels to address label switching so that correct
+  # mean estimates and variance estimates are referenced when calculating KL
+  # divergence and other metrics
+  group_assign_k_raw = group_assign_list_by_k
+  group_assign_k_corr = vector(mode = "list", length = length(group_assign_k_raw))
+    
+
+  for(list_el in 1:length(group_assign_k_raw)){
+    
+    # preallocate matrix for kth element
+    group_assign_k_corr[[list_el]] = matrix(data = NA, 
+                                            nrow = nrow(group_assign_list_by_k[[list_el]]), 
+                                            ncol = ncol(group_assign_list_by_k[[list_el]]))
+    
+    for(iter in 1:nrow(group_assign_k_raw[[list_el]])){
+      
+      permutation = stephens_result[[list_el]]$permutations$STEPHENS[iter,]
+      assign_old = group_assign_k_raw[[list_el]][iter,]
+      
+      for(perm_el in 1:length(permutation)){
+        
+        old_index = which(assign_old == perm_el) # which is ith element
+        group_assign_k_corr[[list_el]][iter,old_index] = permutation[perm_el] 
+        # assign new label
+        
+      }
+    }
+  }
+  
+  return(group_assign_k_corr)
+}
+
+
+calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, 
+                           mu_true, Sigma_true, equal_var_assump = FALSE){
   
   # function to calculate KL divergence between truth and posterior mean for
   # a particular clustering (e.g. k=3) after running MCMC
@@ -977,7 +1011,8 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, mu_t
   # filtered by k and processed to correct label switching so that they are aligned
   # mu_true, and Sigma_true are the ground truth from which data were simulated
   # truth is a vector of true group assignments
-  # group_assign is a S*n matrix of estimated group assignments
+  # group_assign is a K-length list of S*n matrix of estimated group assignments
+  # after correction using the correct_group_assign fxn
   # equal_var_assump is a logical that determines whether we assume the groups
   # had unique variances estimated as part of the MCMC
   
@@ -995,23 +1030,39 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, mu_t
                          
                        })
 
+    
+      
     # calculate density of estimates
     est_dens = vector(mode = "list", length = length(mu_est))
     for(k in 1:length(mu_est)){
+      cat("\n K=",k,"\n")
       est_dens_k = matrix(data = NA, nrow = nrow(mu_est[[k]]), ncol = length(y))
+      
+      print(head(mu_est[[k]]))
+      print(head(Sigma_est[[k]]))
+      
       for(iter in 1:nrow(mu_est[[k]])){
-        
+
         est_dens_k[iter,] = sapply(X = 1:length(y), 
                                    FUN = function(x){
+                                     # cat("\n x ", x)
+                                     # cat("\n iter ", iter)
+                                     # cat("\n group_assign[iter,x] ", group_assign[[k]][iter,x])
                                      mean_ind = grep(
-                                       pattern = paste0("mu", group_assign[iter,x]), 
-                                       x = names(mu_est))
+                                       pattern = paste0("mu", group_assign[[k]][iter,x]), 
+                                       x = names(mu_est[[k]]))
                                      var_ind = grep(
-                                       pattern = paste0("sigma", group_assign[iter,x]), 
-                                       x = names(Sigma_est))
+                                       pattern = paste0("sigma", group_assign[[k]][iter,x]), 
+                                       x = names(Sigma_est[[k]]))
+                                     # cat("\n mu_est")
+                                     # print(as.numeric(mu_est[[k]][iter,mean_ind]))
+                                     # cat("\n Sigma_est")
+                                     # print(Sigma_est[[k]][iter,var_ind])
                                      mvtnorm::dmvnorm(x = y[[x]][,1], 
-                                                      mean = mu_est[[k]][iter,mean_ind], 
-                                                      sigma = diag(Sigma_est[[k]][iter,var_ind]))
+                                                      mean = as.numeric(mu_est[[k]][iter,mean_ind]), 
+                                                      sigma = diag(as.numeric(Sigma_est[[k]][iter,var_ind]), 
+                                                                   length(y[[x]][,1]))
+                                                      )
                                    })
         
       }
@@ -1025,6 +1076,7 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, mu_t
     if(length(est_dens) > 1){
       for(k in 2:length(est_dens)){
         est_dens_combined = rbind(est_dens_combined, est_dens[[k]])
+        print(dim(est_dens[[k]]))
       }
     }
     
@@ -1043,55 +1095,69 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, mu_t
                          
                        })
   
-  # calculate density of estimates
-  est_dens = vector(mode = "list", length = length(mu_est))
-  for(k in 1:length(mu_est)){
-    est_dens_k = matrix(data = NA, nrow = nrow(mu_est[[k]]), ncol = length(y))
-    for(iter in 1:nrow(mu_est[[k]])){
+    # calculate density of estimates
+    est_dens = vector(mode = "list", length = length(mu_est))
+    for(k in 1:length(mu_est)){
+      cat("\n K=",k,"\n")
+      est_dens_k = matrix(data = NA, nrow = nrow(mu_est[[k]]), ncol = length(y))
+      for(iter in 1:nrow(mu_est[[k]])){
+        
+        est_dens_k[iter,] = sapply(X = 1:length(y), 
+                                   FUN = function(x){
+                                     # cat("\n x ", x)
+                                     # cat("\n iter ", iter)
+                                     # cat("\n group_assign[iter,x] ", group_assign[[k]][iter,x])
+                                     mean_ind = grep(
+                                       pattern = paste0("mu", group_assign[[k]][iter,x]), 
+                                       x = names(mu_est[[k]]))
+                                     var_ind = grep(
+                                       pattern = paste0("sigma", group_assign[[k]][iter,x]), 
+                                       x = names(Sigma_est[[k]]))
+                                     # cat("\n mu_est")
+                                     # print(as.numeric(mu_est[[k]][iter,mean_ind]))
+                                     # cat("\n Sigma_est")
+                                     # print(Sigma_est[[k]][iter,var_ind])
+                                     mvtnorm::dmvnorm(x = y[[x]][,1], 
+                                                      mean = as.numeric(mu_est[[k]][iter,mean_ind]), 
+                                                      sigma = diag(as.numeric(Sigma_est[[k]][iter,var_ind]), 
+                                                                   length(y[[x]][,1]))
+                                                      )
+                                   })
+        
+      }
       
-      est_dens_k[iter,] = sapply(X = 1:length(y), 
-                                 FUN = function(x){
-                                   mean_ind = grep(
-                                     pattern = paste0("mu", group_assign[iter,x]), 
-                                     x = names(mu_est))
-                                   var_ind = grep(
-                                     pattern = paste0("sigma", group_assign[iter,x]), 
-                                     x = names(Sigma_est))
-                                   mvtnorm::dmvnorm(x = y[[x]][,1], 
-                                                    mean = mu_est[[k]][iter,mean_ind], 
-                                                    sigma = diag(Sigma_est[[k]][iter,var_ind], 
-                                                                 ength(mu_est[[k]][iter,mean_ind]))
-                                                    )
-                                 })
+      est_dens[[k]] = est_dens_k # save results for kth element to list
       
     }
     
-    est_dens[[k]] = est_dens_k # save results for kth element to list
-    
-  }
-  
-  # clean up
-  est_dens_combined = est_dens[[1]] 
-  if(length(est_dens) > 1){
-    for(k in 2:length(est_dens)){
-      est_dens_combined = rbind(est_dens_combined, est_dens[[k]])
+    # clean up
+    est_dens_combined = est_dens[[1]] 
+    if(length(est_dens) > 1){
+      for(k in 2:length(est_dens)){
+        est_dens_combined = rbind(est_dens_combined, est_dens[[k]])
+      }
     }
-  }
-  
-  # average over all iterations
-  final_est_dens = colMeans(est_dens_combined)
-  
-  # now do we average over densities in estimates then calc KL div, or  calculate KL divergence
-  # at each iteration and then average over all iterations?
-  
-  # option 1 - average over densities, then calculate KL
-  
-  
-  # option 2 - calculate KL divergence at each iteration
-  
-  kl_div = LaplacesDemon::KLD(px = true_dens, py = est_dens)
-  
-  return(kl_div)
+    
+    # average over all iterations
+    final_est_dens = colMeans(est_dens_combined)
+    
+    # final_est_dens = est_dens_combined
+    true_dens_mat = matrix(data = true_dens,
+                           nrow = nrow(final_est_dens),
+                           ncol = length(true_dens),
+                           byrow = TRUE) # repeat
+    # true density for as many rows as there are in est_dens_combined
+    
+    # now do we average over densities in estimates then calc KL div, or  calculate KL divergence
+    # at each iteration and then average over all iterations?
+    
+    # option 1 - average over densities, then calculate KL
+    
+    
+    # option 2 - calculate KL divergence at each iteration
+    kl_div = LaplacesDemon::KLD(px = est_dens, py = true_dens_mat)
+    
+    return(kl_div)
   
   }
 }

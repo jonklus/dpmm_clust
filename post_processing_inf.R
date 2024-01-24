@@ -43,10 +43,10 @@ dpmm_summary <- function(output, dataset_ind = 1,
     print(table(output[[dataset_ind]]$k))
     
     cat("\n Percentage of MCMC iterations finding K groups:")
-    round((table(output[[dataset_ind]]$k)/sum(table(output[[dataset_ind]]$k)))*100,1)
+    print(round((table(output[[dataset_ind]]$k)/sum(table(output[[dataset_ind]]$k)))*100,1))
     
     cat("\n *Note that above frequency summaries of MCMC iterations were made before burn-in or thresholds were applied. 
-  All inference below will be made after accounting for burn-in and thresholding.")
+  All inference below will be made after accounting for burn-in and thresholding. \n")
   }
   
   # filter by number of iterations for each k and address label switching

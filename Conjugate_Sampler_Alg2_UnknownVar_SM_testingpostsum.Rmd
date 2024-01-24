@@ -238,10 +238,14 @@ var_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$vars,
                                           permutation = stephens_result,
                                           param_type = "Var")
 
-calc_KL_diverg(y = output[[1]]$data,
+group_assign_list_by_k_corr = correct_group_assign(
+  group_assign_list_by_k = group_assign_list_by_k, 
+  stephens_result = stephens_result)
+
+kl_res= calc_KL_diverg(y = output[[1]]$data,
                mu_est = mean_list_by_k_stephens,
                Sigma_est = var_list_by_k_stephens,
-               group_assign = stephens_result,
+               group_assign = group_assign_list_by_k_corr,
                true_assign = yreps[[1]]$assign,
                mu_true = mu_true,
                Sigma_true = var_true,
