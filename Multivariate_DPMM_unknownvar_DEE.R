@@ -11,8 +11,8 @@
 ## by assuming the variance of the mean and likelihood differ only be a multiplicative
 ## parameter r. 
 
-###################### load packages and set seed ##############################
-set.seed(516)
+############################# load packages ####################################
+
 library(ggplot2)
 library(LaplacesDemon)
 
