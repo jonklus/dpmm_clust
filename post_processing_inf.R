@@ -79,6 +79,23 @@ dpmm_summary <- function(output, dataset_ind = 1,
                                               permutation = stephens_result,
                                               param_type = "Var")
     
+    # compute KL divergence
+    group_assign_list_by_k_corr = correct_group_assign(
+      group_assign_list_by_k = group_assign_list_by_k, 
+      stephens_result = stephens_result)
+    
+    kl_res = calc_KL_diverg(y = output[[dataset_ind]]$data,
+                            mu_est = mean_list_by_k_stephens,
+                            Sigma_est = var_list_by_k_stephens,
+                            group_assign = group_assign_list_by_k_corr,
+                            true_assign = yreps[[dataset_ind]]$assign,
+                            mu_true = mu_true,
+                            Sigma_true = var_true,
+                            equal_var_assump = TRUE)
+    # py is truth, px is estimate
+    kl_div = kl_res$sum.KLD.py.px # how far is estimate px from truth py
+    
+    
     mean_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
     var_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
     for(k in 1:length(mean_list_by_k_stephens)){
@@ -95,6 +112,7 @@ dpmm_summary <- function(output, dataset_ind = 1,
         cat("\n K=", k_i, " n_k=", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
         print(mean_summary[[k]])
         print(var_summary[[k]])
+        cat("\n KL Divergence: KL(p_est||p_true)=", kl_div, "\n")
       }
       
       if(make_traceplot == TRUE){
@@ -109,21 +127,7 @@ dpmm_summary <- function(output, dataset_ind = 1,
       }
     }
     
-    # compute KL divergence
-    group_assign_list_by_k_corr = correct_group_assign(
-          group_assign_list_by_k = group_assign_list_by_k, 
-          stephens_result = stephens_result)
-    
-    kl_res = calc_KL_diverg(y = output[[dataset_ind]]$data,
-                           mu_est = mean_list_by_k_stephens,
-                           Sigma_est = var_list_by_k_stephens,
-                           group_assign = group_assign_list_by_k_corr,
-                           true_assign = yreps[[dataset_ind]]$assign,
-                           mu_true = mu_true,
-                           Sigma_true = var_true,
-                           equal_var_assump = TRUE)
-    kl_div = kl_res$mean.sum.KLD # placeholder for now, decide which metric is the
-    # appropriate one to return!!!
+
     
   # return summary of all results
   return(list(

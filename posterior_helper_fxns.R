@@ -263,9 +263,9 @@ get_stephens_result <- function(group_assign_list_by_k, prob_list_by_k){
   
   stephens_result = lapply(X = start_apply:length(group_assign_list_by_k), 
                            FUN = function(x){
-                             label.switching(method = "STEPHENS", 
+                             invisible(label.switching(method = "STEPHENS", 
                                              z = group_assign_list_by_k[[x]],
-                                             p = prob_list_by_k[[x]])
+                                             p = prob_list_by_k[[x]]))
                            }) 
   
   return(stephens_result)
@@ -1139,12 +1139,11 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
     # now do we average over densities in estimates then calc KL div, or  calculate KL divergence
     # at each iteration and then average over all iterations?
     
-    # option 1 - average over densities, then calculate KL
-    
-    
-    # option 2 - calculate KL divergence at each iteration
-    print(final_est_dens)
-    print(true_dens)
+    # option 1 - average over densities, then calculate KL - YES
+    # option 2 - calculate KL divergence at each iteration - NO, look at overall
+    # estimated density vs truth
+    # print(final_est_dens)
+    # print(true_dens)
     kl_div = LaplacesDemon::KLD(px = final_est_dens, py = true_dens)
     
     return(kl_div)
