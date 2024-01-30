@@ -263,9 +263,14 @@ get_stephens_result <- function(group_assign_list_by_k, prob_list_by_k){
   
   stephens_result = lapply(X = start_apply:length(group_assign_list_by_k), 
                            FUN = function(x){
-                             invisible(label.switching(method = "STEPHENS", 
-                                             z = group_assign_list_by_k[[x]],
-                                             p = prob_list_by_k[[x]]))
+                             # use capture.output to suppress print and cat messages
+                             # from label.switching function
+                             log <- capture.output({
+                               res <- label.switching(method = "STEPHENS", 
+                                                      z = group_assign_list_by_k[[x]],
+                                                      p = prob_list_by_k[[x]])
+                             })
+                             return(res)
                            }) 
   
   return(stephens_result)
