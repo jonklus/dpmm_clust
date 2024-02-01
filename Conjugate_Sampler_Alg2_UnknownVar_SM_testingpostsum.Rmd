@@ -25,22 +25,6 @@ library(parallel)
 library(stringr)
 ```
 
-## DEE Sampler Setup
-
-- $y_1, \dots, y_n \sim \sum_{k=1}^K\pi_kN(\mu_k, \sigma^2 I_J)$
-- $\mu_1, \dots, \mu_K \sim N(\mu_0, r\sigma^2 I_J)$
-- $\sigma^2 \sim IG(a,b)$
-- $r \sim IG(g, h)$
-- $b \sim Ga(d, f)$
-
-## DEV Sampler Setup
-
-- $y_1, \dots, y_n \sim \sum_{k=1}^K\pi_kN(\mu_k, \sigma^2_k I_J)$
-- $\mu_1, \dots, \mu_K \sim N(\mu_0, r\sigma^2_k I_J)$
-- $\sigma^2_1,\dots, \sigma^2_K \sim IG(a,b)$
-- $r \sim IG(g, h)$
-- $b \sim Ga(d, f)$
-
 ## Sampler Examples
 
 ### 2D Example - well separated
@@ -106,6 +90,56 @@ var_true = var
 # yreps # 2nd element is assign
 rm(w, means)
 ```
+#### DEE sampler
+
+##### without split-merge step
+
+```{r}
+sim_results_DEE_no_sm = readRDS(file = "../MCMC_Runs/conjDEEsamp_minisimstudy_noSM_2024_01_16.rds")
+
+DEE_no_sm_sum = lapply(X = 1:length(sim_results_DEE_no_sm), 
+                         FUN = function(x){
+                           cat("\n Dataset #", x)
+                           dpmm_summary(output = sim_results_DEE_no_sm, 
+                             dataset_ind = x, 
+                             print_k_sum = TRUE,
+                             make_traceplot = FALSE,
+                             burn_in = 1000, t_hold = 100, 
+                             num_dims = 2)
+                           })
+
+# extract KL divergence and summarize
+kld_DEE_no_sm_sum = sapply(X = 1:length(DEE_no_sm_sum), 
+                           FUN = function(x){
+                             DEE_no_sm_sum[[x]]$kl_div
+                             })
+print(kld_DEE_no_sm_sum)
+mean(kld_DEE_no_sm_sum)
+```
+##### with split-merge step
+
+```{r}
+sim_results_DEE_with_sm = readRDS(file = "../MCMC_Runs/conjDEEsamp_minisimstudy_withSM_2024_01_16.rds")
+
+DEE_with_sm_sum = lapply(X = 1:length(sim_results_DEE_with_sm), 
+                         FUN = function(x){
+                           cat("\n Dataset #", x)
+                           dpmm_summary(output = sim_results_DEE_with_sm, 
+                             dataset_ind = x, 
+                             print_k_sum = TRUE,
+                             make_traceplot = FALSE,
+                             burn_in = 1000, t_hold = 100, 
+                             num_dims = 2)
+                           })
+
+# extract KL divergence and summarize
+kld_DEE_with_sm_sum = sapply(X = 1:length(DEE_with_sm_sum), 
+                           FUN = function(x){
+                             DEE_with_sm_sum[[x]]$kl_div
+                             })
+print(kld_DEE_with_sm_sum)
+mean(kld_DEE_with_sm_sum)
+```
 
 #### DEV sampler 
 
@@ -132,19 +166,25 @@ rm(w, means)
 # saveRDS(object = sim_results_DEV_no_sm, file = datafile_name)
 sim_results_DEV_no_sm = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_noSM_2024_01_16.rds")
 
-DEV_no_sm_sum = dpmm_summary(output = sim_results_DEV_no_sm, 
-                             dataset_ind = 1, 
-                             print_result = TRUE, 
-                             make_traceplot = TRUE,
+DEV_no_sm_sum = lapply(X = 1:length(sim_results_DEV_no_sm), 
+                         FUN = function(x){
+                           cat("\n Dataset #", x)
+                           dpmm_summary(output = sim_results_DEV_no_sm, 
+                             dataset_ind = x, 
+                             print_k_sum = TRUE,
+                             make_traceplot = FALSE,
                              burn_in = 1000, t_hold = 100, 
                              num_dims = 2)
+                           })
 
-# for(rep in 1:nreps){
-#   print(table(sim_results_DEV_no_sm[[rep]]$k))
-#   p1 = make_k_traceplot(k = sim_results_DEV_no_sm[[rep]]$k, 
-#                         group_assign = sim_results_DEV_no_sm[[rep]]$group_assign)
-#   print(p1)
-# }
+# extract KL divergence and summarize
+kld_DEV_no_sm_sum = sapply(X = 1:length(DEV_no_sm_sum), 
+                           FUN = function(x){
+                             DEV_no_sm_sum[[x]]$kl_div
+                             })
+print(kld_DEV_no_sm_sum)
+mean(kld_DEV_no_sm_sum)
+
 ```
 
 
@@ -172,99 +212,81 @@ sim_results_DEV_with_sm = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_
 
 # got an error here with data set 1 that I haven't seen before -- need to investigate
 # further
-DEV_with_sm_sum = dpmm_summary(output = sim_results_DEV_with_sm, 
-                             dataset_ind = 2, 
-                             print_result = TRUE, 
-                             make_traceplot = TRUE,
-                             burn_in = 1000, t_hold = 100, 
-                             num_dims = 2)
-```
-
-# debugging 
-
-# DEV sample debugging 
-
-```{r}
-sim_results_DEV_with_sm = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_withSM_2024_01_16.rds")
-
-# got an error here with data set 1 that I haven't seen before -- need to investigate
-# further
 DEV_with_sm_sum = lapply(X = 1:length(sim_results_DEV_with_sm), 
                          FUN = function(x){
                            cat("\n Dataset #", x)
                            dpmm_summary(output = sim_results_DEV_with_sm, 
                              dataset_ind = x, 
-                             print_result = TRUE, 
-                             make_traceplot = TRUE,
+                             print_k_sum = TRUE,
+                             make_traceplot = FALSE,
                              burn_in = 1000, t_hold = 100, 
                              num_dims = 2)
                            })
 
-output = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_withSM_2024_01_16.rds")
-dataset_ind = 8
-print_result = TRUE
-burn_in = 1000
-t_hold = 100
-num_dims = 2
+# extract KL divergence and summarize
+kld_DEV_with_sm_sum = sapply(X = 1:length(DEV_with_sm_sum), 
+                           FUN = function(x){
+                             DEV_with_sm_sum[[x]]$kl_div
+                             })
+print(kld_DEV_with_sm_sum)
+mean(kld_DEV_with_sm_sum)
 
-# table(apply(X = output[[1]]$group_assign, MARGIN = 1, FUN = function(x){length(unique(x))}))
-
-prob_list_by_k = get_probs_by_k(probs = output[[dataset_ind]]$group_probs,
-                                n_groups = output[[dataset_ind]]$k,
-                                burn_in = burn_in,
-                                iter_threshold = t_hold)
-group_assign_list_by_k = get_assign_by_k(assign = output[[dataset_ind]]$group_assign,
-                                         n_groups = output[[dataset_ind]]$k,
-                                         burn_in = burn_in,
-                                         iter_threshold = t_hold)
-
-# correct label switching
-stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k,
-                                      prob_list_by_k = prob_list_by_k$prob_list)
-
-# summarize means & variances
-mean_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$means,
-                                           # k_vec = output[[1]]$k,
-                                           # burn_in = burn_in,
-                                           # iter_threshold = thold,
-                                           iter_list = prob_list_by_k$iter_list,
-                                           relabel = TRUE,
-                                           permutation = stephens_result,
-                                           param_type = "Mean")
-
-var_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$vars,
-                                          iter_list = prob_list_by_k$iter_list,
-                                          relabel = TRUE,
-                                          permutation = stephens_result,
-                                          param_type = "Var")
-
-group_assign_list_by_k_corr = correct_group_assign(
-  group_assign_list_by_k = group_assign_list_by_k, 
-  stephens_result = stephens_result)
-
-kl_res= calc_KL_diverg(y = output[[1]]$data,
-               mu_est = mean_list_by_k_stephens,
-               Sigma_est = var_list_by_k_stephens,
-               group_assign = group_assign_list_by_k_corr,
-               true_assign = yreps[[1]]$assign,
-               mu_true = mu_true,
-               Sigma_true = var_true,
-               equal_var_assump = TRUE)
 ```
 
+#### UVV sampler 
 
-## UVV sample debugging 
+##### without split-merge step
 
 ```{r}
 sim_results_UVV_no_sm = readRDS(file = "../MCMC_Runs/conjUVVsamp_minisimstudy_noSM_2024_01_16.rds")
 
+UVV_no_sm_sum = lapply(X = 1:length(sim_results_UVV_no_sm), 
+                         FUN = function(x){
+                           cat("\n Dataset #", x)
+                           dpmm_summary(output = sim_results_UVV_no_sm, 
+                             dataset_ind = x, 
+                             print_k_sum = TRUE,
+                             make_traceplot = FALSE,
+                             burn_in = 1000, t_hold = 100, 
+                             num_dims = 2)
+                           })
+
+# extract KL divergence and summarize
+kld_UVV_no_sm_sum = sapply(X = 1:length(UVV_no_sm_sum), 
+                           FUN = function(x){
+                             UVV_no_sm_sum[[x]]$kl_div
+                             })
+print(kld_UVV_no_sm_sum)
+mean(kld_UVV_no_sm_sum)
+
+```
+
+
+##### with split-merge step
+
+```{r}
+sim_results_UVV_with_sm = readRDS(file = "../MCMC_Runs/conjUVVsamp_minisimstudy_withSM_2024_01_16.rds")
+
 # got an error here with data set 1 that I haven't seen before -- need to investigate
 # further
-UVV_no_sm_sum = dpmm_summary(output = sim_results_UVV_no_sm, 
-                            dataset_ind = 10, 
-                            print_result = TRUE, 
-                            make_traceplot = TRUE,
-                            burn_in = 1000, t_hold = 100, 
-                            num_dims = 2)
+UVV_with_sm_sum = lapply(X = 1:length(sim_results_UVV_with_sm), 
+                         FUN = function(x){
+                           cat("\n Dataset #", x)
+                           dpmm_summary(output = sim_results_UVV_with_sm, 
+                             dataset_ind = x, 
+                             print_k_sum = TRUE,
+                             make_traceplot = FALSE,
+                             burn_in = 1000, t_hold = 100, 
+                             num_dims = 2)
+                           })
+
+# extract KL divergence and summarize
+kld_UVV_with_sm_sum = sapply(X = 1:length(UVV_with_sm_sum), 
+                           FUN = function(x){
+                             UVV_with_sm_sum[[x]]$kl_div
+                             })
+print(kld_UVV_with_sm_sum)
+mean(kld_UVV_with_sm_sum)
+
 ```
 

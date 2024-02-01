@@ -25,20 +25,21 @@ library(stringr)
 
 ######################## DEFINE NEW FUNCTIONS ##################################
 
-dpmm_summary <- function(output, dataset_ind = 1, 
-                         print_result = TRUE, make_traceplot = TRUE,
+dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
+                         print_k_sum = TRUE, make_traceplot = TRUE,
                          burn_in = 1000, t_hold = 0, num_dims = 2
                          ){
   # output is the list of results from the DPMM simulation study function
   # dataset is a numeric argument to summarize a specific result in the output, the desired index
   # sum_all is a logical argument to provide a summary of all data sets --- NOT CURRENTLY IMPLEMENTED
-  # print_result is a logical, if TRUE print summary in addition to outputting saved result
+  # print_k_sum is a logical, if TRUE print summary of no groups found 
+  # print_phi_sum is a logical, if TRUE print summary of estimated model parameters
   # burn_in is # of burn in iterations to discard
   # t_hold is the threshold # of iterations for a given k in order to report results
   # num_dims is the dimensionality of the problem (i.e. a bivariate normal is dim 2)
   
   # show basic summary
-  if(print_result == TRUE){
+  if(print_k_sum == TRUE){
     cat("\n Frequency of MCMC iterations finding K groups:")
     print(table(output[[dataset_ind]]$k))
     
@@ -46,7 +47,7 @@ dpmm_summary <- function(output, dataset_ind = 1,
     print(round((table(output[[dataset_ind]]$k)/sum(table(output[[dataset_ind]]$k)))*100,1))
     
     cat("\n *Note that above frequency summaries of MCMC iterations were made before burn-in or thresholds were applied. 
-  All inference below will be made after accounting for burn-in and thresholding. \n")
+  All inference on phi will be made after accounting for burn-in and thresholding. \n")
   }
   
   # filter by number of iterations for each k and address label switching
@@ -107,12 +108,11 @@ dpmm_summary <- function(output, dataset_ind = 1,
       var_summary[[k]] = make_postsum(mcmc_df = var_list_by_k_stephens[[k]], digits = 2)
       
       k_i = ncol(var_list_by_k_stephens[[k]])
-      if(print_result == TRUE){
+      if(print_phi_sum == TRUE){
         # give summary of counts after thresholding
-        cat("\n K=", k_i, " n_k=", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
+        cat("\n K =", k_i, " n_k =", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
         print(mean_summary[[k]])
         print(var_summary[[k]])
-        cat("\n KL Divergence: KL(p_est||p_true)=", kl_div, "\n")
       }
       
       if(make_traceplot == TRUE){
@@ -127,7 +127,10 @@ dpmm_summary <- function(output, dataset_ind = 1,
       }
     }
     
-
+    # KL divergence for entire model --- across all k
+    if(print_k_sum == TRUE){
+      cat("\n KL Divergence: KL(p_est||p_true)=", round(kl_div, 3), "\n")
+    }
     
   # return summary of all results
   return(list(
@@ -135,7 +138,7 @@ dpmm_summary <- function(output, dataset_ind = 1,
     var_list_by_k_stephens = var_list_by_k_stephens,
     mean_summary = mean_summary,
     var_summary = var_summary,
-    kl_div = kl_div
+    kl_div = round(kl_div, 4)
   ))
   
 }
