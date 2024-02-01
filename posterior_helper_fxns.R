@@ -433,7 +433,7 @@ relabel_groups <- function(curr_label_mat, permutations, means){
 # }
 
 
-list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_threshold = 0, 
+list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_threshold = 0, 
                              relabel = FALSE, permutation = NULL, param_type, equal_var = FALSE){
   ## Function takes a list of length no. MCMC iterations and outputs a list of 
   ## data frames where each list element contains the draws for iterations
@@ -487,14 +487,12 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
     
     # drop burn-in AND any singleton iterations before proceeding
     param_list = draws[keep_iters]
-    
-    # length(param_list)
-    
     param_symbol = "mu"
-    num_params = sapply(X = 1:length(param_list),
-                        FUN = function(x){
-                          ncol(param_list[[x]])
-                        })
+    num_params = k_vec[keep_iters]
+    # num_params = sapply(X = 1:length(param_list),
+    #                     FUN = function(x){
+    #                       ncol(param_list[[x]])
+    #                     })
     
     #print(table(num_params)) # debugging -- have we eliminated singletons?
     
@@ -504,10 +502,16 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
     temp_param_list = draws[keep_iters]
     
     param_symbol = "sigma"
-    num_params = sapply(X = 1:length(temp_param_list),
-                        FUN = function(x){
-                          length(temp_param_list[[x]])
-                        })
+    if(equal_var == TRUE){
+      num_params = rep(1, length(temp_param_list))
+    } else{
+      num_params = k_vec[keep_iters]
+    }
+    
+    # num_params = sapply(X = 1:length(temp_param_list),
+    #                     FUN = function(x){
+    #                       length(temp_param_list[[x]])
+    #                     })
     
     # get var diagonal components into similar format as means
     param_list = vector(mode = "list", length = length(num_params))
@@ -521,7 +525,7 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
                                    diag(temp_param_list[[i]][[x]])
                                  }
                                })
-      # print(param_list[[i]])
+      print(param_list[[i]])
       
     }
     
@@ -534,6 +538,7 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
   # need to add an option for covariance here --- capture off-diagonal elements as well
   
   unique_k = sort(unique(num_params))
+  cat("\n unique_k:", unique_k)
 
   # number of parameters per group, does not change with k
   npar = ifelse(is.null(nrow(param_list[[1]])) == TRUE, 1, nrow(param_list[[1]]))
@@ -599,9 +604,10 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
       
     }
     
+    
     for(i in i_init:length(unique_k)){
       
-      #print(unique_k[i])
+      cat("\n unique_k[i]:", unique_k[i])
       
       k_index = which(num_params == unique_k[i]) # indices of all iters with k params
       new_labs = permutation[[i]]$permutations$STEPHENS
@@ -618,7 +624,11 @@ list_params_by_k <- function(draws, iter_list, # k_vec, burn_in = 50, iter_thres
         if(is.null(dim(param_list[[k_index[j]]])) == TRUE){
           # if scalar -- will return an array not a matrix
           
-          param_list[[k_index[j]]] =  param_list[[k_index[j]]][new_labs[j,]]
+          cat("\n j=", j)
+          cat("\n k_index[j]", k_index[j])
+          cat("\n param =", param_list[[k_index[j]]])
+          
+          param_list[[k_index[j]]] = param_list[[k_index[j]]][new_labs[j,]]
           
         } else{
           # matrix

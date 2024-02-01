@@ -27,7 +27,7 @@ library(stringr)
 
 dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
                          print_k_sum = TRUE, make_traceplot = TRUE,
-                         burn_in = 1000, t_hold = 0, num_dims = 2
+                         burn_in = 1000, t_hold = 0, num_dims = 2, equal_var = FALSE
                          ){
   # output is the list of results from the DPMM simulation study function
   # dataset is a numeric argument to summarize a specific result in the output, the desired index
@@ -76,7 +76,7 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
     
     var_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$vars, 
                                               iter_list = prob_list_by_k$iter_list,
-                                              relabel = TRUE,
+                                              relabel = TRUE, equal_var = equal_var,
                                               permutation = stephens_result,
                                               param_type = "Var")
     
