@@ -66,7 +66,7 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
     
     # summarize means & variances
     mean_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$means, 
-                                               # k_vec = output[[1]]$k,
+                                               k_vec = output[[dataset_ind]]$k,
                                                # burn_in = burn_in, 
                                                # iter_threshold = thold,
                                                iter_list = prob_list_by_k$iter_list,
@@ -76,6 +76,7 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
     
     var_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$vars, 
                                               iter_list = prob_list_by_k$iter_list,
+                                              k_vec = output[[dataset_ind]]$k,
                                               relabel = TRUE, equal_var = equal_var,
                                               permutation = stephens_result,
                                               param_type = "Var")

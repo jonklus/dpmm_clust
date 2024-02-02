@@ -488,11 +488,12 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
     # drop burn-in AND any singleton iterations before proceeding
     param_list = draws[keep_iters]
     param_symbol = "mu"
-    num_params = k_vec[keep_iters]
-    # num_params = sapply(X = 1:length(param_list),
-    #                     FUN = function(x){
-    #                       ncol(param_list[[x]])
-    #                     })
+    k_vec = k_vec[keep_iters]
+    # num_params = k_vec[keep_iters]
+    num_params = sapply(X = 1:length(param_list),
+                        FUN = function(x){
+                          ncol(param_list[[x]])
+                        })
     
     #print(table(num_params)) # debugging -- have we eliminated singletons?
     
@@ -500,18 +501,19 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
     
     # drop burn-in AND any singleton iterations before proceeding
     temp_param_list = draws[keep_iters]
-    
+    k_vec = k_vec[keep_iters]
     param_symbol = "sigma"
     if(equal_var == TRUE){
       num_params = rep(1, length(temp_param_list))
     } else{
-      num_params = k_vec[keep_iters]
+      # num_params = k_vec[keep_iters]
+      num_params = sapply(X = 1:length(temp_param_list),
+                          FUN = function(x){
+                            length(temp_param_list[[x]])
+                          })
     }
     
-    # num_params = sapply(X = 1:length(temp_param_list),
-    #                     FUN = function(x){
-    #                       length(temp_param_list[[x]])
-    #                     })
+
     
     # get var diagonal components into similar format as means
     param_list = vector(mode = "list", length = length(num_params))
@@ -525,7 +527,7 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
                                    diag(temp_param_list[[i]][[x]])
                                  }
                                })
-      print(param_list[[i]])
+      # print(param_list[[i]])
       
     }
     
@@ -536,12 +538,21 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
   }
   
   # need to add an option for covariance here --- capture off-diagonal elements as well
-  
-  unique_k = sort(unique(num_params))
-  cat("\n unique_k:", unique_k)
+  if(equal_var == TRUE){
+    unique_k = sort(unique(k_vec))
+  } else{
+    unique_k = sort(unique(num_params))
+  }
+ 
+  # cat("\n unique_k:", unique_k)
 
   # number of parameters per group, does not change with k
-  npar = ifelse(is.null(nrow(param_list[[1]])) == TRUE, 1, nrow(param_list[[1]]))
+  if(equal_var == TRUE){
+    npar = 1
+  } else{
+    npar = ifelse(is.null(nrow(param_list[[1]])) == TRUE, 1, nrow(param_list[[1]]))
+  }
+  
   # print(npar)
   # need to create separate object for each # of groups k 
   param_list_by_k = vector(mode = "list", length = length(unique_k))
@@ -549,18 +560,35 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
   # if label switching solution is given, also reorder params to address this
   if(relabel == FALSE){
     
+
     for(i in 1:length(unique_k)){
-      k_index = which(num_params == unique_k[i]) # indices of all iters with k params
-      param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
-                                               ncol = npar*unique_k[i],
-                                               byrow = TRUE))
-      # name columns i.e. mu23 is param for group 2, 3rd component 
-      # (i.e. from a length 3 mean vector)
-      col_header_names = unlist(lapply(X = 1:npar, 
-                                       FUN = function(x){
-                                         paste0(param_symbol, 1:unique_k[i], x)
-                                       }))
-      names(param_list_by_k[[i]]) = sort(col_header_names)
+      k_index = which(k_vec == unique_k[i]) # indices of all iters with k params
+      if(equal_var == TRUE){
+        # pooled variance, single param
+        param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
+                                                 ncol = 1,
+                                                 byrow = TRUE))
+        # name columns i.e. mu23 is param for group 2, 3rd component 
+        # (i.e. from a length 3 mean vector)
+        col_header_names = c("sigma")
+        names(param_list_by_k[[i]]) = col_header_names
+        
+      } else{
+        
+        param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
+                                                 ncol = npar*unique_k[i],
+                                                 byrow = TRUE))
+        # name columns i.e. mu23 is param for group 2, 3rd component 
+        # (i.e. from a length 3 mean vector)
+        col_header_names = unlist(lapply(X = 1:npar, 
+                                         FUN = function(x){
+                                           paste0(param_symbol, 1:unique_k[i], x)
+                                         }))
+        names(param_list_by_k[[i]]) = sort(col_header_names)
+        
+      }
+      
+
       #print(unique_k[i])
       #print(col_header_names)
       # this format isn't super helpful - need to get in data frame format
@@ -578,79 +606,113 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
     
     # if relabel == TRUE
     
-    if(1 %in% unique_k){
-      # unique_k = unique_k[-1] # drop the 1 before correcting -- no permutations
-      i_init = 2  # start after k=1
-      permutation = c(1, permutation) # put placeholder in for k=1 group (not 
-      # included in stephens results bc no label switching) -- avoids error with
-      # indexing later on in for loop otherwise index doesn't match in params & perm
+    if(equal_var == TRUE){
       
-      # put the k=1 group names in here 
-      k_index = which(num_params == 1)
-     
-      param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]),   
-                                               ncol = npar,                   
-                                               byrow = TRUE))
-      
-      
-      # name columns i.e. mu23 is mean for group 2, 3rd component 
-      # (i.e. from a length 3 mean vector)
-      
-      names(param_list_by_k[[1]]) = paste0(param_symbol, 1:npar)
+      i_init = 1
       
     } else{
       
-      i_init = 1 # business as usual
+      if(1 %in% unique_k){
+        # unique_k = unique_k[-1] # drop the 1 before correcting -- no permutations
+        i_init = 2  # start after k=1
+        permutation = c(1, permutation) # put placeholder in for k=1 group (not 
+        # included in stephens results bc no label switching) -- avoids error with
+        # indexing later on in for loop otherwise index doesn't match in params & perm
+        
+        # put the k=1 group names in here 
+        k_index = which(num_params == 1)
+        
+        param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]),   
+                                                 ncol = npar,                   
+                                                 byrow = TRUE))
+        
+        
+        # name columns i.e. mu23 is mean for group 2, 3rd component 
+        # (i.e. from a length 3 mean vector)
+        
+        names(param_list_by_k[[1]]) = paste0(param_symbol, 1:npar)
+        
+      } else{
+        
+        i_init = 1 # business as usual
+        
+      }
       
     }
+    
     
     
     for(i in i_init:length(unique_k)){
       
       cat("\n unique_k[i]:", unique_k[i])
       
-      k_index = which(num_params == unique_k[i]) # indices of all iters with k params
+      k_index = which(k_vec == unique_k[i]) # indices of all iters with k params
       new_labs = permutation[[i]]$permutations$STEPHENS
       
-      # fix label switching before reformatting params
-      for(j in 1:length(k_index)){
- 
-        # cat("\n k_index[j]", k_index[j], "\n")
-        # cat("param_vals", "\n")
-        # print(param_list[[k_index[j]]])
-        # cat("\n")
-        # cat("new_labs", new_labs[j,], "\n")
+      if(equal_var == FALSE){
         
-        if(is.null(dim(param_list[[k_index[j]]])) == TRUE){
-          # if scalar -- will return an array not a matrix
+        # fix label switching before reformatting params
+        for(j in 1:length(k_index)){
           
-          cat("\n j=", j)
-          cat("\n k_index[j]", k_index[j])
-          cat("\n param =", param_list[[k_index[j]]])
+          # cat("\n k_index[j]", k_index[j], "\n")
+          # cat("param_vals", "\n")
+          # print(param_list[[k_index[j]]])
+          # cat("\n")
+          # cat("new_labs", new_labs[j,], "\n")
           
-          param_list[[k_index[j]]] = param_list[[k_index[j]]][new_labs[j,]]
+          if(is.null(dim(param_list[[k_index[j]]])) == TRUE){
+            # if scalar -- will return an array not a matrix
+            
+            # cat("\n j=", j)
+            # cat("\n k_index[j]", k_index[j])
+            # cat("\n param =", param_list[[k_index[j]]])
+            
+            param_list[[k_index[j]]] = param_list[[k_index[j]]][new_labs[j,]]
+            
+          } else{
+            # matrix
+            
+            param_list[[k_index[j]]] =  param_list[[k_index[j]]][,new_labs[j,]]
+            
+          }
           
-        } else{
-          # matrix
-          
-          param_list[[k_index[j]]] =  param_list[[k_index[j]]][,new_labs[j,]]
           
         }
         
-
+      } else{
+        
+        # proceed, no need to permute assignments
+        
       }
+      
       
       # reformat params now that order has been corrected
       if(npar == 1){
         
-        param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
-                                                 ncol = unique_k[i], 
-                                                 byrow = TRUE))
+        if(equal_var == TRUE){
+          
+          param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
+                                                   ncol = 1, 
+                                                   byrow = TRUE))
+          
+          # name columns i.e. mu23 is mean for group 2, 3rd component 
+          # (i.e. from a length 3 mean vector)
+          col_header_names = paste0(param_symbol, 1)
+          names(param_list_by_k[[i]]) = sort(col_header_names)
+          
+        } else{
+          
+          param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
+                                                   ncol = unique_k[i], 
+                                                   byrow = TRUE))
+          
+          # name columns i.e. mu23 is mean for group 2, 3rd component 
+          # (i.e. from a length 3 mean vector)
+          col_header_names = paste0(param_symbol, 1:unique_k[i])
+          names(param_list_by_k[[i]]) = sort(col_header_names)
+          
+        }
         
-        # name columns i.e. mu23 is mean for group 2, 3rd component 
-        # (i.e. from a length 3 mean vector)
-        col_header_names = paste0(param_symbol, 1:unique_k[i])
-        names(param_list_by_k[[i]]) = sort(col_header_names)
         
       } else{
         
