@@ -91,7 +91,7 @@ var_true = var
 rm(w, means)
 ```
 
-```{r, include=FALSE, eval=FALSE}
+```{r}
 
 #### DEE sampler
 
@@ -131,7 +131,7 @@ DEE_no_sm_sum = lapply(X = 1:length(sim_results_DEE_no_sm),
     
     # summarize means & variances
     mean_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$means, 
-                                               # k_vec = output[[1]]$k,
+                                               k_vec = output[[dataset_ind]]$k,
                                                # burn_in = burn_in, 
                                                # iter_threshold = thold,
                                                iter_list = prob_list_by_k$iter_list,

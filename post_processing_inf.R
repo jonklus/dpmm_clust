@@ -47,7 +47,7 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
     print(round((table(output[[dataset_ind]]$k)/sum(table(output[[dataset_ind]]$k)))*100,1))
     
     cat("\n *Note that above frequency summaries of MCMC iterations were made before burn-in or thresholds were applied. 
-  All inference on phi will be made after accounting for burn-in and thresholding. \n")
+          All inference on phi will be made after accounting for burn-in and thresholding. \n")
   }
   
   # filter by number of iterations for each k and address label switching
@@ -93,7 +93,7 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
                             true_assign = yreps[[dataset_ind]]$assign,
                             mu_true = mu_true,
                             Sigma_true = var_true,
-                            equal_var_assump = TRUE)
+                            equal_var_assump = equal_var)
     # py is truth, px is estimate
     kl_div = kl_res$sum.KLD.py.px # how far is estimate px from truth py
     
