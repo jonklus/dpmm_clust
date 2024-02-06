@@ -1151,7 +1151,7 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
     if(length(est_dens) > 1){
       for(k in 2:length(est_dens)){
         est_dens_combined = rbind(est_dens_combined, est_dens[[k]])
-        print(dim(est_dens[[k]]))
+        # print(dim(est_dens[[k]]))
       }
     }
     
@@ -1173,11 +1173,11 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
     # calculate density of estimates
     est_dens = vector(mode = "list", length = length(mu_est))
     for(k in 1:length(mu_est)){
-      cat("\n k:", k, "\n")
+      # cat("\n k:", k, "\n")
       est_dens_k = matrix(data = NA, nrow = nrow(mu_est[[k]]), ncol = length(y))
       for(iter in 1:nrow(mu_est[[k]])){
         
-        cat("\n iter:", iter, "\n")
+        # cat("\n iter:", iter, "\n")
         est_dens_k[iter,] = sapply(X = 1:length(y), 
                                    FUN = function(x){
                                      # cat("\n x ", x)
@@ -1189,19 +1189,15 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
                                      # var_ind = grep(
                                      #   pattern = paste0("sigma", group_assign[[k]][iter,x]), 
                                      #   x = names(Sigma_est[[k]]))
-                                     # cat("\n mu_est")
+                                     # cat("\n mean_ind", mean_ind, "\n")
+                                     # cat("\n obs", x, "\n")
+                                     # cat("\n y[[x]] \n")
+                                     # print(y[[x]][,1])
+                                     # cat("\n mu \n")
                                      # print(as.numeric(mu_est[[k]][iter,mean_ind]))
-                                     # cat("\n Sigma_est")
-                                     # print(Sigma_est[[k]][iter,var_ind]).
-                                     cat("\n mean_ind", mean_ind, "\n")
-                                     cat("\n obs", x, "\n")
-                                     cat("\n y[[x]] \n")
-                                     print(y[[x]][,1])
-                                     cat("\n mu \n")
-                                     print(as.numeric(mu_est[[k]][iter,mean_ind]))
-                                     cat("\n sigma \n")
-                                     print(diag(as.numeric(Sigma_est[[k]][iter,1]), 
-                                                length(y[[x]][,1])))
+                                     # cat("\n sigma \n")
+                                     # print(diag(as.numeric(Sigma_est[[k]][iter,1]), 
+                                     #            length(y[[x]][,1])))
                                      mvtnorm::dmvnorm(x = y[[x]][,1], 
                                                       mean = as.numeric(mu_est[[k]][iter,mean_ind]), 
                                                       # equal var assumption so Sigma_set should only have 1 column

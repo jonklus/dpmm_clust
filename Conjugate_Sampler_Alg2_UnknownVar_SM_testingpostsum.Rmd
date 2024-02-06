@@ -90,13 +90,11 @@ var_true = var
 # yreps # 2nd element is assign
 rm(w, means)
 ```
-
-```{r}
-
 #### DEE sampler
 
 ##### without split-merge step
 
+```{r}
 sim_results_DEE_no_sm = readRDS(file = "../MCMC_Runs/conjDEEsamp_minisimstudy_noSM_2024_01_16.rds")
 
 DEE_no_sm_sum = lapply(X = 1:length(sim_results_DEE_no_sm), 
@@ -104,52 +102,62 @@ DEE_no_sm_sum = lapply(X = 1:length(sim_results_DEE_no_sm),
                            cat("\n Dataset #", x)
                            dpmm_summary(output = sim_results_DEE_no_sm, 
                              dataset_ind = x, 
-                             print_k_sum = TRUE,
+                             print_k_sum = TRUE, 
+                             # print_phi_sum = TRUE,
                              make_traceplot = FALSE,
                              burn_in = 1000, t_hold = 100, 
                              num_dims = 2, equal_var = TRUE)
                            })
 
-    output = sim_results_DEE_no_sm
-    dataset_ind = 1
-    burn_in = 1000
-    t_hold = 100
-    num_dims = 2
-    equal_var = TRUE
-    prob_list_by_k = get_probs_by_k(probs = output[[dataset_ind]]$group_probs, 
-                                        n_groups = output[[dataset_ind]]$k, 
-                                        burn_in = burn_in, 
-                                        iter_threshold = t_hold)
-    group_assign_list_by_k = get_assign_by_k(assign = output[[dataset_ind]]$group_assign, 
-                                             n_groups = output[[dataset_ind]]$k, 
-                                             burn_in = burn_in, 
-                                             iter_threshold = t_hold)
-    
-    # correct label switching 
-    stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
-                                          prob_list_by_k = prob_list_by_k$prob_list)
-    
-    # summarize means & variances
-    mean_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$means, 
-                                               k_vec = output[[dataset_ind]]$k,
-                                               # burn_in = burn_in, 
-                                               # iter_threshold = thold,
-                                               iter_list = prob_list_by_k$iter_list,
-                                               relabel = TRUE,
-                                               permutation = stephens_result, 
-                                               param_type = "Mean")
-    
-    var_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$vars, 
-                                              iter_list = prob_list_by_k$iter_list,
-                                              k_vec = output[[dataset_ind]]$k, 
-                                              relabel = TRUE, equal_var = equal_var,
-                                              permutation = stephens_result,
-                                              param_type = "Var")
-    
-    # compute KL divergence
-    group_assign_list_by_k_corr = correct_group_assign(
-      group_assign_list_by_k = group_assign_list_by_k, 
-      stephens_result = stephens_result)
+    # output = sim_results_DEE_no_sm
+    # dataset_ind = 1
+    # burn_in = 1000
+    # t_hold = 100
+    # num_dims = 2
+    # equal_var = TRUE
+    # prob_list_by_k = get_probs_by_k(probs = output[[dataset_ind]]$group_probs,
+    #                                     n_groups = output[[dataset_ind]]$k,
+    #                                     burn_in = burn_in,
+    #                                     iter_threshold = t_hold)
+    # group_assign_list_by_k = get_assign_by_k(assign = output[[dataset_ind]]$group_assign,
+    #                                          n_groups = output[[dataset_ind]]$k,
+    #                                          burn_in = burn_in,
+    #                                          iter_threshold = t_hold)
+    # 
+    # # correct label switching
+    # stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k,
+    #                                       prob_list_by_k = prob_list_by_k$prob_list)
+    # 
+    # # summarize means & variances
+    # mean_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$means,
+    #                                            k_vec = output[[dataset_ind]]$k,
+    #                                            # burn_in = burn_in,
+    #                                            # iter_threshold = thold,
+    #                                            iter_list = prob_list_by_k$iter_list,
+    #                                            relabel = TRUE,
+    #                                            permutation = stephens_result,
+    #                                            param_type = "Mean")
+    # 
+    # var_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$vars,
+    #                                           iter_list = prob_list_by_k$iter_list,
+    #                                           k_vec = output[[dataset_ind]]$k,
+    #                                           relabel = TRUE, equal_var = equal_var,
+    #                                           permutation = stephens_result,
+    #                                           param_type = "Var")
+    # 
+    # # compute KL divergence
+    # group_assign_list_by_k_corr = correct_group_assign(
+    #   group_assign_list_by_k = group_assign_list_by_k,
+    #   stephens_result = stephens_result)
+    # 
+    #   kl_res = calc_KL_diverg(y = output[[dataset_ind]]$data,
+    #                       mu_est = mean_list_by_k_stephens,
+    #                       Sigma_est = var_list_by_k_stephens,
+    #                       group_assign = group_assign_list_by_k_corr,
+    #                       true_assign = yreps[[dataset_ind]]$assign,
+    #                       mu_true = mu_true,
+    #                       Sigma_true = var_true,
+    #                       equal_var_assump = TRUE)
 
 # extract KL divergence and summarize
 kld_DEE_no_sm_sum = sapply(X = 1:length(DEE_no_sm_sum), 
@@ -161,9 +169,31 @@ mean(kld_DEE_no_sm_sum)
 ```
 
 
-```{r, eval=FALSE, include=FALSE}
+```{r}
+
+#### RUN MODEL
+
+n_iter = 5000
+use_cores = min(parallel::detectCores(), nreps)
+sim_results_DEE_with_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
+      FUN = function(x){MVN_CRP_sampler_DEE(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+        alpha = 1, r = 10, g = 1, h = 50,
+        sigma_hyperprior = FALSE, fix_r = FALSE,
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        a = 1, b = 50,
+        k_init = 1, diag_weights = FALSE,
+        verbose = FALSE, split_merge = TRUE
+        )}
+      )
+
+
+datafile_name = paste0("../MCMC_Runs/conjDEEsamp_minisimstudy_withSM_",
+                       stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
+saveRDS(object = sim_results_DEE_with_sm, file = datafile_name)
+
 ##### with split-merge step
-sim_results_DEE_with_sm = readRDS(file = "../MCMC_Runs/conjDEEsamp_minisimstudy_withSM_2024_01_16.rds")
+sim_results_DEE_with_sm = readRDS(file = "../MCMC_Runs/conjDEEsamp_minisimstudy_withSM_2024_02_05.rds")
 
 DEE_with_sm_sum = lapply(X = 1:length(sim_results_DEE_with_sm), 
                          FUN = function(x){
@@ -171,6 +201,7 @@ DEE_with_sm_sum = lapply(X = 1:length(sim_results_DEE_with_sm),
                            dpmm_summary(output = sim_results_DEE_with_sm, 
                              dataset_ind = x, 
                              print_k_sum = TRUE,
+                             # print_phi_sum = TRUE,
                              make_traceplot = FALSE,
                              burn_in = 1000, t_hold = 100, 
                              num_dims = 2)

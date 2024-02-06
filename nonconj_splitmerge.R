@@ -98,7 +98,6 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
   # bookkeeping - group labels
   subset_index = which(split_temp_group_assign[1,] %in% c(lab1, lab2)) 
   existing_group_index = which(label_assign == lab1) 
-  
 
   # perform restricted Gibbs scans
   
@@ -124,8 +123,14 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
         
         # intialize anchors so that there are no "zeros" for split groups
         # under consideration when starting below
-        temp_group_assign[scan,sampled_obs[1]] = split_lab[1] 
-        temp_group_assign[scan,sampled_obs[2]] = split_lab[2] 
+        
+        # split start
+        split_temp_group_assign[scan,sampled_obs[1]] = split_lab[1] 
+        split_temp_group_assign[scan,sampled_obs[2]] = split_lab[2] 
+        
+        # merge start
+        split_temp_group_assign[scan,sampled_obs[1]] = merge_lab
+        split_temp_group_assign[scan,sampled_obs[2]] = merge_lab
         
         # draw params from prior - random launch state for split proposal
         split_means[[1]] = lapply(X = 1:2, 
@@ -147,9 +152,10 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
         
       } else{
         
+        # initialize current restricted Gibbs scan iteration with previous result
         split_temp_group_assign[scan,] = split_temp_group_assign[(scan-1),] 
         merge_temp_group_assign[scan,] = merge_temp_group_assign[(scan-1),] 
-        # initialize
+        
         # moved this up, was previously nested below, which means this step would
         # be *repeated* for each observation, thus washing out any split/merge that
         # was occurring as a result of the algorithm at each step
@@ -164,13 +170,19 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
         if(scan == 1){
           
           # specify component assignment - random launch state for split proposal
+          # yes this is redundant, but only way to make using subset_index instead
+          # of subset_index_minus in for loop work properly 
           if(obs == sampled_obs[2]){
             split_temp_group_assign[scan,obs] = split_lab[2] 
+            merge_temp_group_assign[scan,obs] = merge_lab
           } else if(obs == sampled_obs[1]){
             split_temp_group_assign[scan,obs] = split_lab[1] 
+            merge_temp_group_assign[scan,obs] = merge_lab
           } else{
             # random launch state
             split_temp_group_assign[scan,obs] = sample(x = split_lab, size = 1)
+            # no need to sample for merge...only one option
+            merge_temp_group_assign[scan,obs] = merge_lab
           }
           
         } else{ # for remaining scans after random launch state set
@@ -182,8 +194,10 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
             # specify new group label to 2nd anchor point as well
             if(obs == sampled_obs[2]){
               split_temp_group_assign[scan,obs] = split_lab[2] 
+              merge_temp_group_assign[scan,obs] = merge_lab
             } else if(obs == sampled_obs[1]){
               split_temp_group_assign[scan,obs] = split_lab[1] 
+              merge_temp_group_assign[scan,obs] = merge_lab
             }
             
             # cat(" Assign:",temp_group_assign[scan,obs])
