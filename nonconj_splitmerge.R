@@ -31,16 +31,109 @@ nonconj_split_merge_prob <- function(obs, split_labs, group_assign, y, mu, Sigma
   # sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign[-obs] == x)})
   # need to make up your mind -- drop obs or leave in here??
   sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign == x)})
+  which_group_k = which(split_labs == group_assign[obs])
+  sm_counts[which_group_k] = sm_counts[which_group_k] - 1
   
-  num = sm_counts[1]*mvtnorm::dmvnorm(x = y[[obs]], 
-                                      mean = mu[[1]], 
-                                      sigma = Sigma[[1]]) 
-  
-  denom = num + sm_counts[2]*mvtnorm::dmvnorm(x = y[[obs]], 
-                                              mean = mu[[2]], 
-                                              sigma = Sigma[[2]])
-  
-  ratio = c(num/denom, 1-(num/denom))
+  if(1 %in% sm_counts){
+    
+    which_one = which(sm_counts == 1)
+    
+    # check length of which_zero
+    if(length(which_one) == 1){
+      # proceed as usual
+      # cat("1 singleton", "\n")
+      if(which_one == 1){
+        
+        num = (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]], 
+                                            mean = mu[[2]], 
+                                            sigma = Sigma[[2]]) 
+        
+        denom = num + (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]], 
+                                                    mean = mu[[1]], 
+                                                    sigma = Sigma[[1]])
+        
+        # will just be (1,0)... seems extreme
+        ratio = c(1-(num/denom), num/denom)
+        
+      } else{ 
+        # which_one == 2
+        
+        num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]], 
+                                              mean = mu[[1]], 
+                                              sigma = Sigma[[1]]) 
+        
+        denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]], 
+                                                        mean = mu[[2]], 
+                                                        sigma = Sigma[[2]])
+        
+        # will just be (1,0)... seems extreme
+        ratio = c(num/denom, 1-(num/denom))
+        
+      }
+      
+    } else{
+      # two singletons being considered
+      # cat("2 singleton", "\n")
+      # num = sm_counts[1]*mvtnorm::dmvnorm(x = y[[obs]], 
+      #                                     mean = mu[[1]], 
+      #                                     sigma = Sigma[[1]]) 
+      # 
+      # denom = num + sm_counts[2]*mvtnorm::dmvnorm(x = y[[obs]], 
+      #                                             mean = mu[[2]], 
+      #                                             sigma = Sigma[[2]])
+      
+      ratio = c(0.5, 0.5)
+      
+    }
+    
+    
+  } else if(0 %in% sm_counts){
+    
+    which_one = which(sm_counts == 0)
+    
+    if(which_one == 1){
+      
+      num = (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]], 
+                                            mean = mu[[2]], 
+                                            sigma = Sigma[[2]]) 
+      
+      denom = num + (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]], 
+                                                    mean = mu[[1]], 
+                                                    sigma = Sigma[[1]])
+      
+      # will just be (1,0)... seems extreme
+      ratio = c(1-(num/denom), num/denom)
+      
+    } else{ 
+      # which_one == 2
+      
+      num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]], 
+                                            mean = mu[[1]], 
+                                            sigma = Sigma[[1]]) 
+      
+      denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]], 
+                                                    mean = mu[[2]], 
+                                                    sigma = Sigma[[2]])
+      
+      # will just be (1,0)... seems extreme
+      ratio = c(num/denom, 1-(num/denom))
+      
+    }
+    
+  } else{
+    
+    num = sm_counts[1]*mvtnorm::dmvnorm(x = y[[obs]], 
+                                        mean = mu[[1]], 
+                                        sigma = Sigma[[1]]) 
+    
+    denom = num + sm_counts[2]*mvtnorm::dmvnorm(x = y[[obs]], 
+                                                mean = mu[[2]], 
+                                                sigma = Sigma[[2]])
+    
+    ratio = c(num/denom, 1-(num/denom))
+    
+  }
+
     
   
   return(ratio)
@@ -200,8 +293,12 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
               merge_temp_group_assign[scan,obs] = merge_lab
             }
             
+            # update parameter vector
+            
             # cat(" Assign:",temp_group_assign[scan,obs])
             # cat("\n")
+
+            # update group assignment probabilities 
             
             ##### NOTE #####
             ###############
@@ -215,11 +312,19 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
                 group_assign = split_temp_group_assign[scan,], 
                 y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
             
+            merge_assign_prob = nonconj_split_merge_prob(
+              obs = obs, split_labs = split_lab,
+              group_assign = merge_temp_group_assign[scan,], 
+              y = y, mu = merge_means[[scan]], Sigma = merge_vars[[scan]])
+            
             # dont sample --- but do record prob of group anchor obs in in!
             which_split_lab_anchor = which(split_lab == split_temp_group_assign[scan,obs])
+            # how to do this best for merge????
+            which_merge_lab_anchor = which(merge_lab == merge_temp_group_assign[scan,obs])
             # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
             # dont need to assign again - already initialized since anchor
             split_sm_probs[scan,obs] = split_assign_prob[which_split_lab_anchor]
+            merge_sm_probs[scan,obs] = merge_assign_prob[which_merge_lab_anchor]
             
           } else{
             
