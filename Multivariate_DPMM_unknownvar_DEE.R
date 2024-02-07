@@ -1342,6 +1342,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                        emp_vars = emp_vars,
                        extra_params = extra_params,
                        accept = accept_ind,
+                       sm_results = sm_results,
                        group_probs = probs,
                        group_assign = group_assign,
                        pairwise_mats = pairwise_mats)
@@ -1361,6 +1362,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                        emp_vars = emp_vars,
                        extra_params = extra_params,
                        accept = accept_ind,
+                       sm_results = sm_results,
                        group_probs = probs,
                        group_assign = group_assign,
                        pairwise_mats = pairwise_mats)

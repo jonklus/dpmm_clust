@@ -1101,8 +1101,17 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
     # each group has its own estimated variance
     
     # calculate density of truth
+
+    
     true_dens = sapply(X = 1:length(y), 
                        FUN = function(x){
+                         # debugging
+                         cat("\n x:", x, "true_assign[x]:", true_assign[x], "\n")
+                         cat("\n mu_true: \n")
+                         print(mu_true[[true_assign[x]]])
+                         cat("\n Sigma_true: \n")
+                         print(Sigma_true[[true_assign[x]]])
+                         
                          mvtnorm::dmvnorm(x = y[[x]][,1], 
                                           mean = mu_true[[true_assign[x]]], 
                                           sigma = Sigma_true[[true_assign[x]]])
@@ -1222,19 +1231,19 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
     
     # average over all iterations
     final_est_dens = colMeans(est_dens_combined)
-    
-    # now do we average over densities in estimates then calc KL div, or  calculate KL divergence
-    # at each iteration and then average over all iterations?
-    
-    # option 1 - average over densities, then calculate KL - YES
-    # option 2 - calculate KL divergence at each iteration - NO, look at overall
-    # estimated density vs truth
-    # print(final_est_dens)
-    # print(true_dens)
-    kl_div = LaplacesDemon::KLD(px = final_est_dens, py = true_dens)
-    
-    return(kl_div)
   
   }
+  
+  # now do we average over densities in estimates then calc KL div, or  calculate KL divergence
+  # at each iteration and then average over all iterations?
+  
+  # option 1 - average over densities, then calculate KL - YES
+  # option 2 - calculate KL divergence at each iteration - NO, look at overall
+  # estimated density vs truth
+  # print(final_est_dens)
+  # print(true_dens)
+  kl_div = LaplacesDemon::KLD(px = final_est_dens, py = true_dens)
+  
+  return(kl_div)
 }
 

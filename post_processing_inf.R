@@ -27,7 +27,9 @@ library(stringr)
 
 dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
                          print_k_sum = TRUE, make_traceplot = TRUE,
-                         burn_in = 1000, t_hold = 0, num_dims = 2, equal_var = FALSE
+                         burn_in = 1000, t_hold = 0, num_dims = 2, 
+                         calc_KL = FALSE, mu_true = NULL, var_true = NULL, 
+                         assign_true = NULL, equal_var = FALSE
                          ){
   # output is the list of results from the DPMM simulation study function
   # dataset is a numeric argument to summarize a specific result in the output, the desired index
@@ -37,6 +39,10 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
   # burn_in is # of burn in iterations to discard
   # t_hold is the threshold # of iterations for a given k in order to report results
   # num_dims is the dimensionality of the problem (i.e. a bivariate normal is dim 2)
+  # mu_true and var_true are list arguments with the true values of the model parameters
+  # from a simulation study used to calculate the KL divergence 
+  # equal_var is a logical argument for whether the equal variance assumption was made
+  # in the model. The function will then expect a scalar variance instead of a var-covar matrix 
   
   # show basic summary
   if(print_k_sum == TRUE){
@@ -85,18 +91,21 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
     group_assign_list_by_k_corr = correct_group_assign(
       group_assign_list_by_k = group_assign_list_by_k, 
       stephens_result = stephens_result)
-    
-    kl_res = calc_KL_diverg(y = output[[dataset_ind]]$data,
-                            mu_est = mean_list_by_k_stephens,
-                            Sigma_est = var_list_by_k_stephens,
-                            group_assign = group_assign_list_by_k_corr,
-                            true_assign = yreps[[dataset_ind]]$assign,
-                            mu_true = mu_true,
-                            Sigma_true = var_true,
-                            equal_var_assump = equal_var)
-    # py is truth, px is estimate
-    kl_div = kl_res$sum.KLD.py.px # how far is estimate px from truth py
-    
+    if(calc_KL == TRUE){
+      
+      kl_res = calc_KL_diverg(y = output[[dataset_ind]]$data,
+                              mu_est = mean_list_by_k_stephens,
+                              Sigma_est = var_list_by_k_stephens,
+                              group_assign = group_assign_list_by_k_corr,
+                              true_assign = assign_true,
+                              mu_true = mu_true,
+                              Sigma_true = var_true,
+                              equal_var_assump = equal_var)
+      print(kl_res)
+      # py is truth, px is estimate
+      kl_div = kl_res$sum.KLD.py.px # how far is estimate px from truth py
+      
+    }
     
     mean_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
     var_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
@@ -133,12 +142,47 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
       cat("\n KL Divergence: KL(p_est||p_true)=", round(kl_div, 3), "\n")
     }
     
+    # MH acceptance probs for split merge or non conj MH alg
+    # need to check if SM results exists bc not all samplers will do this...
+    # also check if return is NA
+    if(is.null(output[[dataset_ind]]$sm_results) == FALSE){
+      # check that sm_results slot in list output exists
+      if(nrow(output[[dataset_ind]]$sm_results) > 1){
+        # check that more than 1 row exists in sm_results...default is a single
+        # row of NA when split_merge = FALSE in sampler...don't want to summarize this
+        sm_df = data.frame(output[[dataset_ind]]$sm_results) %>%
+          dplyr::filter(is.na(s) == FALSE) %>%
+          dplyr::mutate(
+            move_type = factor(move_type),
+            s = as.integer(s),
+            sm_iter = as.integer(sm_iter),
+            accept = as.integer(accept),
+            prob = as.numeric(prob)
+          ) %>%
+          dplyr::group_by(move_type) %>%
+          dplyr::summarise(Accept_Prob = round(mean(accept),3), 
+                           Count = n())
+        
+        if(print_k_sum == TRUE){
+          cat("\n Split/Merge MH Steps: \n")
+          print(sm_df)
+        }
+        
+      } else{
+        sm_df = NULL
+      }
+    } else{
+      sm_df = NULL
+    }
+
+    
   # return summary of all results
   return(list(
     mean_list_by_k_stephens = mean_list_by_k_stephens,
     var_list_by_k_stephens = var_list_by_k_stephens,
     mean_summary = mean_summary,
     var_summary = var_summary,
+    splitmerge_accept = sm_df, 
     kl_div = round(kl_div, 4)
   ))
   
