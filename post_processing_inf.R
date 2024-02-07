@@ -91,6 +91,7 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
     group_assign_list_by_k_corr = correct_group_assign(
       group_assign_list_by_k = group_assign_list_by_k, 
       stephens_result = stephens_result)
+    
     if(calc_KL == TRUE){
       
       kl_res = calc_KL_diverg(y = output[[dataset_ind]]$data,
@@ -101,7 +102,6 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
                               mu_true = mu_true,
                               Sigma_true = var_true,
                               equal_var_assump = equal_var)
-      print(kl_res)
       # py is truth, px is estimate
       kl_div = kl_res$sum.KLD.py.px # how far is estimate px from truth py
       

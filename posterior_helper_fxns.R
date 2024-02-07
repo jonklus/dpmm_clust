@@ -1106,12 +1106,11 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
     true_dens = sapply(X = 1:length(y), 
                        FUN = function(x){
                          # debugging
-                         cat("\n x:", x, "true_assign[x]:", true_assign[x], "\n")
-                         cat("\n mu_true: \n")
-                         print(mu_true[[true_assign[x]]])
-                         cat("\n Sigma_true: \n")
-                         print(Sigma_true[[true_assign[x]]])
-                         
+                         # cat("\n x:", x, "true_assign[x]:", true_assign[x], "\n")
+                         # cat("\n mu_true: \n")
+                         # print(mu_true[[true_assign[x]]])
+                         # cat("\n Sigma_true: \n")
+                         # print(Sigma_true[[true_assign[x]]])
                          mvtnorm::dmvnorm(x = y[[x]][,1], 
                                           mean = mu_true[[true_assign[x]]], 
                                           sigma = Sigma_true[[true_assign[x]]])

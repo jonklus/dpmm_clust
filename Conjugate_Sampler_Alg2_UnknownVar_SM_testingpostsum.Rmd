@@ -176,69 +176,6 @@ DEV_no_sm_sum = lapply(X = 1:length(sim_results_DEV_no_sm),
                            })
 
 
-# debug
-
-output = sim_results_DEV_no_sm
-dataset_ind = 1
-print_k_sum = TRUE
-make_traceplot = FALSE
-burn_in = 1000
-t_hold = 100
-num_dims = 2
-calc_KL = TRUE
-equal_var = FALSE
-mu_true = mu_true
-# var_true = lapply(X = 1:length(mu_true), 
-#                   FUN = function(x){var_true})
-  # filter by number of iterations for each k and address label switching
-    prob_list_by_k = get_probs_by_k(probs = output[[dataset_ind]]$group_probs, 
-                                    n_groups = output[[dataset_ind]]$k, 
-                                    burn_in = burn_in, 
-                                    iter_threshold = t_hold)
-    group_assign_list_by_k = get_assign_by_k(assign = output[[dataset_ind]]$group_assign, 
-                                             n_groups = output[[dataset_ind]]$k, 
-                                             burn_in = burn_in, 
-                                             iter_threshold = t_hold)
-    
-    # correct label switching 
-    stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
-                                          prob_list_by_k = prob_list_by_k$prob_list)
-    
-    # summarize means & variances
-    mean_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$means, 
-                                               k_vec = output[[dataset_ind]]$k,
-                                               # burn_in = burn_in, 
-                                               # iter_threshold = thold,
-                                               iter_list = prob_list_by_k$iter_list,
-                                               relabel = TRUE,
-                                               permutation = stephens_result, 
-                                               param_type = "Mean")
-    
-    var_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$vars, 
-                                              iter_list = prob_list_by_k$iter_list,
-                                              k_vec = output[[dataset_ind]]$k,
-                                              relabel = TRUE, equal_var = equal_var,
-                                              permutation = stephens_result,
-                                              param_type = "Var")
-    
-    # compute KL divergence
-    group_assign_list_by_k_corr = correct_group_assign(
-      group_assign_list_by_k = group_assign_list_by_k, 
-      stephens_result = stephens_result)
-
-      
-      kl_res = calc_KL_diverg(y = output[[dataset_ind]]$data,
-                              mu_est = mean_list_by_k_stephens,
-                              Sigma_est = var_list_by_k_stephens,
-                              group_assign = group_assign_list_by_k_corr,
-                              true_assign = yreps[[dataset_ind]]$assign,
-                              mu_true = mu_true,
-                              Sigma_true = lapply(X = 1:length(mu_true), FUN = function(x){var_true}),
-                              equal_var_assump = equal_var)
-
-      # py is truth, px is estimate
-      kl_div = kl_res$sum.KLD.py.px # how far is estimate px from truth py
-
 # extract KL divergence and summarize
 kld_DEV_no_sm_sum = sapply(X = 1:length(DEV_no_sm_sum), 
                            FUN = function(x){
@@ -264,7 +201,12 @@ DEV_with_sm_sum = lapply(X = 1:length(sim_results_DEV_with_sm),
                              print_k_sum = TRUE,
                              make_traceplot = FALSE,
                              burn_in = 1000, t_hold = 100, 
-                             num_dims = 2)
+                             num_dims = 2, calc_KL = TRUE, 
+                             mu_true = mu_true, assign_true = yreps[[x]]$assign,
+                             var_true = lapply(X = 1:length(mu_true), 
+                                               FUN = function(x){var_true}))
+                           # when equal_var=FALSE, need var_true to be same 
+                           # length as mu_true
                            })
 
 # extract KL divergence and summarize
@@ -410,7 +352,9 @@ DEE_no_sm_sum_close = lapply(X = 1:length(sim_results_DEE_no_sm_close),
                              # print_phi_sum = TRUE,
                              make_traceplot = FALSE,
                              burn_in = 1000, t_hold = 100, 
-                             num_dims = 2, equal_var = TRUE)
+                             num_dims = 2, equal_var = TRUE, calc_KL = TRUE, 
+                             mu_true = mu_true, assign_true = yreps[[x]]$assign,
+                             var_true = var_true)
                            })
 
 # extract KL divergence and summarize
@@ -437,7 +381,9 @@ DEE_with_sm_sum_close = lapply(X = 1:length(sim_results_DEE_with_sm_close),
                              # print_phi_sum = TRUE,
                              make_traceplot = FALSE,
                              burn_in = 1000, t_hold = 100, 
-                             num_dims = 2, equal_var = TRUE)
+                             num_dims = 2, equal_var = TRUE, calc_KL = TRUE, 
+                             mu_true = mu_true, assign_true = yreps[[x]]$assign,
+                             var_true = var_true)
                            })
 
 # extract KL divergence and summarize
@@ -454,24 +400,7 @@ mean(kld_DEE_with_sm_sum_close)
 ##### without split-merge step
 
 ```{r}
-# n_iter = 5000
-# use_cores = min(parallel::detectCores(), nreps)
-# sim_results_DEV_no_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
-#       FUN = function(x){MVN_CRP_sampler_DEV(
-#         S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
-#         alpha = 1, r = 10, g = 1, h = 50,
-#         sigma_hyperprior = FALSE, fix_r = FALSE,
-#         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-#         a = 1, b = 50,
-#         k_init = 1, diag_weights = FALSE,
-#         verbose = FALSE, split_merge = FALSE
-#         )}
-#       )
-# 
-# 
-# datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_noSM_", 
-#                        stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
-# saveRDS(object = sim_results_DEV_no_sm, file = datafile_name)
+
 sim_results_DEV_no_sm_close = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_2024_01_16.rds")
 
 DEV_no_sm_sum_close = lapply(X = 1:length(sim_results_DEV_no_sm_close), 
@@ -482,7 +411,13 @@ DEV_no_sm_sum_close = lapply(X = 1:length(sim_results_DEV_no_sm_close),
                              print_k_sum = TRUE,
                              make_traceplot = FALSE,
                              burn_in = 1000, t_hold = 100, 
-                             num_dims = 2)
+                             num_dims = 2, calc_KL = TRUE, 
+                             mu_true = mu_true, assign_true = yreps[[x]]$assign,
+                             var_true = lapply(X = 1:length(mu_true), 
+                                               FUN = function(x){var_true}))
+                           # when equal_var=FALSE, need var_true to be same 
+                           # length as mu_true
+                           })
                            })
 
 # extract KL divergence and summarize
@@ -499,22 +434,6 @@ mean(kld_DEV_no_sm_sum_close)
 ##### with split-merge step
 
 ```{r}
-# sim_results_DEV_with_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
-#       FUN = function(x){MVN_CRP_sampler_DEV(
-#         S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
-#         alpha = 1, r = 10, g = 1, h = 50,
-#         sigma_hyperprior = FALSE, fix_r = FALSE,
-#         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-#         a = 1, b = 50,
-#         k_init = 1, diag_weights = FALSE,
-#         verbose = FALSE, split_merge = TRUE, sm_iter = 10
-#         )}
-#       )
-# 
-# datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_withSM_", 
-#                        stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
-# saveRDS(object = sim_results_DEV_with_sm, file = datafile_name)
-# sim_results_DEV_with_sm = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_withSM_6_Dec_2023.rds")
 
 sim_results_DEV_with_sm_close = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_close_withSM_2024_01_16.rds")
 
@@ -528,8 +447,14 @@ DEV_with_sm_sum_close = lapply(X = 1:length(sim_results_DEV_with_sm_close),
                              print_k_sum = TRUE,
                              make_traceplot = FALSE,
                              burn_in = 1000, t_hold = 100, 
-                             num_dims = 2)
+                             num_dims = 2, calc_KL = TRUE, 
+                             mu_true = mu_true, assign_true = yreps[[x]]$assign,
+                             var_true = lapply(X = 1:length(mu_true), 
+                                               FUN = function(x){var_true}))
+                           # when equal_var=FALSE, need var_true to be same 
+                           # length as mu_true
                            })
+
 
 # extract KL divergence and summarize
 kld_DEV_with_sm_sum_close = sapply(X = 1:length(DEV_with_sm_sum_close), 
@@ -556,7 +481,12 @@ UVV_no_sm_sum_close = lapply(X = 1:length(sim_results_UVV_no_sm_close),
                              print_k_sum = TRUE,
                              make_traceplot = FALSE,
                              burn_in = 1000, t_hold = 100, 
-                             num_dims = 2)
+                             num_dims = 2, calc_KL = TRUE, 
+                             mu_true = mu_true, assign_true = yreps[[x]]$assign,
+                             var_true = lapply(X = 1:length(mu_true), 
+                                               FUN = function(x){var_true}))
+                           # when equal_var=FALSE, need var_true to be same 
+                           # length as mu_true
                            })
 
 # extract KL divergence and summarize
@@ -585,7 +515,12 @@ UVV_with_sm_sum_close = lapply(X = 1:length(sim_results_UVV_with_sm_close),
                              print_k_sum = TRUE,
                              make_traceplot = FALSE,
                              burn_in = 1000, t_hold = 100, 
-                             num_dims = 2)
+                             num_dims = 2, calc_KL = TRUE, 
+                             mu_true = mu_true, assign_true = yreps[[x]]$assign,
+                             var_true = lapply(X = 1:length(mu_true), 
+                                               FUN = function(x){var_true}))
+                           # when equal_var=FALSE, need var_true to be same 
+                           # length as mu_true
                            })
 
 # extract KL divergence and summarize
@@ -609,6 +544,7 @@ kld_summary_sep = matrix(data = NA, nrow = 2, ncol = 3)
 colnames(kld_summary_sep) = c("DEE", "DEV", "UVV")
 row.names(kld_summary_sep) = c("no SM", "with SM")
 
+kld_summary_sep[,"DEE"] = c(mean(kld_DEE_no_sm_sum), mean(kld_DEE_with_sm_sum))
 kld_summary_sep[,"DEV"] = c(mean(kld_DEV_no_sm_sum), mean(kld_DEV_with_sm_sum))
 kld_summary_sep[,"UVV"] = c(mean(kld_UVV_no_sm_sum), mean(kld_UVV_with_sm_sum))
 kld_summary_sep
@@ -621,6 +557,7 @@ kld_summary_close = matrix(data = NA, nrow = 2, ncol = 3)
 colnames(kld_summary_close) = c("DEE", "DEV", "UVV")
 row.names(kld_summary_close) = c("no SM", "with SM")
 
+kld_summary_close[,"DEE"] = c(mean(kld_DEE_no_sm_sum_close), mean(kld_DEE_with_sm_sum_close))
 kld_summary_close[,"DEV"] = c(mean(kld_DEV_no_sm_sum_close), mean(kld_DEV_with_sm_sum_close))
 kld_summary_close[,"UVV"] = c(mean(kld_UVV_no_sm_sum_close), mean(kld_UVV_with_sm_sum_close))
 kld_summary_close
