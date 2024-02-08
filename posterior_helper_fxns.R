@@ -1062,6 +1062,9 @@ correct_group_assign <- function(group_assign_list_by_k, stephens_result){
     
     for(iter in 1:nrow(group_assign_k_raw[[list_el]])){
       
+      cat("\n list_el:", list_el, "\n")
+      cat("\n iter:", iter, "\n")
+      
       permutation = stephens_result[[list_el]]$permutations$STEPHENS[iter,]
       assign_old = group_assign_k_raw[[list_el]][iter,]
       
