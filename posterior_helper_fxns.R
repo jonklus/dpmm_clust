@@ -289,6 +289,7 @@ relabel_groups <- function(curr_label_mat, permutations, means){
   # permutations is a result of the label.switching function, an n_iter*k matrix
   # that describes the relabeling scheme
   
+
   new_label_mat = matrix(data = 0, nrow = nrow(curr_label_mat), ncol = ncol(curr_label_mat))
   for(i in 1:nrow(curr_label_mat)){
     curr_labs = as.numeric(names(table(curr_label_mat[i,])))
@@ -1051,33 +1052,72 @@ correct_group_assign <- function(group_assign_list_by_k, stephens_result){
   # divergence and other metrics
   group_assign_k_raw = group_assign_list_by_k
   group_assign_k_corr = vector(mode = "list", length = length(group_assign_k_raw))
+  
+  num_params = sapply(X = 1:length(group_assign_list_by_k),
+                      FUN = function(x){
+                        length(unique(group_assign_list_by_k[[x]][1,]))
+                      })
+  
+  if(1 %in% num_params){
+    start_apply = 2 # stephens function will fail if you input clustering w/ 1 group 
+    group_assign_k_corr[[1]] = group_assign_k_raw[[1]] 
     
-
-  for(list_el in 1:length(group_assign_k_raw)){
-    
-    # preallocate matrix for kth element
-    group_assign_k_corr[[list_el]] = matrix(data = NA, 
-                                            nrow = nrow(group_assign_list_by_k[[list_el]]), 
-                                            ncol = ncol(group_assign_list_by_k[[list_el]]))
-    
-    for(iter in 1:nrow(group_assign_k_raw[[list_el]])){
+    for(list_el in start_apply:length(group_assign_k_raw)){
       
-      cat("\n list_el:", list_el, "\n")
-      cat("\n iter:", iter, "\n")
+      # preallocate matrix for kth element
+      group_assign_k_corr[[list_el]] = matrix(data = NA, 
+                                              nrow = nrow(group_assign_list_by_k[[list_el]]), 
+                                              ncol = ncol(group_assign_list_by_k[[list_el]]))
       
-      permutation = stephens_result[[list_el]]$permutations$STEPHENS[iter,]
-      assign_old = group_assign_k_raw[[list_el]][iter,]
-      
-      for(perm_el in 1:length(permutation)){
+      for(iter in 1:nrow(group_assign_k_raw[[list_el]])){
         
-        old_index = which(assign_old == perm_el) # which is ith element
-        group_assign_k_corr[[list_el]][iter,old_index] = permutation[perm_el] 
-        # assign new label
+        cat("\n list_el:", list_el, "\n")
+        cat("\n iter:", iter, "\n")
         
+        permutation = stephens_result[[(list_el-1)]]$permutations$STEPHENS[iter,]
+        assign_old = group_assign_k_raw[[list_el]][iter,]
+        
+        for(perm_el in 1:length(permutation)){
+          
+          old_index = which(assign_old == perm_el) # which is ith element
+          group_assign_k_corr[[list_el]][iter,old_index] = permutation[perm_el] 
+          # assign new label
+          
+        }
+      }
+    }
+    
+  } else{
+    
+    start_apply = 1
+    
+    for(list_el in start_apply:length(group_assign_k_raw)){
+      
+      # preallocate matrix for kth element
+      group_assign_k_corr[[list_el]] = matrix(data = NA, 
+                                              nrow = nrow(group_assign_list_by_k[[list_el]]), 
+                                              ncol = ncol(group_assign_list_by_k[[list_el]]))
+      
+      for(iter in 1:nrow(group_assign_k_raw[[list_el]])){
+        
+        cat("\n list_el:", list_el, "\n")
+        cat("\n iter:", iter, "\n")
+        
+        permutation = stephens_result[[list_el]]$permutations$STEPHENS[iter,]
+        assign_old = group_assign_k_raw[[list_el]][iter,]
+        
+        for(perm_el in 1:length(permutation)){
+          
+          old_index = which(assign_old == perm_el) # which is ith element
+          group_assign_k_corr[[list_el]][iter,old_index] = permutation[perm_el] 
+          # assign new label
+          
+        }
       }
     }
   }
-  
+    
+
   return(group_assign_k_corr)
 }
 
