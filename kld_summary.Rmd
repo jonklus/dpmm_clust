@@ -1,0 +1,35 @@
+---
+title: "KL Divergence Summary"
+author: "Jonathan Klus"
+date: "2024-02-08"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+$$
+D_{KL}(p||q) = \sum_{x \in \mathcal{X}}p(x)log\left(\frac{p(x)}{q(x)}\right)
+$$
+
+for densities $p$ and $q$ with support $\mathcal{X}$, where $p$ is the estimated density and $q$ is the true density. 
+
+## Well separated case
+
+```{r}
+wellsep_kld = readRDS("../MCMC_Runs/kld_summary_sep_02_08_2024.rds")
+knitr::kable(x = wellsep_kld, digits = 3, 
+             caption = "KL divergence averaged across 10 simulated data sets for the 
+             well-separated case with n=30 observations")
+```
+
+## Close together case
+
+```{r}
+close_kld = readRDS("../MCMC_Runs/kld_summary_close_02_08_2024.rds")
+knitr::kable(x = close_kld, digits = 3, 
+             caption = "KL divergence averaged across 10 simulated data sets for the 
+             closer case with n=30 observations")
+```
