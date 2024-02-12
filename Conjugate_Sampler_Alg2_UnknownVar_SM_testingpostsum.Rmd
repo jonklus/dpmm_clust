@@ -433,20 +433,8 @@ mean(kld_DEE_with_sm_sum_close)
 
 n_iter = 5000
 use_cores = min(parallel::detectCores(), nreps)
-# sim_results_DEV_no_sm_close = parallel::mclapply(X = 1:10, mc.cores = use_cores,
-#       FUN = function(x){MVN_CRP_sampler_DEV(
-#         S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
-#         alpha = 1, r = 10, g = 1, h = 50,
-#         sigma_hyperprior = FALSE, fix_r = FALSE,
-#         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-#         a = 1, b = 50,
-#         k_init = 1, diag_weights = FALSE,
-#         verbose = FALSE, split_merge = FALSE
-#         )}
-#       )
-
-x=10
-sim_results_DEV_no_sm_close_10 = MVN_CRP_sampler_DEV(
+sim_results_DEV_no_sm_close = parallel::mclapply(X = 1:10, mc.cores = use_cores,
+      FUN = function(x){MVN_CRP_sampler_DEV(
         S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
         alpha = 1, r = 10, g = 1, h = 50,
         sigma_hyperprior = FALSE, fix_r = FALSE,
@@ -454,9 +442,21 @@ sim_results_DEV_no_sm_close_10 = MVN_CRP_sampler_DEV(
         a = 1, b = 50,
         k_init = 1, diag_weights = FALSE,
         verbose = FALSE, split_merge = FALSE
+        )}
       )
 
-datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_no10_",
+# x=10
+# sim_results_DEV_no_sm_close_10 = MVN_CRP_sampler_DEV(
+#         S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+#         alpha = 1, r = 10, g = 1, h = 50,
+#         sigma_hyperprior = FALSE, fix_r = FALSE,
+#         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+#         a = 1, b = 50,
+#         k_init = 1, diag_weights = FALSE,
+#         verbose = FALSE, split_merge = FALSE
+#       )
+
+datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_",
                        stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
 saveRDS(object = sim_results_DEV_no_sm_close_10, file = datafile_name)
 # 
@@ -464,9 +464,9 @@ saveRDS(object = sim_results_DEV_no_sm_close_10, file = datafile_name)
 #                        stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
 # saveRDS(object = sim_results_DEV_no_sm_close, file = datafile_name)
 
-sim_results_DEV_no_sm_close = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_2024_02_08.rds")
+sim_results_DEV_no_sm_close = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_2024_02_12.rds")
 
-DEV_no_sm_sum_close = lapply(X = 1:9, #1:length(sim_results_DEV_no_sm_close), 
+DEV_no_sm_sum_close = lapply(X = 1:length(sim_results_DEV_no_sm_close), 
                          FUN = function(x){
                            cat("\n Dataset #", x)
                            dpmm_summary(output = sim_results_DEV_no_sm_close, 

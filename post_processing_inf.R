@@ -21,6 +21,7 @@ library(label.switching)
 library(LaplacesDemon)
 library(parallel)
 library(stringr)
+library(dplyr)
 
 
 ######################## DEFINE NEW FUNCTIONS ##################################
@@ -161,7 +162,7 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
           ) %>%
           dplyr::group_by(move_type) %>%
           dplyr::summarise(Accept_Prob = round(mean(accept),3), 
-                           Count = n())
+                           Count = dplyr::n())
         
         if(print_k_sum == TRUE){
           cat("\n Split/Merge MH Steps: \n")
