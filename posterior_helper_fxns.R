@@ -632,7 +632,7 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
         # name columns i.e. mu23 is mean for group 2, 3rd component 
         # (i.e. from a length 3 mean vector)
         
-        names(param_list_by_k[[1]]) = paste0(param_symbol, "_", 1:npar)
+        names(param_list_by_k[[1]]) = paste0(param_symbol, "_", 1, "_", 1:npar)
         
       } else{
         
@@ -699,7 +699,7 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
           
           # name columns i.e. mu23 is mean for group 2, 3rd component 
           # (i.e. from a length 3 mean vector)
-          col_header_names = paste0(param_symbol, "_", 1)
+          col_header_names = paste0(param_symbol, "_", 1, "_", 1)
           names(param_list_by_k[[i]]) = gtools::mixedsort(col_header_names)
           
         } else{
@@ -710,7 +710,7 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
           
           # name columns i.e. mu23 is mean for group 2, 3rd component 
           # (i.e. from a length 3 mean vector)
-          col_header_names = paste0(param_symbol, "_", 1:unique_k[i])
+          col_header_names = paste0(param_symbol, "_", 1:unique_k[i], "_1")
           names(param_list_by_k[[i]]) = gtools::mixedsort(col_header_names)
           
         }
@@ -1171,19 +1171,20 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
 
         est_dens_k[iter,] = sapply(X = 1:length(y), 
                                    FUN = function(x){
-                                     # cat("\n x ", x)
-                                     # cat("\n iter ", iter)
-                                     # cat("\n group_assign[iter,x] ", group_assign[[k]][iter,x])
+                                     cat("\n x ", x)
+                                     cat("\n iter ", iter)
+                                     cat("\n group_assign[iter,x] ", group_assign[[k]][iter,x])
                                      mean_ind = grep(
                                        pattern = paste0("mu_", group_assign[[k]][iter,x], "_"), 
                                        x = names(mu_est[[k]]))
+                                     cat("\n mean_ind ", mean_ind)
                                      var_ind = grep(
                                        pattern = paste0("sigma_", group_assign[[k]][iter,x]), 
                                        x = names(Sigma_est[[k]]))
-                                     # cat("\n mu_est")
-                                     # print(as.numeric(mu_est[[k]][iter,mean_ind]))
-                                     # cat("\n Sigma_est")
-                                     # print(Sigma_est[[k]][iter,var_ind])
+                                     cat("\n mu_est")
+                                     print(as.numeric(mu_est[[k]][iter,mean_ind]))
+                                     cat("\n Sigma_est")
+                                     print(Sigma_est[[k]][iter,var_ind])
                                      mvtnorm::dmvnorm(x = y[[x]][,1], 
                                                       mean = as.numeric(mu_est[[k]][iter,mean_ind]), 
                                                       sigma = diag(as.numeric(Sigma_est[[k]][iter,var_ind]), 
