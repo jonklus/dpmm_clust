@@ -389,8 +389,9 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
 }
 
 MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambda0, mu0, k_init = 2,
-                                g = 1, h = 1, nu = 2, nu_hyperprior = FALSE, fix_r = FALSE, split_merge = FALSE,
-                                sm_iter = 5, diag_weights = FALSE, verbose = TRUE, print_iter = 100){
+                                g = 1, h = 1, nu = 2, nu_hyperprior = FALSE, fix_r = FALSE, 
+                                split_merge = FALSE, sm_iter = 5, diag_weights = FALSE, 
+                                verbose = TRUE, print_iter = 100, truth = NA){
   
   # S is number of MCMC iterations
   # y is a list of data of length n
@@ -403,6 +404,7 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
   # K_init is the initial number of groups
   # diag_weights is an argument to the Laplacian matrix - whether the diagonal should be 1 or not
   # verbose & printmod tells the function if and how often to print a progress summary
+  # truth is a list. optional argument to include true param values from simulation
   
   set.seed(seed = seed)
   
@@ -1428,6 +1430,7 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
     
     return_list = list(settings = settings,
                        data = y,
+                       truth = truth,
                        k = num_groups, 
                        means = means,
                        vars = vars,
@@ -1447,6 +1450,7 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
     
     return_list = list(settings = settings,
                        data = y, 
+                       truth = truth,
                        k = num_groups, 
                        means = means,
                        vars = vars,

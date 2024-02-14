@@ -479,7 +479,7 @@ split_merge_prob_DEV <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
 
 MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1/2, b = 10, mu0, k_init = 2,
                                 d = 1, f = 1, g = 1, h = 1, sigma_hyperprior = TRUE, fix_r = FALSE,
-                                split_merge = FALSE, sm_iter = 10,
+                                split_merge = FALSE, sm_iter = 10, truth = NA,
                                 diag_weights = FALSE, verbose = TRUE, print_iter = 100){
   
   # S is number of MCMC iterations
@@ -494,6 +494,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   # K_init is the initial number of groups
   # diag_weights is an argument to the Laplacian matrix - whether the diagonal should be 1 or not
   # verbose & printmod tells the function if and how often to print a progress summary
+  # truth is an optional list argument with the true parameters used to generate simulated data
   
   set.seed(seed = seed)
   
@@ -1474,6 +1475,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
     
     return_list = list(settings = settings,
                        data = y,
+                       truth = truth,
                        k = num_groups, 
                        means = means,
                        vars = vars,
@@ -1494,6 +1496,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
     
     return_list = list(settings = settings,
                        data = y,
+                       truth = truth,
                        k = num_groups, 
                        means = means,
                        vars = vars,

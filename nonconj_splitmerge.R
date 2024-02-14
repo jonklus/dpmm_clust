@@ -16,8 +16,15 @@ library(LaplacesDemon)
 
 ############################### HELPER FUNCTIONS ###############################
 
+nonconj_split_merge_prob_phi <- function(obs, split_labs, group_assign, y, mu, Sigma){
+  # This is P_GS(phi*|phi^L,...) from Jain & Neal 2007 
+  
+  
+}
 
-nonconj_split_merge_prob <- function(obs, split_labs, group_assign, y, mu, Sigma){
+nonconj_split_merge_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma){
+  # This is P_GS(c*|c^L,...) from Jain & Neal 2007 
+  
   # split_labs is an array of length 2 indicating which entries in counts correspond
   # to the groups that are part of the split/merge
   # which_group is a scalar valued 1 or 2 indicating which of the groups we are considering
@@ -222,8 +229,8 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
         split_temp_group_assign[scan,sampled_obs[2]] = split_lab[2] 
         
         # merge start
-        split_temp_group_assign[scan,sampled_obs[1]] = merge_lab
-        split_temp_group_assign[scan,sampled_obs[2]] = merge_lab
+        merge_temp_group_assign[scan,sampled_obs[1]] = merge_lab
+        merge_temp_group_assign[scan,sampled_obs[2]] = merge_lab
         
         # draw params from prior - random launch state for split proposal
         split_means[[1]] = lapply(X = 1:2, 

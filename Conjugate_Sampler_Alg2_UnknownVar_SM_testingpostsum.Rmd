@@ -430,20 +430,20 @@ mean(kld_DEE_with_sm_sum_close)
 ##### without split-merge step
 
 ```{r}
-
-n_iter = 5000
-use_cores = min(parallel::detectCores(), nreps)
-sim_results_DEV_no_sm_close = parallel::mclapply(X = 1:10, mc.cores = use_cores,
-      FUN = function(x){MVN_CRP_sampler_DEV(
-        S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
-        alpha = 1, r = 10, g = 1, h = 50,
-        sigma_hyperprior = FALSE, fix_r = FALSE,
-        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-        a = 1, b = 50,
-        k_init = 1, diag_weights = FALSE,
-        verbose = FALSE, split_merge = FALSE
-        )}
-      )
+# 
+# n_iter = 5000
+# use_cores = min(parallel::detectCores(), nreps)
+# sim_results_DEV_no_sm_close = parallel::mclapply(X = 1:10, mc.cores = use_cores,
+#       FUN = function(x){MVN_CRP_sampler_DEV(
+#         S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+#         alpha = 1, r = 10, g = 1, h = 50,
+#         sigma_hyperprior = FALSE, fix_r = FALSE,
+#         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+#         a = 1, b = 50,
+#         k_init = 1, diag_weights = FALSE,
+#         verbose = FALSE, split_merge = FALSE
+#         )}
+#       )
 
 # x=10
 # sim_results_DEV_no_sm_close_10 = MVN_CRP_sampler_DEV(
@@ -454,17 +454,17 @@ sim_results_DEV_no_sm_close = parallel::mclapply(X = 1:10, mc.cores = use_cores,
 #         a = 1, b = 50,
 #         k_init = 1, diag_weights = FALSE,
 #         verbose = FALSE, split_merge = FALSE
-#       )
-
-datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_",
-                       stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
-saveRDS(object = sim_results_DEV_no_sm_close_10, file = datafile_name)
+# #       )
+# 
+# datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_",
+#                        stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
+# saveRDS(object = sim_results_DEV_no_sm_close_10, file = datafile_name)
 # 
 # datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_",
 #                        stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
 # saveRDS(object = sim_results_DEV_no_sm_close, file = datafile_name)
 
-sim_results_DEV_no_sm_close = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_2024_02_12.rds")
+sim_results_DEV_no_sm_close = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_2024_01_16.rds")
 
 DEV_no_sm_sum_close = lapply(X = 1:length(sim_results_DEV_no_sm_close), 
                          FUN = function(x){
@@ -483,137 +483,12 @@ DEV_no_sm_sum_close = lapply(X = 1:length(sim_results_DEV_no_sm_close),
                            })
                      
 # extract KL divergence and summarize
-kld_DEV_no_sm_sum_close = sapply(X = 1:length(DEV_no_sm_sum_close), 
+kld_DEV_no_sm_sum_close = sapply(X = 1:length(DEV_no_sm_sum_close),
                            FUN = function(x){
                              DEV_no_sm_sum_close[[x]]$kl_div
                              })
 print(kld_DEV_no_sm_sum_close)
 mean(kld_DEV_no_sm_sum_close)
-
-output = list(1,2,3,4,5,6,7,8,9,sim_results_DEV_no_sm_close_10)
-dataset_ind = 10
-print_phi_sum = FALSE
-print_k_sum = TRUE
-make_traceplot = TRUE
-burn_in = 1000
-t_hold = 100
-num_dims = 2
-calc_KL = TRUE
-mu_true = mu_true
-var_true = lapply(X = 1:length(mu_true), FUN = function(x){var_true})
-assign_true = yreps[[dataset_ind]]$assign
-equal_var = FALSE
-
-  # output is the list of results from the DPMM simulation study function
-  # dataset is a numeric argument to summarize a specific result in the output, the desired index
-  # sum_all is a logical argument to provide a summary of all data sets --- NOT CURRENTLY IMPLEMENTED
-  # print_k_sum is a logical, if TRUE print summary of no groups found
-  # print_phi_sum is a logical, if TRUE print summary of estimated model parameters
-  # burn_in is # of burn in iterations to discard
-  # t_hold is the threshold # of iterations for a given k in order to report results
-  # num_dims is the dimensionality of the problem (i.e. a bivariate normal is dim 2)
-  # mu_true and var_true are list arguments with the true values of the model parameters
-  # from a simulation study used to calculate the KL divergence
-  # equal_var is a logical argument for whether the equal variance assumption was made
-  # in the model. The function will then expect a scalar variance instead of a var-covar matrix
-
-  # show basic summary
-  if(print_k_sum == TRUE){
-    cat("\n Frequency of MCMC iterations finding K groups:")
-    print(table(output[[dataset_ind]]$k))
-
-    cat("\n Percentage of MCMC iterations finding K groups:")
-    print(round((table(output[[dataset_ind]]$k)/sum(table(output[[dataset_ind]]$k)))*100,1))
-
-    cat("\n *Note that above frequency summaries of MCMC iterations were made before burn-in or thresholds were applied.
-          All inference on phi will be made after accounting for burn-in and thresholding. \n")
-  }
-
-  # filter by number of iterations for each k and address label switching
-    prob_list_by_k = get_probs_by_k(probs = output[[dataset_ind]]$group_probs,
-                                    n_groups = output[[dataset_ind]]$k,
-                                    burn_in = burn_in,
-                                    iter_threshold = t_hold)
-    group_assign_list_by_k = get_assign_by_k(assign = output[[dataset_ind]]$group_assign,
-                                             n_groups = output[[dataset_ind]]$k,
-                                             burn_in = burn_in,
-                                             iter_threshold = t_hold)
-
-    # correct label switching
-    stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k,
-                                          prob_list_by_k = prob_list_by_k$prob_list)
-
-    # summarize means & variances
-    mean_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$means,
-                                               k_vec = output[[dataset_ind]]$k,
-                                               # burn_in = burn_in,
-                                               # iter_threshold = thold,
-                                               iter_list = prob_list_by_k$iter_list,
-                                               relabel = TRUE,
-                                               permutation = stephens_result,
-                                               param_type = "Mean")
-
-    var_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$vars,
-                                              iter_list = prob_list_by_k$iter_list,
-                                              k_vec = output[[dataset_ind]]$k,
-                                              relabel = TRUE, equal_var = equal_var,
-                                              permutation = stephens_result,
-                                              param_type = "Var")
-
-    # compute KL divergence
-    group_assign_list_by_k_corr = correct_group_assign(
-      group_assign_list_by_k = group_assign_list_by_k,
-      stephens_result = stephens_result)
-
-    if(calc_KL == TRUE){
-
-      kl_res = calc_KL_diverg(y = output[[dataset_ind]]$data,
-                              mu_est = mean_list_by_k_stephens,
-                              Sigma_est = var_list_by_k_stephens,
-                              group_assign = group_assign_list_by_k_corr,
-                              true_assign = assign_true,
-                              mu_true = mu_true,
-                              Sigma_true = var_true,
-                              equal_var_assump = equal_var)
-      # py is truth, px is estimate
-      kl_div = kl_res$sum.KLD.py.px # how far is estimate px from truth py
-
-    }
-
-    mean_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
-    var_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
-    for(k in 1:length(mean_list_by_k_stephens)){
-
-      # make mean summary table
-      mean_summary[[k]] = make_postsum(mcmc_df = mean_list_by_k_stephens[[k]], digits = 2)
-
-      # make variance summary table
-      var_summary[[k]] = make_postsum(mcmc_df = var_list_by_k_stephens[[k]], digits = 2)
-
-      k_i = ncol(var_list_by_k_stephens[[k]])
-      if(print_phi_sum == TRUE){
-        # give summary of counts after thresholding
-        cat("\n K =", k_i, " n_k =", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
-        print(mean_summary[[k]])
-        print(var_summary[[k]])
-      }
-
-      if(make_traceplot == TRUE){
-        for(dim_i in 1:num_dims){
-          make_traceplot(param_list_by_k = mean_list_by_k_stephens,
-                         k = k_i,
-                         component_no = dim_i,
-                         p= num_dims,
-                         # title_note = cat("K=", k_i),
-                         param_type = "Mean")
-        }
-      }
-    }
-
-    # KL divergence for entire model --- across all k
-    if(print_k_sum == TRUE){
-      cat("\n KL Divergence: KL(p_est||p_true)=", round(kl_div, 3), "\n")
-    }
 
 ```
 
@@ -637,27 +512,27 @@ equal_var = FALSE
 # datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_close_withSM_",
 #                        stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
 # saveRDS(object = sim_results_DEV_with_sm_close, file = datafile_name)
-x=1
-sim_results_DEV_with_sm_close_1 = MVN_CRP_sampler_DEV(
-        S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
-        alpha = 1, r = 10, g = 1, h = 50,
-        sigma_hyperprior = FALSE, fix_r = FALSE,
-        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-        a = 1, b = 50,
-        k_init = 1, diag_weights = FALSE,
-        verbose = FALSE, split_merge = FALSE
-      )
-
-datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_no10_",
-                       stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
-saveRDS(object = sim_results_DEV_no_sm_close_10, file = datafile_name)
+# x=1
+# sim_results_DEV_with_sm_close_1 = MVN_CRP_sampler_DEV(
+#         S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+#         alpha = 1, r = 10, g = 1, h = 50,
+#         sigma_hyperprior = FALSE, fix_r = FALSE,
+#         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+#         a = 1, b = 50,
+#         k_init = 1, diag_weights = FALSE,
+#         verbose = FALSE, split_merge = FALSE
+#       )
+# 
+# datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_no10_",
+#                        stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
+# saveRDS(object = sim_results_DEV_no_sm_close_10, file = datafile_name)
 
 
 sim_results_DEV_with_sm_close = readRDS(file = "../MCMC_Runs/conjDEVsamp_minisimstudy_close_withSM_2024_01_16.rds")
 
 # got an error here with data set 1 that I haven't seen before -- need to investigate
 # further
-DEV_with_sm_sum_close = lapply(X = 2:length(sim_results_DEV_with_sm_close), 
+DEV_with_sm_sum_close = lapply(X = 1:length(sim_results_DEV_with_sm_close), 
                          FUN = function(x){
                            cat("\n Dataset #", x)
                            dpmm_summary(output = sim_results_DEV_with_sm_close, 
@@ -777,9 +652,8 @@ colnames(kld_summary_close) = c("DEE", "DEV", "UVV")
 row.names(kld_summary_close) = c("no SM", "with SM")
 
 kld_summary_close[,"DEE"] = c(mean(kld_DEE_no_sm_sum_close), mean(kld_DEE_with_sm_sum_close))
-kld_summary_close[,"DEV"] = c(NA, NA) # c(mean(kld_DEV_no_sm_sum_close), mean(kld_DEV_with_sm_sum_close))
+kld_summary_close[,"DEV"] = c(mean(kld_DEV_no_sm_sum_close), mean(kld_DEV_with_sm_sum_close))
 kld_summary_close[,"UVV"] = c(mean(kld_UVV_no_sm_sum_close), mean(kld_UVV_with_sm_sum_close))
 kld_summary_close
-saveRDS(object = kld_summary_close, file = "../MCMC_Runs/kld_summary_close_02_08_2024.rds")
->>>>>>> e30e6dee40a6c74c10d92abed442aee750fc0ebd
+saveRDS(object = kld_summary_close, file = "../MCMC_Runs/kld_summary_close_02_12_2024.rds")
 ```
