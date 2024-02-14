@@ -502,6 +502,8 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   # diag_weights
   # truth is a list of true parameter values used to generate simulated data. optional argument.
   
+  start = Sys.time()
+  
   set.seed(seed = seed)
   
   # data is y - a list of length n
@@ -1331,12 +1333,15 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   ## calculate Laplacian and average adjacency matrices across all MCMC runs
   pairwise_mats = pairwise_prob_mat(group_assign = group_assign, probs = probs, diag_weights = diag_weights)
   
+  end = Sys.time()
+  
   if(sigma_hyperprior == TRUE){
     
     settings = list(S = S, alpha = alpha, a = a, b = b, mu0 = mu0, 
                     k_init = k_init, d = d, f = f, g = g, h = h, r = r)
     
     return_list = list(settings = settings,
+                       runtime = difftime(end, start, units = "m"),
                        data = y,
                        truth = truth,
                        k = num_groups, 
@@ -1358,6 +1363,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                     d = d, f = f, r = r)
     
     return_list = list(settings = settings,
+                       runtime = difftime(end, start, units = "m"),
                        data = y,
                        truth = truth,
                        k = num_groups, 

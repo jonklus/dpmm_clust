@@ -406,6 +406,8 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
   # verbose & printmod tells the function if and how often to print a progress summary
   # truth is a list. optional argument to include true param values from simulation
   
+  start = Sys.time()
+  
   set.seed(seed = seed)
   
   # data is y - a list of length n
@@ -1423,12 +1425,15 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
   ## calculate Laplacian and average adjacency matrices across all MCMC runs
   pairwise_mats = pairwise_prob_mat(group_assign = group_assign, probs = probs, diag_weights = diag_weights)
   
+  end = Sys.time()
+  
   if(nu_hyperprior == TRUE | fix_r == FALSE){
     
     settings = list(S = S, alpha = alpha, mu0 = mu0, lambda0 = lambda0,
                     k_init = k_init, g = g, h = h, r = r) # d = d, f = f,
     
     return_list = list(settings = settings,
+                       runtime = difftime(end, start, units = "m"),
                        data = y,
                        truth = truth,
                        k = num_groups, 
@@ -1449,6 +1454,7 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
                     nu = nu, mu0 = mu0, k_init = k_init, g = g, h = h, r = r)
     
     return_list = list(settings = settings,
+                       runtime = difftime(end, start, units = "m"),
                        data = y, 
                        truth = truth,
                        k = num_groups, 
