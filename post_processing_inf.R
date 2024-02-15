@@ -22,6 +22,7 @@ library(LaplacesDemon)
 library(parallel)
 library(stringr)
 library(dplyr)
+library(mclust)
 
 
 ######################## DEFINE NEW FUNCTIONS ##################################
@@ -29,7 +30,7 @@ library(dplyr)
 dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
                          print_k_sum = TRUE, make_traceplot = TRUE,
                          burn_in = 1000, t_hold = 0, num_dims = 2, 
-                         calc_KL = FALSE, mu_true = NULL, var_true = NULL, 
+                         calc_perf = FALSE, mu_true = NULL, var_true = NULL, 
                          assign_true = NULL, equal_var = FALSE
                          ){
   # output is the list of results from the DPMM simulation study function
@@ -40,6 +41,7 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
   # burn_in is # of burn in iterations to discard
   # t_hold is the threshold # of iterations for a given k in order to report results
   # num_dims is the dimensionality of the problem (i.e. a bivariate normal is dim 2)
+  # calc_perf is a logical - whether to calculate performance metrics (currently KLD and ARI)
   # mu_true and var_true are list arguments with the true values of the model parameters
   # from a simulation study used to calculate the KL divergence 
   # equal_var is a logical argument for whether the equal variance assumption was made
@@ -93,8 +95,9 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
       group_assign_list_by_k = group_assign_list_by_k, 
       stephens_result = stephens_result)
     
-    if(calc_KL == TRUE){
+    if(calc_perf == TRUE){
       
+      # KL divergence
       kl_res = calc_KL_diverg(y = output[[dataset_ind]]$data,
                               mu_est = mean_list_by_k_stephens,
                               Sigma_est = var_list_by_k_stephens,
@@ -105,6 +108,19 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
                               equal_var_assump = equal_var)
       # py is truth, px is estimate
       kl_div = kl_res$sum.KLD.py.px # how far is estimate px from truth py
+      
+      # Adjusted RAND index
+      ARI = lapply(X = 1:length(group_assign_list_by_k), 
+                   FUN = function(x){
+                     k = x 
+                     sapply(X = 1:nrow(group_assign_list_by_k[[k]]), 
+                            FUN = function(x){
+                              mclust::adjustedRandIndex(
+                                x = assign_true, 
+                                y = group_assign_list_by_k[[k]][iter,])
+                            })
+                   })
+
       
     }
     
@@ -139,7 +155,7 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
     }
     
     # KL divergence for entire model --- across all k
-    if(print_k_sum == TRUE){
+    if(print_k_sum == TRUE & calc_perf == TRUE){
       cat("\n KL Divergence: KL(p_est||p_true)=", round(kl_div, 3), "\n")
     }
     
@@ -178,14 +194,30 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
 
     
   # return summary of all results
-  return(list(
-    mean_list_by_k_stephens = mean_list_by_k_stephens,
-    var_list_by_k_stephens = var_list_by_k_stephens,
-    mean_summary = mean_summary,
-    var_summary = var_summary,
-    splitmerge_accept = sm_df, 
-    kl_div = round(kl_div, 4)
-  ))
+    if(calc_perf == TRUE){
+      
+      return(list(
+        mean_list_by_k_stephens = mean_list_by_k_stephens,
+        var_list_by_k_stephens = var_list_by_k_stephens,
+        mean_summary = mean_summary,
+        var_summary = var_summary,
+        splitmerge_accept = sm_df, 
+        kl_div = round(kl_div, 4)
+        mean_ARI = mean(unlist(ARI))
+      ))
+      
+    } else{
+      
+      return(list(
+        mean_list_by_k_stephens = mean_list_by_k_stephens,
+        var_list_by_k_stephens = var_list_by_k_stephens,
+        mean_summary = mean_summary,
+        var_summary = var_summary,
+        splitmerge_accept = sm_df
+      ))
+      
+    }
+
   
 }
 
