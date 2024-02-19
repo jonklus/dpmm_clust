@@ -891,9 +891,9 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         prob1 = -Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index])) # log1 - sum(logs)
         #print(sm_probs)
         ## prior ratio
-        prob2_num = factorial(sm_counts[[split_group_count_index[1]]] -1)*factorial(sm_counts[[split_group_count_index[2]]] -1)
-        prob2_denom = factorial(sm_counts[[split_group_count_index[1]]]+sm_counts[[split_group_count_index[2]]]-1)
-        prob2 = log(alpha) + (log(prob2_num) - log(prob2_denom))
+        prob2 = log(alpha) - sum_log(n_tot = sm_counts[[split_group_count_index[1]]]+sm_counts[[split_group_count_index[2]]], 
+                                     n_1 = sm_counts[[split_group_count_index[1]]], 
+                                     n_2 = sm_counts[[split_group_count_index[2]]])
         
         ## likelihood ratio
         subset_index_grp1 = which(temp_group_assign[sm_iter+1,] %in% split_lab[1]) 
@@ -1054,9 +1054,10 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         # cat("\n")
         # cat("split_group_count_index:", split_group_count_index)
         
-        prob2_num = factorial(sm_counts_before[[split_group_count_index[1]]] -1)*factorial(sm_counts_before[[split_group_count_index[2]]] -1)
-        prob2_denom = factorial(sm_counts_before[[split_group_count_index[1]]]+sm_counts_before[[split_group_count_index[2]]]-1)
-        prob2 = -(log(alpha) + (log(prob2_num) - log(prob2_denom)))
+        prob2 = -log(alpha) + sum_log(n_tot = sm_counts_before[[split_group_count_index[1]]] + 
+                                        sm_counts_before[[split_group_count_index[2]]], 
+                                      n_1 = sm_counts_before[[split_group_count_index[1]]], 
+                                      n_2 = sm_counts_before[[split_group_count_index[2]]])
         
         ## likelihood ratio
         subset_index_grp1 = which(temp_group_assign[1,] %in% split_lab[1]) 
