@@ -156,7 +156,8 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
     
     # KL divergence for entire model --- across all k
     if(print_k_sum == TRUE & calc_perf == TRUE){
-      cat("\n KL Divergence: KL(p_est||p_true)=", round(kl_div, 3), "\n")
+      cat("\n KL Divergence: KL(p_est||p_true) = ", round(kl_div, 3), "\n")
+      cat("\n Adj RAND Index = ", round(mean(unlist(ARI)), 3), "\n")
     }
     
     # MH acceptance probs for split merge or non conj MH alg
@@ -202,7 +203,7 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
         mean_summary = mean_summary,
         var_summary = var_summary,
         splitmerge_accept = sm_df, 
-        kl_div = round(kl_div, 4)
+        kl_div = round(kl_div, 4),
         mean_ARI = mean(unlist(ARI))
       ))
       

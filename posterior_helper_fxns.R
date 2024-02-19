@@ -14,6 +14,31 @@ library(tidyr)
 library(dplyr)
 library(gtools) # mixedsort function
 
+######################### COMPUTATIONAL TOOLS ##################################
+sum_log <- function(n_tot, n_1, n_2){
+  # function to compute the factorial component of the second term of the Metropolis-
+  # Hastings acceptance probability of the conjugate Split-Merge algorithm
+  # written in terms of the MERGE step...put a negative in front of result
+  # for equivalent split term
+  
+  # check for 1s...if either equals 1 set =2 so since 
+  # factorial(0) = 1 ---> exp(log(1)) = exp(0) = 1
+  if(n_1 == 1){
+    n_1 = 2
+  } 
+  
+  if(n_2 == 1){
+    n_2 = 2
+  }
+  
+  term1 = sum(log(1:(n_tot-1)))
+  term2 = sum(log(1:(n_1-1)))
+  term3 = sum(log(1:(n_2-1)))
+  
+  return(term1-(term2+term3))
+  # can exponentiate to get back to original form
+}
+
 ####################### FORMAT MCMC OUTPUT, SORT BY K ##########################
 
 

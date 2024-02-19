@@ -959,6 +959,9 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         prob3 = prob3_num1 + prob3_num2 - prob3_denom
         accept_prob = min(1, exp(prob1 + prob2 + prob3))
         u = runif(n = 1)
+        cat("\n split")
+        cat("\n Prob components", c(prob1, prob2, prob3))
+        cat("\n AcceptProb", accept_prob)
         if(accept_prob > u){
           # accept
           accept = 1
@@ -1133,7 +1136,10 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         prob2_num = factorial(sm_counts_before[[split_group_count_index[1]]] -1)*factorial(sm_counts_before[[split_group_count_index[2]]] -1)
         prob2_denom = factorial(sm_counts_before[[split_group_count_index[1]]]+sm_counts_before[[split_group_count_index[2]]]-1)
         prob2 = -(log(alpha) + (log(prob2_num) - log(prob2_denom)))
-        
+        cat("\n prob2_num", prob2_num)
+        cat("\n prob2_denom", prob2_denom)
+        cat("\n sm_counts_before", sm_counts_before)
+        cat("\n split_group_count_index", split_group_count_index)
         ## likelihood ratio
         subset_index_grp1 = which(temp_group_assign[1,] %in% split_lab[1]) 
         subset_index_grp2 = which(temp_group_assign[1,] %in% split_lab[2]) 
@@ -1167,6 +1173,10 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         prob3 = -(prob3_num1 + prob3_num2 - prob3_denom)
         accept_prob = min(1, exp(prob1 + prob2 + prob3))
         u = runif(n = 1)
+        cat("\n Merge")
+        cat("\n Prob components", c(prob1, prob2, prob3))
+        cat("\n AcceptProb", accept_prob)
+        
         if(accept_prob > u){
           # accept
           accept = 1
