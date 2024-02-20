@@ -47,6 +47,8 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
   # equal_var is a logical argument for whether the equal variance assumption was made
   # in the model. The function will then expect a scalar variance instead of a var-covar matrix 
   
+  start = Sys.time()
+  
   # show basic summary
   if(print_k_sum == TRUE){
     cat("\n Frequency of MCMC iterations finding K groups:")
@@ -117,7 +119,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
                             FUN = function(x){
                               mclust::adjustedRandIndex(
                                 x = assign_true, 
-                                y = group_assign_list_by_k[[k]][iter,])
+                                y = group_assign_list_by_k[[k]][x,])
                             })
                    })
 
@@ -193,6 +195,8 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
       sm_df = NULL
     }
 
+    end = Sys.time()
+    cat("\n Summary function runtime is", difftime(end, start, units = "m"))
     
   # return summary of all results
     if(calc_perf == TRUE){
@@ -204,7 +208,8 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
         var_summary = var_summary,
         splitmerge_accept = sm_df, 
         kl_div = round(kl_div, 4),
-        mean_ARI = mean(unlist(ARI))
+        mean_ARI = mean(unlist(ARI)),
+        fit_runtime = output$runtime
       ))
       
     } else{
@@ -214,7 +219,8 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
         var_list_by_k_stephens = var_list_by_k_stephens,
         mean_summary = mean_summary,
         var_summary = var_summary,
-        splitmerge_accept = sm_df
+        splitmerge_accept = sm_df,
+        fit_runtime = output$runtime
       ))
       
     }

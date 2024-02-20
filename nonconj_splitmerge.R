@@ -16,13 +16,18 @@ library(LaplacesDemon)
 
 ############################### HELPER FUNCTIONS ###############################
 
-nonconj_split_merge_prob_phi <- function(obs, split_labs, group_assign, y, mu, Sigma){
+nonconj_phi_prob <- function(obs, split_labs, group_assign, y, mu, Sigma){
   # This is P_GS(phi*|phi^L,...) from Jain & Neal 2007 
   
   
+  # for the kth component under a DEV assumption
+  dens = exp(-0.5*(t(y[obs]-mu)%*%(y[obs]-mu)))
+  
+  # for the kth component under a UVV assumption
+  
 }
 
-nonconj_split_merge_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma){
+nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma){
   # This is P_GS(c*|c^L,...) from Jain & Neal 2007 
   
   # split_labs is an array of length 2 indicating which entries in counts correspond
@@ -158,6 +163,11 @@ sm_iter = 10
 
 # Split-Merge step --- every 10 iterations
 
+# final update of counts after previous sweep
+count_assign = as.numeric(table(group_assign[s,]))
+label_assign = as.numeric(names(table(group_assign[s,])))
+num_groups[s,] = k
+
 if((split_merge == TRUE) & (s %% sm_iter == 0)){
   
   k_start = k
@@ -242,13 +252,16 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
         
         split_vars[[1]] = lapply(X = 1:2, 
                                   FUN = function(x){
-                                    LaplacesDemon::rinvwishart(nu = nu, 
-                                                               S = lambda0)
+                                    diag(rgamma(n = 1, shape = a, rate = b), p)
+                                    # for UVV
+                                    # LaplacesDemon::rinvwishart(nu = nu, 
+                                    #                            S = lambda0)
                                   })
         
         # draw params from prior - random launch state for merge proposal
         merge_means[[1]] = mvtnorm::rmvnorm(n = 1, mean = mu0, sigma = Sigma0)
-        merge_vars[[1]] = LaplacesDemon::rinvwishart(nu = nu, S = lambda0)
+        merge_vars[[1]] = diag(rgamma(n = 1, shape = a, rate = b), p)
+        # merge_vars[[1]] = LaplacesDemon::rinvwishart(nu = nu, S = lambda0)
         
       } else{
         
@@ -307,19 +320,13 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
 
             # update group assignment probabilities 
             
-            ##### NOTE #####
-            ###############
-            # need to redo below function and reinstate 0/1 error handling from
-            # previous iterations -- this time instead of prior predictive what
-            # should stand in for LL when count is zero???
-            # try prior for now, but email Jain & Neal to inquire
-            
-            split_assign_prob = nonconj_split_merge_prob(
+            split_assign_prob = nonconj_component_prob(
                 obs = obs, split_labs = split_lab,
                 group_assign = split_temp_group_assign[scan,], 
                 y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
             
-            merge_assign_prob = nonconj_split_merge_prob(
+            ### is merge_assign prob by definition always 1?
+            merge_assign_prob = nonconj_component_prob(
               obs = obs, split_labs = split_lab,
               group_assign = merge_temp_group_assign[scan,], 
               y = y, mu = merge_means[[scan]], Sigma = merge_vars[[scan]])
