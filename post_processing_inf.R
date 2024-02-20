@@ -27,7 +27,7 @@ library(mclust)
 
 ######################## DEFINE NEW FUNCTIONS ##################################
 
-dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
+dpmm_summary <- function(output, print_phi_sum = FALSE,
                          print_k_sum = TRUE, make_traceplot = TRUE,
                          burn_in = 1000, t_hold = 0, num_dims = 2, 
                          calc_perf = FALSE, mu_true = NULL, var_true = NULL, 
@@ -50,22 +50,22 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
   # show basic summary
   if(print_k_sum == TRUE){
     cat("\n Frequency of MCMC iterations finding K groups:")
-    print(table(output[[dataset_ind]]$k))
+    print(table(output$k))
     
     cat("\n Percentage of MCMC iterations finding K groups:")
-    print(round((table(output[[dataset_ind]]$k)/sum(table(output[[dataset_ind]]$k)))*100,1))
+    print(round((table(output$k)/sum(table(output$k)))*100,1))
     
     cat("\n *Note that above frequency summaries of MCMC iterations were made before burn-in or thresholds were applied. 
           All inference on phi will be made after accounting for burn-in and thresholding. \n")
   }
   
   # filter by number of iterations for each k and address label switching
-    prob_list_by_k = get_probs_by_k(probs = output[[dataset_ind]]$group_probs, 
-                                    n_groups = output[[dataset_ind]]$k, 
+    prob_list_by_k = get_probs_by_k(probs = output$group_probs, 
+                                    n_groups = output$k, 
                                     burn_in = burn_in, 
                                     iter_threshold = t_hold)
-    group_assign_list_by_k = get_assign_by_k(assign = output[[dataset_ind]]$group_assign, 
-                                             n_groups = output[[dataset_ind]]$k, 
+    group_assign_list_by_k = get_assign_by_k(assign = output$group_assign, 
+                                             n_groups = output$k, 
                                              burn_in = burn_in, 
                                              iter_threshold = t_hold)
     
@@ -74,8 +74,8 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
                                           prob_list_by_k = prob_list_by_k$prob_list)
     
     # summarize means & variances
-    mean_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$means, 
-                                               k_vec = output[[dataset_ind]]$k,
+    mean_list_by_k_stephens = list_params_by_k(draws = output$means, 
+                                               k_vec = output$k,
                                                # burn_in = burn_in, 
                                                # iter_threshold = thold,
                                                iter_list = prob_list_by_k$iter_list,
@@ -83,9 +83,9 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
                                                permutation = stephens_result, 
                                                param_type = "Mean")
     
-    var_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$vars, 
+    var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
                                               iter_list = prob_list_by_k$iter_list,
-                                              k_vec = output[[dataset_ind]]$k,
+                                              k_vec = output$k,
                                               relabel = TRUE, equal_var = equal_var,
                                               permutation = stephens_result,
                                               param_type = "Var")
@@ -98,7 +98,7 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
     if(calc_perf == TRUE){
       
       # KL divergence
-      kl_res = calc_KL_diverg(y = output[[dataset_ind]]$data,
+      kl_res = calc_KL_diverg(y = output$data,
                               mu_est = mean_list_by_k_stephens,
                               Sigma_est = var_list_by_k_stephens,
                               group_assign = group_assign_list_by_k_corr,
@@ -163,12 +163,12 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
     # MH acceptance probs for split merge or non conj MH alg
     # need to check if SM results exists bc not all samplers will do this...
     # also check if return is NA
-    if(is.null(output[[dataset_ind]]$sm_results) == FALSE){
+    if(is.null(output$sm_results) == FALSE){
       # check that sm_results slot in list output exists
-      if(nrow(output[[dataset_ind]]$sm_results) > 1){
+      if(nrow(output$sm_results) > 1){
         # check that more than 1 row exists in sm_results...default is a single
         # row of NA when split_merge = FALSE in sampler...don't want to summarize this
-        sm_df = data.frame(output[[dataset_ind]]$sm_results) %>%
+        sm_df = data.frame(output$sm_results) %>%
           dplyr::filter(is.na(s) == FALSE) %>%
           dplyr::mutate(
             move_type = factor(move_type),
@@ -237,12 +237,12 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
 # t_hold = 100
 # num_dims = 2
 # 
-# prob_list_by_k = get_probs_by_k(probs = output[[dataset_ind]]$group_probs, 
-#                                 n_groups = output[[dataset_ind]]$k, 
+# prob_list_by_k = get_probs_by_k(probs = output$group_probs, 
+#                                 n_groups = output$k, 
 #                                 burn_in = burn_in, 
 #                                 iter_threshold = t_hold)
-# group_assign_list_by_k = get_assign_by_k(assign = output[[dataset_ind]]$group_assign, 
-#                                          n_groups = output[[dataset_ind]]$k, 
+# group_assign_list_by_k = get_assign_by_k(assign = output$group_assign, 
+#                                          n_groups = output$k, 
 #                                          burn_in = burn_in, 
 #                                          iter_threshold = t_hold)
 # 
@@ -251,7 +251,7 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
 #                                       prob_list_by_k = prob_list_by_k$prob_list)
 # 
 # # summarize means & variances
-# mean_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$means, 
+# mean_list_by_k_stephens = list_params_by_k(draws = output$means, 
 #                                            # k_vec = output[[1]]$k,
 #                                            # burn_in = burn_in, 
 #                                            # iter_threshold = thold,
@@ -260,7 +260,7 @@ dpmm_summary <- function(output, dataset_ind = 1, print_phi_sum = FALSE,
 #                                            permutation = stephens_result, 
 #                                            param_type = "Mean")
 # 
-# var_list_by_k_stephens = list_params_by_k(draws = output[[dataset_ind]]$vars, 
+# var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
 #                                           iter_list = prob_list_by_k$iter_list,
 #                                           relabel = TRUE,
 #                                           permutation = stephens_result,
