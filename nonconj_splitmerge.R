@@ -16,15 +16,66 @@ library(LaplacesDemon)
 
 ############################### HELPER FUNCTIONS ###############################
 
-nonconj_phi_prob <- function(obs, split_labs, group_assign, y, mu, Sigma){
+update_phi_DEV <- function(curr_label, group_assign, count_assign, y, 
+                           mu, mu0, Sigma, Sigma0, a, b){
+  # function to sample from full conditional posteriors of DEV model
+  
+  # group_index is the current split or merge group for which new parameters are 
+  # being drawn
+  p = nrow(mu)
+  sigma2 = diag(Sigma)[1]
+  sigma0 = diag(Sigma0)[1]
+  
+  # draw group mean
+  
+  ## unravel list of p*1 observations, put in matrix, find sum
+  sum_y_i = rowSums(matrix(unlist(y[group_assign == curr_label]), nrow = p))
+
+  mu_cov = diag(sigma2/(1/r + count_assign), p)
+  
+  mu_mean = (sum_y_i + mu0/r)/(1/r + count_assign)
+  
+  mu = t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
+                          mean = mu_mean, 
+                          sigma = mu_cov))
+  
+
+  # draw group variance
+  loss_y_i = rowSums((matrix(unlist(y[group_assign == curr_label]), nrow = p) - mu)^2)
+
+  loss_mu_k = t(mu0 - matrix(mu, nrow = p))%*%(mu0 - matrix(mu, nrow = p))
+
+  # Sigma = lapply(X = 1:k, 
+  #                FUN = function(x){
+  #                  diag(1/rgamma(n = p, 
+  #                                shape = rep(count_assign[x]/2 + a, p),
+  #                                rate = loss_y_i[,x]/2 + b))
+  #                })
+  Sigma = diag(1/rgamma(n = 1, 
+                        shape = (p*(count_assign+1) + 2*a)/2,
+                        rate = sum(loss_y_i)/2 + loss_mu_k/(2*r) + b), p)
+  
+  return(list(mu = mu, Sigma = Sigma))
+  
+}
+
+
+
+nonconj_phi_prob <- function(obs, group_assign, count_assign, y, 
+                             mu, mu0, Sigma, Sigma0, a, b){
   # This is P_GS(phi*|phi^L,...) from Jain & Neal 2007 
   
   
   # for the kth component under a DEV assumption
-  dens = exp(-0.5*(t(y[obs]-mu)%*%(y[obs]-mu)))
+  sigma2 = diag(Sigma)[1]
+  sigma0 = diag(Sigma0)[1]
+  # density of posterior up to a constant...
+  dens = (sigma2^(-(p/2+a-1)))*exp(-0.5*(t(y[obs]-mu)%*%(y[obs]-mu)/sigma2 + 
+                                               2*b/sigma2 + t(mu-mu0)%*%(mu-mu0)/sigma0))
   
   # for the kth component under a UVV assumption
   
+  return(dens)
 }
 
 nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma){
@@ -46,7 +97,7 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
   which_group_k = which(split_labs == group_assign[obs])
   sm_counts[which_group_k] = sm_counts[which_group_k] - 1
   
-  if(1 %in% sm_counts){
+  if(0 %in% sm_counts){
     
     which_one = which(sm_counts == 1)
     
@@ -99,46 +150,46 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
     }
     
     
-  } else if(0 %in% sm_counts){
-    
-    which_one = which(sm_counts == 0)
-    
-    if(which_one == 1){
+  # } else if(0 %in% sm_counts){
+  #   
+  #   which_one = which(sm_counts == 0)
+  #   
+  #   if(which_one == 1){
+  #     
+  #     num = (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]], 
+  #                                           mean = mu[[2]], 
+  #                                           sigma = Sigma[[2]]) 
+  #     
+  #     denom = num + (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]], 
+  #                                                   mean = mu[[1]], 
+  #                                                   sigma = Sigma[[1]])
+  #     
+  #     # will just be (1,0)... seems extreme
+  #     ratio = c(1-(num/denom), num/denom)
       
-      num = (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]], 
-                                            mean = mu[[2]], 
-                                            sigma = Sigma[[2]]) 
-      
-      denom = num + (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]], 
-                                                    mean = mu[[1]], 
-                                                    sigma = Sigma[[1]])
-      
-      # will just be (1,0)... seems extreme
-      ratio = c(1-(num/denom), num/denom)
-      
-    } else{ 
-      # which_one == 2
-      
-      num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]], 
-                                            mean = mu[[1]], 
-                                            sigma = Sigma[[1]]) 
-      
-      denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]], 
-                                                    mean = mu[[2]], 
-                                                    sigma = Sigma[[2]])
-      
-      # will just be (1,0)... seems extreme
-      ratio = c(num/denom, 1-(num/denom))
-      
-    }
+    # } else{ 
+    #   # which_one == 2
+    #   
+    #   num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]], 
+    #                                         mean = mu[[1]], 
+    #                                         sigma = Sigma[[1]]) 
+    #   
+    #   denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]], 
+    #                                                 mean = mu[[2]], 
+    #                                                 sigma = Sigma[[2]])
+    #   
+    #   # will just be (1,0)... seems extreme
+    #   ratio = c(num/denom, 1-(num/denom))
+    #   
+    # }
     
   } else{
     
-    num = sm_counts[1]*mvtnorm::dmvnorm(x = y[[obs]], 
+    num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]], 
                                         mean = mu[[1]], 
                                         sigma = Sigma[[1]]) 
     
-    denom = num + sm_counts[2]*mvtnorm::dmvnorm(x = y[[obs]], 
+    denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]], 
                                                 mean = mu[[2]], 
                                                 sigma = Sigma[[2]])
     
@@ -157,9 +208,11 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
 
 # inputs
 p = 2
-mu0 = rep(0, p)
+mu = matrix(rep(0, p), ncol=1)
+mu0 = matrix(rep(0, p), ncol=1)
 Sigma0 = diag(10, p)
-sm_iter = 10
+Sigma = diag(10, p)
+sm_iter = 5
 
 # Split-Merge step --- every 10 iterations
 
@@ -326,15 +379,12 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
                 y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
             
             ### is merge_assign prob by definition always 1?
-            merge_assign_prob = nonconj_component_prob(
-              obs = obs, split_labs = split_lab,
-              group_assign = merge_temp_group_assign[scan,], 
-              y = y, mu = merge_means[[scan]], Sigma = merge_vars[[scan]])
+            merge_assign_prob = 1
             
             # dont sample --- but do record prob of group anchor obs in in!
             which_split_lab_anchor = which(split_lab == split_temp_group_assign[scan,obs])
             # how to do this best for merge????
-            which_merge_lab_anchor = which(merge_lab == merge_temp_group_assign[scan,obs])
+            which_merge_lab_anchor = 1
             # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
             # dont need to assign again - already initialized since anchor
             split_sm_probs[scan,obs] = split_assign_prob[which_split_lab_anchor]
@@ -342,67 +392,39 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
             
           } else{
             
-            sm_count_assign = as.numeric(table(temp_group_assign[scan,]))
-            sm_label_assign = as.numeric(names(table(temp_group_assign[scan,])))
-            sm_singletons = sm_label_assign[which(sm_count_assign == 1)]
+            split_count_assign = as.numeric(table(split_temp_group_assign[scan,]))
+            split_label_assign = as.numeric(names(table(split_temp_group_assign[scan,])))
+            # split_singletons = split_label_assign[which(split_count_assign == 1)]
             
-            if(temp_group_assign[scan,obs] %in% sm_singletons){ # changing this to if singleton
-              # maybe borrow some code from CRP stuff???
-              # still need to deal with anchor obs because group assignment
-              # is deterministic for these observations
-              
-              # ad hoc fix for now!
-              sm_counts = table(temp_group_assign[scan,]) # dont drop obs from count when singleton
-              split_group_count_index = which(as.numeric(names(sm_counts)) %in% split_lab)
-              #current_obs_index = which(temp_group_assign[scan,] == obs)
-              #split_group_lab_index1 = which(temp_group_assign[scan,] == split_lab[1])
-              #split_group_lab_index2 = which(temp_group_assign[scan,] == split_lab[2])
-              
-              # current observation under consideration cannot be included in posterior
-              # when singleton, revert to prior
-              
-              split_assign_prob = nonconj_split_merge_prob(
-                obs = obs, split_labs = split_lab,
-                group_assign = split_temp_group_assign[scan,], 
-                y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
-              
-              
-              # proceed as usual
-              sm_prop_index = sample(x = 1:2, size = 1, 
-                                     prob = split_assign_prob)
-              
-              split_temp_group_assign[scan,obs] = split_lab[sm_prop_index]
-              split_sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
-              
-              
-              # cat("Assign:",temp_group_assign[scan,obs])
-              # cat("\n")
-              
-              
-            } else{
-              
-              sm_counts = table(split_temp_group_assign[scan,-obs])
-              
-              #current_obs_index = which(temp_group_assign[scan,] == obs)
-              #split_group_lab_index1 = which(temp_group_assign[scan,] == split_lab[1])
-              #split_group_lab_index2 = which(temp_group_assign[scan,] == split_lab[2])
-              
-              # current observation under consideration cannot be included here
-              
-              split_assign_prob = nonconj_split_merge_prob(
-                obs = obs, split_labs = split_lab,
-                group_assign = split_temp_group_assign[scan,], 
-                y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
-              
-              sm_prop_index = sample(x = 1:2, size = 1, 
-                                     prob = split_assign_prob)
-              
-              split_temp_group_assign[scan,obs] = split_lab[sm_prop_index]
-              split_sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
-              
-              # cat("Assign:",temp_group_assign[scan,obs])
-              # cat("\n")
-            }
+            merge_count_assign = as.numeric(table(merge_temp_group_assign[scan,]))
+            merge_label_assign = as.numeric(names(table(merge_temp_group_assign[scan,])))
+            # merge_singletons = merge_label_assign[which(merge_count_assign == 1)]
+            # should never be a merge singleton --- need at least 2 anchor observations
+            
+            # not subtracted 1 for kth observation here -- do within function
+            split_counts = table(split_temp_group_assign[scan,])
+            merge_counts = table(split_temp_group_assign[scan,])
+            
+            #current_obs_index = which(temp_group_assign[scan,] == obs)
+            #split_group_lab_index1 = which(temp_group_assign[scan,] == split_lab[1])
+            #split_group_lab_index2 = which(temp_group_assign[scan,] == split_lab[2])
+            
+            # current observation under consideration cannot be included here
+            
+            split_assign_prob = nonconj_component_prob(
+              obs = obs, split_labs = split_lab,
+              group_assign = split_temp_group_assign[scan,], 
+              y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
+            
+            sm_prop_index = sample(x = 1:2, size = 1, 
+                                   prob = split_assign_prob)
+            
+            split_temp_group_assign[scan,obs] = split_lab[sm_prop_index]
+            split_sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
+            
+            merge_temp_group_assign[scan,obs] = merge_lab
+            merge_sm_probs[scan,obs] = 1
+            
             
           }
           
@@ -414,7 +436,8 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
     
     
     # calculate & evaluate acceptance prob
-    sm_counts = table(temp_group_assign[sm_iter+1,]) # update counts after scans
+    split_counts = table(split_temp_group_assign[sm_iter+1,]) # update counts after scans
+    merge_counts = table(merge_temp_group_assign[sm_iter+1,]) # update counts after scans
     split_group_count_index = which(as.numeric(names(sm_counts)) %in% split_lab)
     
     ## proposal probability
