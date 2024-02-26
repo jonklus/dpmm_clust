@@ -16,7 +16,6 @@ source("./posterior_helper_fxns.R")
 # load R libraries
 library(ggplot2)
 library(gridExtra)
-library(plotly)
 library(label.switching)
 library(LaplacesDemon)
 library(parallel)

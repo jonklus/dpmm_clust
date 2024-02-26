@@ -184,8 +184,8 @@ post_pred_DEE <- function(obs, which_group, group_assign, split_labs, r, sm_coun
                      
                    })
   
-  cat("\n sum_ysq \n")
-  print(sum_ysq)
+  # cat("\n sum_ysq \n")
+  # print(sum_ysq)
   
   loss_mu0 = (ybar[[which_group]] - mu0)%*%t(ybar[[which_group]] - mu0)
   
@@ -214,8 +214,8 @@ post_pred_DEE <- function(obs, which_group, group_assign, split_labs, r, sm_coun
   b_n = b + (t(mu0)%*%mu0/r + sum_ysq[[which_group]] - (1/r + n_minus)*t(mu_n)%*%mu_n)/2
   
   lambda_n = diag(b_n[,1]*(1+(1/r + n_minus)^(-1))/a_n, length(mu_n[,1]))
-  cat("\n lambda_n")
-  print(lambda_n)
+  # cat("\n lambda_n")
+  # print(lambda_n)
   # take first "column" of scalar b_n snce R was still recognizing as a matrix
   
   # print(mu_n)
@@ -319,10 +319,10 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
   
   sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign == x)})
   
-  cat("\n")
-  cat("sm_counts:", sm_counts)
-  cat("\n")
-  print(group_assign)
+  # cat("\n")
+  # cat("sm_counts:", sm_counts)
+  # cat("\n")
+  # print(group_assign)
   
   ybar = lapply(X = split_labs, 
                 FUN = function(x){
@@ -339,9 +339,9 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
                   return(ysum/length(group_ind))
                 })
   
-  cat("ybar:")
-  print(ybar)
-  cat("\n")
+  # cat("ybar:")
+  # print(ybar)
+  # cat("\n")
   
   loss_ybar = lapply(X = 1:2, 
                      FUN = function(x){
@@ -359,9 +359,9 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
                        
                      })
   
-  cat("loss_ybar:")
-  print(loss_ybar)
-  cat("\n")
+  # cat("loss_ybar:")
+  # print(loss_ybar)
+  # cat("\n")
   
   
   
@@ -957,7 +957,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           mu_cov = lapply(X = 1:2, 
                           FUN = function(x){
                             n_k = count_assign[which_split_labs[x]]
-                            print(n_k)
+                            # print(n_k)
                             diag(sigma2/(1/r + n_k), p)
                           }) 
           
@@ -1022,9 +1022,9 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           
           # current observation under consideration cannot be included here
           
-          cat("\n y_obs", y[[obs]])
-          cat("\n group_assign")
-          print(temp_group_assign[scan,])
+          # cat("\n y_obs", y[[obs]])
+          # cat("\n group_assign")
+          # print(temp_group_assign[scan,])
           split_assign_prob = split_merge_prob_DEE(obs = obs, split_labs = split_lab, r=r, 
                                                    group_assign = temp_group_assign[scan,], 
                                                    y = y, mu0 = mu0, a = a, b = b)
