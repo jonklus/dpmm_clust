@@ -387,7 +387,7 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
     # check length of which_zero
     if(length(which_one) == 1){
       # proceed as usual
-      cat("1 singleton", "\n")
+      # cat("1 singleton", "\n")
       if(which_one == 1){
         
         num = prior_pred_NinvGa(y_i = y[[obs]], mu0 = mu0, r = r, 
@@ -415,7 +415,7 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
       
     } else{
       # two singletons being considered
-      cat("2 singleton", "\n")
+      # cat("2 singleton", "\n")
       num = prior_pred_NinvGa(y_i = y[[obs]], mu0 = mu0, r = r, 
                               a = a, b = b)
       
@@ -460,7 +460,7 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
     
   } else{
     # proceed as usual 
-    cat("normal", "\n")
+    # cat("normal", "\n")
     num = post_pred_DEE(obs = obs, which_group = 1, r = r, 
                         group_assign = group_assign, split_labs = split_labs,
                         sm_counts = sm_counts, y = y, ybar = ybar, 
