@@ -49,12 +49,15 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
   start = Sys.time()
   
   # show basic summary
+  k_freqtab = table(output$k)
+  k_relfreqtab = round((table(output$k)/sum(table(output$k)))*100,1)
+  
   if(print_k_sum == TRUE){
     cat("\n Frequency of MCMC iterations finding K groups:")
-    print(table(output$k))
+    print(k_freqtab)
     
     cat("\n Percentage of MCMC iterations finding K groups:")
-    print(round((table(output$k)/sum(table(output$k)))*100,1))
+    print(k_relfreqtab)
     
     cat("\n *Note that above frequency summaries of MCMC iterations were made before burn-in or thresholds were applied. 
           All inference on phi will be made after accounting for burn-in and thresholding. \n")
@@ -211,7 +214,9 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
         mean_ARI = mean(unlist(ARI)),
         fit_runtime = output$runtime,
         truth = output$truth,
-        avg_pairwise_mat = output$pairwise_mats$avg_adj
+        avg_pairwise_mat = output$pairwise_mats$avg_adj,
+        k_freqtab = k_freqtab,
+        k_relfreqtab = k_relfreqtab
       ))
       
     } else{
@@ -224,7 +229,9 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
         var_summary = var_summary,
         splitmerge_accept = sm_df,
         fit_runtime = output$runtime,
-        avg_pairwise_mat = output$pairwise_mats$avg_adj
+        avg_pairwise_mat = output$pairwise_mats$avg_adj,
+        k_freqtab = k_freqtab,
+        k_relfreqtab = k_relfreqtab
       ))
       
     }

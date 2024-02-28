@@ -75,10 +75,10 @@ print(summary_table %>%
 ARI_table = summary_table %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
   dplyr::summarize(ARI = mean(ARI)) %>%
-  tidyr::pivot_wider(names_from = c(n_obs, SM), values_from = ARI) %>%
+  tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = ARI) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
-  kableExtra::kbl(x = ., booktabs = TRUE, digits = 2) %>%
+  kableExtra::kbl(x = ., booktabs = TRUE, digits = 2, caption = "Adjusted RAND Index") %>%
   kableExtra::pack_rows("DEV", 1, 2) %>%
   kableExtra::pack_rows("UVV", 3, 4) %>%
   kableExtra::add_header_above(c("  " = 2, "n = 30" = 2, "n = 100" = 2, "n = 300" = 2)) %>%
@@ -86,11 +86,18 @@ ARI_table = summary_table %>%
   
   
 KL_table = summary_table %>%
-        dplyr::group_by(Model, Scenario, SM, n_obs) %>%
-        dplyr::summarize(KL = mean(KL))
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(KL = mean(KL)) %>%
+  tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = KL) %>%
+  # keep first 2 columns with model info, sort remaining cols with results by n
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
+  kableExtra::kbl(x = ., booktabs = TRUE, digits = 2, caption = "KL divergence") %>%
+  kableExtra::pack_rows("DEV", 1, 2) %>%
+  kableExtra::pack_rows("UVV", 3, 4) %>%
+  kableExtra::add_header_above(c("  " = 2, "n = 30" = 2, "n = 100" = 2, "n = 300" = 2)) %>%
+  kableExtra::kable_styling(latex_options = c("repeat_header"))
 
 time_table = summary_table %>%
         dplyr::group_by(Model, Scenario, SM, n_obs) %>%
         dplyr::summarize(Time = mean(Time))
 
-kableExtra::kbl(summary_table, booktabs = TRUE)
