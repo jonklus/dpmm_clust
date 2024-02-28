@@ -201,6 +201,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
     if(calc_perf == TRUE){
       
       return(list(
+        settings = output$settings,
         mean_list_by_k_stephens = mean_list_by_k_stephens,
         var_list_by_k_stephens = var_list_by_k_stephens,
         mean_summary = mean_summary,
@@ -208,18 +209,22 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
         splitmerge_accept = sm_df, 
         kl_div = round(kl_div, 4),
         mean_ARI = mean(unlist(ARI)),
-        fit_runtime = output$runtime
+        fit_runtime = output$runtime,
+        truth = output$truth,
+        avg_pairwise_mat = output$pairwise_mats$avg_adj
       ))
       
     } else{
       
       return(list(
+        settings = output$settings,
         mean_list_by_k_stephens = mean_list_by_k_stephens,
         var_list_by_k_stephens = var_list_by_k_stephens,
         mean_summary = mean_summary,
         var_summary = var_summary,
         splitmerge_accept = sm_df,
-        fit_runtime = output$runtime
+        fit_runtime = output$runtime,
+        avg_pairwise_mat = output$pairwise_mats$avg_adj
       ))
       
     }

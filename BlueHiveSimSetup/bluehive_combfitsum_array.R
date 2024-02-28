@@ -129,26 +129,50 @@ outFile = stdout()
 
 ########################### summarize results ##################################
 
+# for DEE model - pooled variance
+
 try(expr = {
   
   mod_sum = dpmm_summary(output = output, 
-                print_phi_sum = TRUE,
-                print_k_sum = TRUE, 
-                make_traceplot = FALSE,
-                burn_in = 2000, t_hold = 250, 
-                num_dims = 2, 
-                calc_perf = TRUE, 
-                mu_true = output$truth$mu_true, 
-                var_true = lapply(X = 1:length(output$truth$mu_true), 
-                                  FUN = function(x){output$truth$var_true}), 
-                assign_true = output$truth$assign_true, 
-                equal_var = FALSE)
-
+                         print_phi_sum = TRUE,
+                         print_k_sum = TRUE, 
+                         make_traceplot = FALSE,
+                         burn_in = 2000, t_hold = 250, 
+                         num_dims = 2, 
+                         calc_perf = TRUE, 
+                         mu_true = output$truth$mu_true, 
+                         var_true = output$truth$var_true, 
+                         assign_true = output$truth$assign_true, 
+                         equal_var = TRUE)
+  
 },
 
 outFile = stdout()
 
 )
+
+# for all other models
+
+# try(expr = {
+#   
+#   mod_sum = dpmm_summary(output = output, 
+#                 print_phi_sum = TRUE,
+#                 print_k_sum = TRUE, 
+#                 make_traceplot = FALSE,
+#                 burn_in = 2000, t_hold = 250, 
+#                 num_dims = 2, 
+#                 calc_perf = TRUE, 
+#                 mu_true = output$truth$mu_true, 
+#                 var_true = lapply(X = 1:length(output$truth$mu_true), 
+#                                   FUN = function(x){output$truth$var_true}), 
+#                 assign_true = output$truth$assign_true, 
+#                 equal_var = FALSE)
+# 
+# },
+# 
+# outFile = stdout()
+# 
+# )
 
 
 # save summary
