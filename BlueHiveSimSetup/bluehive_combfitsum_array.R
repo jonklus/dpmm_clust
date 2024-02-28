@@ -10,13 +10,18 @@
 ## interest of conserving hard disk space.
 
 ###################### load packages and set seed ##############################
-source("./Multivariate_DPMM_unknownvar_DEV.R")
-# source("./Multivariate_DPMM_unknownvar_DEE.R")
+# source("./Multivariate_DPMM_unknownvar_DEV.R")
+source("./Multivariate_DPMM_unknownvar_DEE.R")
 # source("./Multivariate_DPMM_unknownvar_UVV.R")
 source("./posterior_helper_fxns.R")
 source("./post_processing_inf.R")
 
-# select results file
+# DEFINE INPUTS --- USER DEFINED IN R SCRIPT
+# model = "DEV" # "DEE" "UVV"
+# scenario = "close"  # "wellsep"
+# SM = TRUE # do split merge
+
+# sbatch-fed settings
 n_array = c(30,100,300)
 i = as.numeric(Sys.getenv("i"))
 n = n_array[i]
@@ -24,8 +29,7 @@ cat("\n n=", n, "\n")
 
 SLURM_ID = as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 
-dir_name = paste0("./Summary/MODSUM_conjDEV_close_n", n, 
-                  "_withSM_sim_results_",
+dir_name = paste0("./Summary/MODSUM_conjDEE_close_n", n, "_withSM_sim_results_",
                   stringr::str_replace_all(string = Sys.Date(),
                                            pattern = "-",
                                            replacement = "_"))
@@ -36,9 +40,8 @@ if(dir.exists(dir_name) == FALSE){
 
 # extract seed
 seeds = readRDS("./BHsimseeds.rds") # file with 100 random seeds
-sim_num = c(1,23,37,38,65)
-i = as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
-SLURM_ID = sim_num[i]
+
+SLURM_ID = as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 print(SLURM_ID)
 
 # simulate data
@@ -65,23 +68,23 @@ y = lapply(X = assign,
 
 ################################# DEE #########################################
 
-# try(expr = {
-#   
-#   output = MVN_CRP_sampler_DEE(
-#     S = 12000, seed = seeds[SLURM_ID], y = y,
-#     alpha = 1, r = 10, g = 1, h = 50,
-#     sigma_hyperprior = FALSE, fix_r = FALSE,
-#     mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1),
-#     a = 1, b = 50,
-#     truth = list(mu_true = means, var_true = var, assign_true = assign),
-#     k_init = 1, diag_weights = FALSE,
-#     verbose = FALSE, split_merge = FALSE)
-#   
-# },
-# 
-# outFile = stdout()
-# 
-# )
+try(expr = {
+
+  output = MVN_CRP_sampler_DEE(
+    S = 12000, seed = seeds[SLURM_ID], y = y,
+    alpha = 1, r = 10, g = 1, h = 50,
+    sigma_hyperprior = FALSE, fix_r = FALSE,
+    mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1),
+    a = 1, b = 50,
+    truth = list(mu_true = means, var_true = var, assign_true = assign),
+    k_init = 1, diag_weights = FALSE,
+    verbose = FALSE, split_merge = TRUE, sm_iter = 5)
+
+},
+
+outFile = stdout()
+
+)
 
 
 ################################# UVV #########################################
@@ -95,8 +98,7 @@ y = lapply(X = assign,
 #     lambda0 = diag(x = 15, nrow = 2),
 #     truth = list(mu_true = means, var_true = var, assign_true = assign),
 #     k_init = 1, diag_weights = FALSE,
-#     verbose = FALSE, split_merge = TRUE, sm_iter = 5
-#   )
+#     verbose = FALSE, split_merge = TRUE, sm_iter = 5)
 # },
 # 
 # outFile = stdout()
@@ -104,8 +106,6 @@ y = lapply(X = assign,
 # )
 
 ################################# DEV #########################################
-
-### no SM
 
 # try(expr = {
 #   
@@ -117,7 +117,7 @@ y = lapply(X = assign,
 #     a = 1, b = 50,
 #     truth = list(mu_true = means, var_true = var, assign_true = assign),
 #     k_init = 1, diag_weights = FALSE,
-#     verbose = FALSE, split_merge = FALSE)
+#     verbose = FALSE, split_merge = TRUE, sm_iter = 5)
 #   
 # },
 # 
@@ -126,26 +126,6 @@ y = lapply(X = assign,
 # )
 # 
 # rm(output) # get rid of output in memory to make room for next stage
-
-### with SM
-
-try(expr = {
-  
-  output = MVN_CRP_sampler_DEV(
-    S = 12000, seed = seeds[SLURM_ID], y = y,
-    alpha = 1, r = 10, g = 1, h = 50,
-    sigma_hyperprior = FALSE, fix_r = FALSE,
-    mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1),
-    a = 1, b = 50,
-    truth = list(mu_true = means, var_true = var, assign_true = assign),
-    k_init = 1, diag_weights = FALSE,
-    verbose = FALSE, split_merge = TRUE, sm_iter = 5)
-  
-},
-
-outFile = stdout()
-
-)
 
 ########################### summarize results ##################################
 

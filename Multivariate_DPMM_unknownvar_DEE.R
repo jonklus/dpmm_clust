@@ -526,14 +526,24 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   emp_means = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
   emp_vars = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
   
-  extra_params = matrix(data = NA, nrow = S, ncol = 2)
-  colnames(extra_params) = c("b", "r")
-  extra_params[1,1] = b # note that here b has dimension p, one for each dim
-  extra_params[1,2] = r
-  
   # split merge step - only used if needed
   sm_results = matrix(data = NA, nrow = 1, ncol = 7)
   colnames(sm_results) = c("s", "sm_iter", "move_type","accept", "prob", "k_start", "k_end")
+  
+  if(sigma_hyperprior == TRUE & fix_r == FALSE){
+    extra_params = matrix(data = NA, nrow = S, ncol = 2)
+    colnames(extra_params) = c("b", "r")
+    extra_params[1,1] = b # note that here b has dimension 1, diagonal var
+    extra_params[1,2] = r
+  } else if(sigma_hyperprior == FALSE & fix_r == FALSE){
+    extra_params = matrix(data = NA, nrow = S, ncol = 1)
+    colnames(extra_params) = c("r")
+    extra_params[1,1] = r
+  } else if(sigma_hyperprior == TRUE & fix_r == TRUE){
+    extra_params = matrix(data = NA, nrow = S, ncol = 1)
+    colnames(extra_params) = c("b")
+    extra_params[1,1] = b
+  } 
   
   # need to find p*1 vector of means based on this list of observed p*1 y_i values
   means[[1]] = sapply(X = 1:k, 
@@ -642,8 +652,9 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         #### calculate proposal distribution for group assignment
         #### if obs i is not presently a singleton
         pr_c = group_prob_calc(k = k, n = n, n_j = count_assign, alpha = alpha, 
-                               y_i = y[[i]], mu = mu, sigma2 = sigma2, r = r, a = a, b = b, 
-                               mu0 = mu0, singleton = 0, curr_group_assign = group_assign[s,i], 
+                               y_i = y[[i]], mu = mu, sigma2 = sigma2, r = r, 
+                               a = a, b = b, mu0 = mu0, singleton = 0, 
+                               curr_group_assign = group_assign[s,i], 
                                curr_labels = curr_labels)
         
       }
@@ -687,15 +698,22 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       
     } ### end iterations from i=1:n
     
-    if((s %% print_iter == 0) & (s > print_iter) & (verbose == TRUE)){
+    if((s %% print_iter == 0) & (s >= print_iter) & (verbose == TRUE)){
       cat("\n")
-      print("End of CRP step") # just create a new line for separation
+      cat("End of CRP step") # just create a new line for separation
       cat("\n")
-      print(paste("iter = ", s))
+      # print(paste("iter = ", s))
+      # cat("\n")
       print(paste("Current k = ", k))
+      cat("\n")
+      print(group_assign[s,])
+      cat("\n")
       print(table(group_assign[s,]))
+      cat("\n")
       print(mu)
+      cat("\n")
       print(sigma2)
+      cat("\n")
     }
     
     # final update of counts after a sweep
@@ -1225,7 +1243,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       r = 1/rgamma(n = 1, 
                    shape = p*k/2 + g, 
                    rate = (1/(2*sigma2))*sum(loss_mu_k) + h)
-      
+      extra_params[s,"r"] = r
     }
     
     
@@ -1242,14 +1260,14 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       
       b = rgamma(n = 1, shape = a + d, rate = 1/sigma2 + f)
       
+      extra_params[s,"b"] = b
+      
     } # else continue as usual
     
     # save draws of mu and Sigma
     means[[s]] = mu
     vars[[s]] = sigma2
-    extra_params[s,1] = b
-    extra_params[s,2] = r
-    
+
     # save empirical mean and variance
     
     emp_means[[s]] = sapply(X = 1:k, 
@@ -1265,17 +1283,21 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                            })
     
     # print progress
-    if((s %% print_iter == 0) & (s > print_iter) & (verbose == TRUE)){
-      print("After Gibbs step:") # just create a new line for separate
-      # print(paste("iter = ", s))
-      # print(paste("Current k = ", k))
-      # print(table(group_assign[s,]))
-      cat("mu",mu)
-      cat("sigma2",sigma2)
+    if((s %% print_iter == 0) & (s >= print_iter) & (verbose == TRUE)){
+      cat("After Gibbs step:") # just create a new line for separate
+      cat("\n")
+      cat("mu")
+      cat("\n")
+      print(mu)
+      cat("\n")
+      cat("sigma2")
+      cat("\n")
+      print(sigma2)
+      cat("\n")
       cat("r",r)
+      cat("\n")
       cat("b",b)
-      # print(c("Current labels: ", curr_labels))
-      # print(avail_labels)
+      cat("\n")
       
       if(nrow(mu0) == 2){
         # if this is a 2D problem, can make scatterplot of group assign
@@ -1297,6 +1319,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       
       
     }
+    
     
     # at the end of each iteration, recalculate group probs based on final k
     # and save for label switching fix
@@ -1336,7 +1359,8 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   
   end = Sys.time()
   
-  if(sigma_hyperprior == TRUE){
+  
+  if(sigma_hyperprior == TRUE | fix_r == FALSE){
     
     settings = list(S = S, alpha = alpha, a = a, b = b, mu0 = mu0, 
                     k_init = k_init, d = d, f = f, g = g, h = h, r = r)
@@ -1372,7 +1396,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                        vars = vars,
                        emp_means = emp_means,
                        emp_vars = emp_vars,
-                       extra_params = extra_params,
+                       #extra_params = extra_params,
                        accept = accept_ind,
                        sm_results = sm_results,
                        group_probs = probs,
@@ -1384,18 +1408,6 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   return(return_list)
   
 } ### end MCMC function
-
-## run function
-# test1 = MVN_CRP_sampler(S = 10^3, y = y, sigma2 = var[1], alpha = 1, r = 1, 
-#                         mu0 = matrix(data = rep(0, 3), nrow = 3), 
-#                         k_init = 2)
-# 
-# ## check labels
-# table(sapply(X = 1:nrow(test1$group_assign), FUN = function(x){length(as.numeric(table(test1$group_assign[x,])))}))
-
-## write post-processing function to deal with label switching
-
-
 
 
 
