@@ -740,7 +740,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
     
     if(split_merge == TRUE & (s %% sm_iter) == 0){
       
-      print(table(group_assign[s,]))
+      # print(table(group_assign[s,]))
       
       k_start = k
       
