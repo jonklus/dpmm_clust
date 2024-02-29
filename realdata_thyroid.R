@@ -22,6 +22,33 @@ data = mclust::thyroid
 true_assign = data$Diagnosis
 exposure = scale(data[,2:6]) # center and scale exposure data
 
+# 5d plot?? or just do multiple 2d plots ## should this data be log transformed
+# before centering and scaling???
+ggplot2::ggplot(data = exposure, mapping = aes(x = TSH, y = T3)) +
+  ggplot2::geom_point(aes(color = data$Diagnosis))
+
+ggplot2::ggplot(data = exposure, mapping = aes(x = TSH, y = T4)) +
+  ggplot2::geom_point(aes(color = data$Diagnosis))
+
+ggplot2::ggplot(data = exposure, mapping = aes(x = T3, y = T4)) +
+  ggplot2::geom_point(aes(color = data$Diagnosis))
+
+
+# 3d plot
+
+# fig = plot_ly(data, x = ~TSH, y = ~T3, z = ~T4) #, color = ~am, colors = c('#BF382A', '#0C4B8E'))
+# 
+# fig = fig %>% add_markers()
+# 
+# fig = fig %>% layout(scene = list(xaxis = list(title = 'Weight'),
+#                                    
+#                                    yaxis = list(title = 'Gross horsepower'),
+#                                    
+#                                    zaxis = list(title = '1/4 mile time')))
+# 
+# 
+# fig
+
 # put exposure data into format that model will accept
 y = lapply(X = 1:nrow(exposure), 
            FUN = function(x){
@@ -40,3 +67,13 @@ mod1 = MVN_CRP_sampler_DEV(
   verbose = TRUE, split_merge = TRUE)
 
 # summarize model fit
+mod1_sum = dpmm_summary(output = output,
+                        print_phi_sum = TRUE,
+                        print_k_sum = TRUE,
+                        make_traceplot = TRUE,
+                        burn_in = 2000, t_hold = 250,
+                        num_dims = 5,
+                        calc_perf = FALSE,
+                        equal_var = FALSE)
+# save model summary
+
