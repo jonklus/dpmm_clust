@@ -906,7 +906,7 @@ make_k_traceplot <- function(k, group_assign, burn_in = NULL, show_min_obs = FAL
   } else{
     
     n_iter = length(k) - burn_in
-    group_assign = group_assign[-c(1:burn_in),]
+    # group_assign = group_assign[-c(1:burn_in),]
     k = k[-c(1:burn_in)]
     
   }

@@ -11,25 +11,25 @@ nreps = 10
 
 ### well separate 3D case
 
-# w = c(0.4, 0.3, 0.3)
-# means = list(
-#   c(-20, 20),
-#   c(20, -20),
-#   c(0, 0)
-# )
-# 
-# var = diag(10, length(means[[1]])) # variances known, diagonal, and equal
-
-## close 3D case
-w = c(.35, .25, .4)
+w = c(0.4, 0.3, 0.3)
 means = list(
-  #c(10, 10),
-  c(0, -5),
-  c(0, 8),
-  c(10,0)
+  c(-20, 20),
+  c(20, -20),
+  c(0, 0)
 )
 
-var = diag(5, length(means[[1]])) # variances diagonal, and equal
+var = diag(10, length(means[[1]])) # variances known, diagonal, and equal
+
+## close 3D case
+# w = c(.35, .25, .4)
+# means = list(
+#   #c(10, 10),
+#   c(0, -5),
+#   c(0, 8),
+#   c(10,0)
+# )
+# 
+# var = diag(5, length(means[[1]])) # variances diagonal, and equal
 
 
 yreps30 = lapply(X = 1:nreps, 
@@ -86,6 +86,7 @@ p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
   #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
   # geom_text(size = 3, color = assign) +
   theme_classic() +
+  theme(plot.title = element_text(size=18)) + 
   ggtitle("n=30")
 
 pltlist[[1]] = p
@@ -106,6 +107,7 @@ p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
   #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
   # geom_text(size = 3, color = assign) +
   theme_classic() +
+  theme(plot.title = element_text(size=18)) +
   ggtitle("n=100")
 
 pltlist[[2]] = p
@@ -126,6 +128,7 @@ p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
   #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
   # geom_text(size = 3, color = assign) +
   theme_classic() +
+  theme(plot.title = element_text(size=18)) +
   ggtitle("n=300")
 
 pltlist[[3]] = p
@@ -157,4 +160,4 @@ gridplot = arrangeGrob(pltlist[[1]], pltlist[[2]], pltlist[[3]],
                        respect = TRUE) #,
 # widths = rep(2,3), 
 # heights = 2)
-ggsave(filename = "./close_3blockplot.png", device = "png", plot = gridplot)
+ggsave(filename = "./wellsep_3blockplot.png", device = "png", plot = gridplot)

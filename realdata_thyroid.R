@@ -2,7 +2,7 @@
 
 # load necessary functions
 source("./Multivariate_DPMM_unknownvar_DEV.R")
-source("./Multivariate_DPMM_unknownvar_DEE.R")
+# source("./Multivariate_DPMM_unknownvar_DEE.R")
 source("./Multivariate_DPMM_unknownvar_UVV.R")
 source("./posterior_helper_fxns.R")
 source("./post_processing_inf.R")
@@ -17,37 +17,11 @@ library(parallel)
 library(stringr)
 library(mclust)
 
-# visualize data
-data = mclust::thyroid
-true_assign = data$Diagnosis
-exposure = scale(data[,2:6]) # center and scale exposure data
-
-# 5d plot?? or just do multiple 2d plots ## should this data be log transformed
-# before centering and scaling???
-ggplot2::ggplot(data = exposure, mapping = aes(x = TSH, y = T3)) +
-  ggplot2::geom_point(aes(color = data$Diagnosis))
-
-ggplot2::ggplot(data = exposure, mapping = aes(x = TSH, y = T4)) +
-  ggplot2::geom_point(aes(color = data$Diagnosis))
-
-ggplot2::ggplot(data = exposure, mapping = aes(x = T3, y = T4)) +
-  ggplot2::geom_point(aes(color = data$Diagnosis))
-
-
-# 3d plot
-
-# fig = plot_ly(data, x = ~TSH, y = ~T3, z = ~T4) #, color = ~am, colors = c('#BF382A', '#0C4B8E'))
-# 
-# fig = fig %>% add_markers()
-# 
-# fig = fig %>% layout(scene = list(xaxis = list(title = 'Weight'),
-#                                    
-#                                    yaxis = list(title = 'Gross horsepower'),
-#                                    
-#                                    zaxis = list(title = '1/4 mile time')))
-# 
-# 
-# fig
+raw_data = mclust::thyroid
+exposure = scale(log(raw_data[,3:5])) # data.frame(scale(raw_data[,2:6])) # center and scale exposure data
+# exposure$Diagnosis = factor(raw_data$Diagnosis)
+data = data.frame(exposure)
+data$Diagnosis = raw_data$Diagnosis
 
 # put exposure data into format that model will accept
 y = lapply(X = 1:nrow(exposure), 
@@ -55,25 +29,54 @@ y = lapply(X = 1:nrow(exposure),
              matrix(exposure[x,], nrow = length(exposure[x,]))
            })
 
+SLURM_ID = as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
+
+model = c("conjDEV", "conjDEE", "conjUVV")[1]
+SM = c(TRUE,FALSE)[SLURM_ID] # do split merge
+cat("\n", model, SM, "\n")
+
+
+
 # fit model
 
-mod1 = MVN_CRP_sampler_DEV(
-  S = 12000, seed = 516, y = y,
-  alpha = 1, r = 10, g = 1, h = 50,
-  sigma_hyperprior = FALSE, fix_r = FALSE,
-  mu0 = matrix(rep(0, ncol(exposure)), ncol = 1),
-  a = 1, b = 50,
-  k_init = 1, diag_weights = FALSE,
-  verbose = TRUE, split_merge = TRUE)
+if(model == "conjDEV"){
+  
+  mod1 = MVN_CRP_sampler_DEV(
+    S = 12000, seed = 516, y = y,
+    alpha = 1, r = 10, g = 1, h = 10,
+    sigma_hyperprior = FALSE, fix_r = FALSE,
+    mu0 = matrix(rep(0, nrow(y[[1]])), ncol = 1),
+    a = 1, b = 10,
+    k_init = 1, diag_weights = FALSE,
+    verbose = TRUE, split_merge = SM)
+  
+} else if(model == "conjUVV"){
+  
+  lambda_mat = diag(x = 5, nrow = nrow(y[[1]]))
+  offdiag_mag = 0.2*5
+  lambda_mat[1,2] = offdiag_mag
+  lambda_mat[1,3] = -offdiag_mag
+  lambda_mat[2,1] = offdiag_mag
+  lambda_mat[2,3] = -offdiag_mag
+  lambda_mat[3,1] = -offdiag_mag
+  lambda_mat[3,2] = -offdiag_mag
+  
+  mod1 = MVN_CRP_sampler_UVV(
+    S = 12000, seed = 516, y = y,
+    alpha = 1, r = 10, g = 1, h = 10, nu = 4, 
+    fix_r = FALSE,
+    mu0 = matrix(rep(0, nrow(y[[1]])), ncol = 1),
+    lambda0 = lambda_mat,
+    k_init = 1, diag_weights = FALSE,
+    verbose = TRUE, split_merge = SM)
+  
+}
 
-# summarize model fit
-mod1_sum = dpmm_summary(output = output,
-                        print_phi_sum = TRUE,
-                        print_k_sum = TRUE,
-                        make_traceplot = TRUE,
-                        burn_in = 2000, t_hold = 250,
-                        num_dims = 5,
-                        calc_perf = FALSE,
-                        equal_var = FALSE)
-# save model summary
 
+
+saveRDS(object = mod1, file = paste0("./RealData/thyroid_modfit_", model, 
+                                     "_", ifelse(SM == TRUE, "withSM", "noSM"),".rds"))
+# 
+# 
+# 
+# saveRDS(object = mod2, file = "../MCMC_Runs/thyroid_UVV_modfit.rds")

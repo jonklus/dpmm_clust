@@ -198,7 +198,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
     }
 
     end = Sys.time()
-    cat("\n Summary function runtime is", difftime(end, start, units = "m"))
+    cat("\n Summary function runtime is", difftime(end, start, units = "m"), "mins \n")
     
   # return summary of all results
     if(calc_perf == TRUE){

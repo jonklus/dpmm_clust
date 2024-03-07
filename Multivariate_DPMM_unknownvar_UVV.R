@@ -253,9 +253,9 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
                   return(ysum/length(group_ind))
                 })
   
-  cat("ybar:")
-  print(ybar)
-  cat("\n")
+  # cat("ybar:")
+  # print(ybar)
+  # cat("\n")
   
   loss_ybar = lapply(X = 1:2, 
                      FUN = function(x){
@@ -273,9 +273,9 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
                        
                      })
   
-  cat("loss_ybar:")
-  print(loss_ybar)
-  cat("\n")
+  # cat("loss_ybar:")
+  # print(loss_ybar)
+  # cat("\n")
   
   
   # ratio = sapply(X = 1:2,

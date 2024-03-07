@@ -1,0 +1,378 @@
+---
+title: "Thyroid Example"
+author: "Jonathan Klus"
+date: "2024-03-01"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# load necessary functions
+# source("./Multivariate_DPMM_unknownvar_DEV.R")
+# source("./Multivariate_DPMM_unknownvar_DEE.R")
+# source("./Multivariate_DPMM_unknownvar_UVV.R")
+source("./posterior_helper_fxns.R")
+source("./post_processing_inf.R")
+
+# load R libraries
+library(ggplot2)
+library(gridExtra)
+library(ggpubr)
+library(ggforce) # draw circles
+library(plotly)
+library(stringr)
+library(mclust)
+library(xtable)
+```
+
+## Data
+
+```{r}
+# visualize data
+raw_data = mclust::thyroid
+exposure = scale(log(raw_data[,3:5])) # data.frame(scale(raw_data[,2:6])) # center and scale exposure data
+# exposure$Diagnosis = factor(raw_data$Diagnosis)
+data = data.frame(exposure)
+data$Diagnosis = raw_data$Diagnosis
+# 5d plot?? or just do multiple 2d plots ## should this data be log transformed
+# before centering and scaling???
+p1 = ggplot2::ggplot(data = data, mapping = aes(x = TSH, y = T3)) +
+  ggplot2::geom_point(aes(color = Diagnosis), size=0.5) +
+  ggplot2::theme_classic() +
+  #ggplot2::xlim(c(-4.5,4.5)) + ggplot2::ylim(c(-4.5,4.5)) +
+  ggplot2::theme(legend.position = "none",plot.title = element_text(size=18)) + 
+  ggplot2::xlab("log(TSH)") + 
+  ggplot2::ylab("log(T3)") + 
+  ggplot2::ggtitle("T3 vs. TSH")
+
+p2 = ggplot2::ggplot(data = data, mapping = aes(x = TSH, y = T4)) +
+  ggplot2::geom_point(aes(color = Diagnosis), size=0.5) +
+  ggplot2::theme_classic() +
+  #ggplot2::xlim(c(-4.5,4.5)) + ggplot2::ylim(c(-4.5,4.5)) +
+  # ggplot2::theme(legend.position = "bottom", legend.direction = "horizontal") + 
+  ggplot2::theme(legend.position = "none",plot.title = element_text(size=18)) +
+  ggplot2::xlab("log(TSH)") + 
+  ggplot2::ylab("log(T4)") + 
+  ggplot2::ggtitle("T4 vs. TSH")
+
+p3 = ggplot2::ggplot(data = data, mapping = aes(x = T3, y = T4)) +
+  ggplot2::geom_point(aes(color = Diagnosis), size=0.5) +
+  ggplot2::theme_classic() +
+  #ggplot2::xlim(c(-4.5,4.5)) + ggplot2::ylim(c(-4.5,4.5)) +
+  ggplot2::theme(legend.position = "none",plot.title = element_text(size=18)) + 
+  ggplot2::xlab("log(T3)") + 
+  ggplot2::ylab("log(T4)") + 
+  ggplot2::ggtitle("T4 vs. T3")
+
+
+gridplot = arrangeGrob(p1, p2, p3,
+                       nrow = 1,
+                       respect = TRUE)
+# ggarrange(p1, p2, p3, nrow = 1, common.legend = TRUE, legend = "bottom")
+ggsave(filename = "../thyroid_3blockplot.png", device = "png", plot = gridplot)
+
+# put exposure data into format that model will accept
+y = lapply(X = 1:nrow(exposure), 
+           FUN = function(x){
+             matrix(exposure[x,], nrow = length(exposure[x,]))
+           })
+```
+
+
+## Model Fitting
+
+```{r, eval=FALSE, include=FALSE}
+# fit model
+
+mod1 = MVN_CRP_sampler_DEV(
+  S = 12000, seed = 516, y = y,
+  alpha = 1, r = 10, g = 1, h = 10,
+  sigma_hyperprior = FALSE, fix_r = FALSE,
+  mu0 = matrix(rep(0, nrow(y[[1]])), ncol = 1),
+  a = 1, b = 10,
+  k_init = 1, diag_weights = FALSE,
+  verbose = TRUE, split_merge = TRUE)
+
+saveRDS(object = mod1, file = "../MCMC_Runs/thyroid_DEV_modfit.rds")
+
+lambda_mat = diag(x = 5, nrow = nrow(y[[1]]))
+offdiag_mag = 0.2*5
+lambda_mat[1,2] = offdiag_mag
+lambda_mat[1,3] = -offdiag_mag
+lambda_mat[2,1] = offdiag_mag
+lambda_mat[2,3] = -offdiag_mag
+lambda_mat[3,1] = -offdiag_mag
+lambda_mat[3,2] = -offdiag_mag
+
+mod2 = MVN_CRP_sampler_UVV(
+  S = 12000, seed = 516, y = y,
+  alpha = 1, r = 10, g = 1, h = 10, nu = 4, 
+  fix_r = FALSE,
+  mu0 = matrix(rep(0, nrow(y[[1]])), ncol = 1),
+  lambda0 = lambda_mat,
+  k_init = 1, diag_weights = FALSE,
+  verbose = TRUE, split_merge = TRUE)
+
+saveRDS(object = mod2, file = "../MCMC_Runs/thyroid_UVV_modfit.rds")
+```
+
+## Model Summary
+
+```{r}
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/RealData"
+# read in results and summarize models fit
+mod1 = readRDS(paste0(data_path, "/thyroid_modfit_conjDEV_noSM.rds"))
+mod1_sum = dpmm_summary(output = mod1,
+                        print_phi_sum = TRUE,
+                        print_k_sum = TRUE,
+                        make_traceplot = TRUE,
+                        burn_in = 2000, t_hold = 250,
+                        num_dims = 3,
+                        calc_perf = FALSE,
+                        equal_var = FALSE)
+
+# traceplots for K
+ggplot(mapping = aes(x = 1:length(mod1$k), y = mod1$k)) + 
+  geom_line() +
+  ggtitle("Traceplot of no. components K, DEV without SM") +
+  scale_y_continuous(breaks = seq(0, 7, by = 1),
+                     limits = c(0,7)) +
+  scale_x_continuous(breaks = seq(0, 12000, by = 2000),
+                     limits = c(0,12000)) +
+  xlab("iter") + 
+  ylab("K") + 
+  theme_classic()
+ggsave(filename = "../thyroid_DEVnoSM_kplot.png", device = "png")
+dev.off()
+# rm(mod1) # free up memory
+
+mod1_sum$settings
+mod1_sum$fit_runtime
+mod1_sum$splitmerge_accept
+
+xtable(mod1_sum$k_freqtab)
+xtable(mod1_sum$mean_summary[[1]])
+xtable(mod1_sum$mean_summary[[2]])
+
+# calculate "true" empirical means and vars
+t4_mean_true = sapply(X=c("Normal", "Hyper", "Hypo"), FUN = function(x){mean(data$T4[data$Diagnosis == x])}) 
+t3_mean_true= sapply(X=c("Normal", "Hyper", "Hypo"), FUN = function(x){mean(data$T3[data$Diagnosis == x])}) 
+tsh_mean_true= sapply(X=c("Normal", "Hyper", "Hypo"), FUN = function(x){mean(data$TSH[data$Diagnosis == x])}) 
+
+t4_var_true = sapply(X=c("Normal", "Hyper", "Hypo"), FUN = function(x){var(data$T4[data$Diagnosis == x])}) 
+t3_var_true= sapply(X=c("Normal", "Hyper", "Hypo"), FUN = function(x){var(data$T3[data$Diagnosis == x])}) 
+tsh_var_true= sapply(X=c("Normal", "Hyper", "Hypo"), FUN = function(x){var(data$TSH[data$Diagnosis == x])}) 
+
+# extract means and vars
+
+# should these really be labeled as t3,t4,tsh -- they are means and 
+# variances for latent groups -- causes a problem with k=4 since there
+# is a 4th variance -- how to visualize this???
+t4_mean_k3 = mod1_sum$mean_summary[[1]]$Mean[c(1,4,7)]
+t3_mean_k3 = mod1_sum$mean_summary[[1]]$Mean[c(2,5,8)]
+tsh_mean_k3 = mod1_sum$mean_summary[[1]]$Mean[c(3,6,9)]
+
+t4_mean_k4 = mod1_sum$mean_summary[[2]]$Mean[c(1,4,7,10)]
+t3_mean_k4 = mod1_sum$mean_summary[[2]]$Mean[c(2,5,8,11)]
+tsh_mean_k4 = mod1_sum$mean_summary[[2]]$Mean[c(3,6,9,12)]
+
+g1_var_k3 = mod1_sum$var_summary[[1]]$Mean[c(1)]
+g2_var_k3 = mod1_sum$var_summary[[1]]$Mean[c(2)]
+g3_var_k3 = mod1_sum$var_summary[[1]]$Mean[c(3)]
+
+g1_var_k4 = mod1_sum$var_summary[[2]]$Mean[c(1)]
+g2_var_k4 = mod1_sum$var_summary[[2]]$Mean[c(2)]
+g3_var_k4 = mod1_sum$var_summary[[2]]$Mean[c(3)]
+g4_var_k4 = mod1_sum$var_summary[[2]]$Mean[c(4)]
+# calculate adj RAND index 
+
+# calculate empirical mean and include in summary tables
+
+# calculate empirical mean and compute KL divergence?
+
+# make density plots w/ estimated means for groups
+ggplot2::ggplot(data = data, mapping = aes(x = TSH, color = Diagnosis, fill = Diagnosis)) +
+  ggplot2::geom_density(alpha=0.4) +
+  theme(plot.title = element_text(size=18)) + 
+  ggplot2::theme_classic() +
+  ggplot2::geom_vline(aes(xintercept=tsh_mean_k3[1]), linetype="dashed") +
+  ggplot2::geom_vline(aes(xintercept=tsh_mean_k3[2]), linetype="dashed") +
+  ggplot2::geom_vline(aes(xintercept=tsh_mean_k3[3]), linetype="dashed") + 
+  ggplot2::geom_vline(aes(xintercept=tsh_mean_true[[1]]), color="blue", linetype="dashed") +
+  ggplot2::geom_vline(aes(xintercept=tsh_mean_true[[2]]), color="blue", linetype="dashed") +
+  ggplot2::geom_vline(aes(xintercept=tsh_mean_true[[3]]), color="blue", linetype="dashed") 
+
+ggplot2::ggplot(data = data, mapping = aes(x = T3, color = Diagnosis, fill = Diagnosis)) +
+  ggplot2::geom_density(alpha=0.4) +
+  theme(plot.title = element_text(size=18)) + 
+  ggplot2::theme_classic() +
+  ggplot2::geom_vline(aes(xintercept=t3_mean_k3[1]), linetype="dashed") +
+  ggplot2::geom_vline(aes(xintercept=t3_mean_k3[2]), linetype="dashed") +
+  ggplot2::geom_vline(aes(xintercept=t3_mean_k3[3]), linetype="dashed") + 
+  ggplot2::geom_vline(aes(xintercept=t3_mean_true[[1]]), color="blue", linetype="dashed") +
+  ggplot2::geom_vline(aes(xintercept=t3_mean_true[[2]]), color="blue", linetype="dashed") +
+  ggplot2::geom_vline(aes(xintercept=t3_mean_true[[3]]), color="blue", linetype="dashed") 
+
+ggplot2::ggplot(data = data, mapping = aes(x = T4, color = Diagnosis, fill = Diagnosis)) +
+  ggplot2::geom_density(alpha=0.4) +
+  theme(plot.title = element_text(size=18)) + 
+  ggplot2::theme_classic() +
+  ggplot2::geom_vline(aes(xintercept=t4_mean_k3[1]), linetype="dashed") +
+  ggplot2::geom_vline(aes(xintercept=t4_mean_k3[2]), linetype="dashed") +
+  ggplot2::geom_vline(aes(xintercept=t4_mean_k3[3]), linetype="dashed") + 
+  ggplot2::geom_vline(aes(xintercept=t4_mean_true[[1]]), color="blue", linetype="dashed") +
+  ggplot2::geom_vline(aes(xintercept=t4_mean_true[[2]]), color="blue", linetype="dashed") +
+  ggplot2::geom_vline(aes(xintercept=t4_mean_true[[3]]), color="blue", linetype="dashed") 
+
+ggplot2::ggplot(data = data, mapping = aes(x = TSH, y = T3, color = Diagnosis, fill = Diagnosis)) +
+  ggplot2::geom_point(alpha = 0.4, size = 0.3) + 
+  ggplot2::geom_density_2d(alpha=0.4) +
+  theme(plot.title = element_text(size=18)) + 
+  ggplot2::theme_classic()
+
+ggplot2::ggplot(data = data, mapping = aes(x = TSH, y = T4, color = Diagnosis, fill = Diagnosis)) +
+  ggplot2::geom_point(alpha = 0.4, size = 0.3) + 
+  ggplot2::geom_density_2d(alpha=0.4) +
+  theme(plot.title = element_text(size=18)) + 
+  ggplot2::theme_classic()
+
+
+##################
+### K=3 2D plots
+##################
+
+ggplot2::ggplot(data = data, mapping = aes(x = T4, y = T3, color = Diagnosis, fill = Diagnosis)) +
+  ggplot2::geom_point(alpha = 0.75) + 
+  # posterior mean
+  ggplot2::geom_label(mapping = aes(x = t4_mean_k3[1], y = t3_mean_k3[1], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_k3[2], y = t3_mean_k3[2], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_k3[3], y = t3_mean_k3[3], label = "X"), color = "blue", alpha=0, label.size=0) +
+  # true empirical mean
+  ggplot2::geom_label(mapping = aes(x = t4_mean_true[1], y = t3_mean_true[1], label = "O"), color = "red", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_true[2], y = t3_mean_true[2], label = "O"), color = "red", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_true[3], y = t3_mean_true[3], label = "O"), color = "red", alpha=0, label.size=0) +
+  # settings
+  ggplot2::theme_classic() +
+  ggplot2::theme(plot.title = element_text(size=18), legend.position = "none") + 
+  scale_x_continuous(minor_breaks=0, breaks = c(seq(-5,3.5,1)), limits=c(-5,3.5)) +
+  scale_y_continuous(minor_breaks=0, breaks = c(seq(-4,4,1)), limits=c(-4,4.5)) +
+  coord_fixed() + 
+  ggplot2::xlab("log(T4)") + 
+  ggplot2::ylab("log(T3)") + 
+  ggplot2::ggtitle("T3 vs. T4 Results") +
+  # 95% posterior interval
+  ggforce::geom_circle(mapping = aes(x0 = t4_mean_k3[1], y0 = t3_mean_k3[1], r = 2*sqrt(g1_var_k3)),
+                        alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t4_mean_k3[2], y0 = t3_mean_k3[2], r = 2*sqrt(g2_var_k3)),
+                      alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t4_mean_k3[3], y0 = t3_mean_k3[3], r = 2*sqrt(g3_var_k3)),
+                      alpha=0, linetype = "dashed")
+
+ggplot2::ggplot(data = data, mapping = aes(x = T4, y = TSH, color = Diagnosis, fill = Diagnosis)) +
+  ggplot2::geom_point(alpha = 0.75) + 
+  # posterior mean
+  ggplot2::geom_label(mapping = aes(x = t4_mean_k3[1], y = tsh_mean_k3[1], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_k3[2], y = tsh_mean_k3[2], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_k3[3], y = tsh_mean_k3[3], label = "X"), color = "blue", alpha=0, label.size=0) +
+  # true empirical mean
+  ggplot2::geom_label(mapping = aes(x = t4_mean_true[1], y = tsh_mean_true[1], label = "O"), color = "red", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_true[2], y = tsh_mean_true[2], label = "O"), color = "red", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_true[3], y = tsh_mean_true[3], label = "O"), color = "red", alpha=0, label.size=0) +
+  # settings
+  ggplot2::theme_classic() +
+  ggplot2::theme(plot.title = element_text(size=18), legend.position = "none") + 
+  scale_x_continuous(minor_breaks=0, breaks = c(seq(-5,4,1)), limits=c(-5,3.5)) +
+  scale_y_continuous(minor_breaks=0, breaks = c(seq(-3,4,1)), limits=c(-3.5,4.5)) +
+  coord_fixed() + 
+  ggplot2::xlab("log(T4)") + 
+  ggplot2::ylab("log(TSH)") + 
+  ggplot2::ggtitle("TSH vs. T4 Results") +
+  ggforce::geom_circle(mapping = aes(x0 = t4_mean_k3[1], y0 = tsh_mean_k3[1], r = 2*sqrt(g1_var_k3)),
+                        alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t4_mean_k3[2], y0 = tsh_mean_k3[2], r = 2*sqrt(g2_var_k3)),
+                      alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t4_mean_k3[3], y0 = tsh_mean_k3[3], r = 2*sqrt(g3_var_k3)),
+                      alpha=0, linetype = "dashed")
+
+ggplot2::ggplot(data = data, mapping = aes(x = T3, y = TSH, color = Diagnosis, fill = Diagnosis)) +
+  ggplot2::geom_point(alpha = 0.75) + 
+  # posterior mean
+  ggplot2::geom_label(mapping = aes(x = t3_mean_k3[1], y = tsh_mean_k3[1], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t3_mean_k3[2], y = tsh_mean_k3[2], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t3_mean_k3[3], y = tsh_mean_k3[3], label = "X"), color = "blue", alpha=0, label.size=0) +
+  # true empirical mean
+  ggplot2::geom_label(mapping = aes(x = t3_mean_true[1], y = tsh_mean_true[1], label = "O"), color = "red", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t3_mean_true[2], y = tsh_mean_true[2], label = "O"), color = "red", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t3_mean_true[3], y = tsh_mean_true[3], label = "O"), color = "red", alpha=0, label.size=0) +
+  # settings
+  ggplot2::theme_classic() +
+  ggplot2::theme(plot.title = element_text(size=18), legend.position = "none") + 
+  scale_x_continuous(minor_breaks=0, breaks = c(seq(-4,4,1)), limits=c(-4,4)) +
+  scale_y_continuous(minor_breaks=0, breaks = c(seq(-3.5,4,1)), limits=c(-3.5,4.5)) +
+  coord_fixed() + 
+  ggplot2::xlab("log(T3)") + 
+  ggplot2::ylab("log(TSH)") + 
+  ggplot2::ggtitle("TSH vs. T3 Results") +
+  ggforce::geom_circle(mapping = aes(x0 = t3_mean_k3[1], y0 = tsh_mean_k3[1], r = 2*sqrt(g1_var_k3)),
+                        alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t3_mean_k3[2], y0 = tsh_mean_k3[2], r = 2*sqrt(g2_var_k3)),
+                      alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t3_mean_k3[3], y0 = tsh_mean_k3[3], r = 2*sqrt(g3_var_k3)),
+                      alpha=0, linetype = "dashed")
+
+# save model summary
+# saveRDS(object = mod1_sum, file = "../MCMC_Runs/thyroid_DEV_modsum.rds")
+```
+
+```{r}
+mod2 = readRDS(paste0(data_path, "/thyroid_modfit_conjDEV_withSM.rds"))
+mod2_sum = dpmm_summary(output = mod2,
+                        print_phi_sum = TRUE,
+                        print_k_sum = TRUE,
+                        make_traceplot = TRUE,
+                        burn_in = 2000, t_hold = 250,
+                        num_dims = 3,
+                        calc_perf = FALSE,
+                        equal_var = FALSE)
+# traceplots for K
+ggplot(mapping = aes(x = 1:length(mod2$k), y = mod2$k)) + 
+  geom_line() +
+  ggtitle("Traceplot of no. components K, DEV with SM") +
+  scale_y_continuous(breaks = seq(0, 7, by = 1),
+                     limits = c(0,7)) +
+  scale_x_continuous(breaks = seq(0, 12000, by = 2000),
+                     limits = c(0,12000)) +
+  xlab("iter") + 
+  ylab("K") + 
+  theme_classic()
+ggsave(filename = "../thyroid_DEVwithSM_kplot.png", device = "png")
+dev.off()
+# rm(mod2) # free up memory
+```
+
+```{r}
+mod3 = readRDS(paste0(data_path, "/thyroid_modfit_conjUVV_noSM.rds"))
+mod3_sum = dpmm_summary(output = mod3,
+                        print_phi_sum = TRUE,
+                        print_k_sum = TRUE,
+                        make_traceplot = TRUE,
+                        burn_in = 2000, t_hold = 250,
+                        num_dims = 3, 
+                        calc_perf = FALSE,
+                        equal_var = FALSE)
+rm(mod3) # free up memory
+```
+
+```{r}
+mod4 = readRDS(paste0(data_path, "/thyroid_modfit_conjUVV_withSM.rds"))
+mod4_sum = dpmm_summary(output = mod4,
+                        print_phi_sum = TRUE,
+                        print_k_sum = TRUE,
+                        make_traceplot = TRUE,
+                        burn_in = 2000, t_hold = 250,
+                        num_dims = 3,
+                        calc_perf = FALSE,
+                        equal_var = FALSE)
+rm(mod4) # free up memory
+```
