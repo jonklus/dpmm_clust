@@ -260,7 +260,7 @@ ggplot2::ggplot(data = data, mapping = aes(x = T4, y = T3, color = Diagnosis, fi
   coord_fixed() + 
   ggplot2::xlab("log(T4)") + 
   ggplot2::ylab("log(T3)") + 
-  ggplot2::ggtitle("T3 vs. T4 Results") +
+  ggplot2::ggtitle("T3 vs. T4 Results, K=3") +
   # 95% posterior interval
   ggforce::geom_circle(mapping = aes(x0 = t4_mean_k3[1], y0 = t3_mean_k3[1], r = 2*sqrt(g1_var_k3)),
                         alpha=0, linetype = "dashed") +
@@ -287,7 +287,7 @@ ggplot2::ggplot(data = data, mapping = aes(x = T4, y = TSH, color = Diagnosis, f
   coord_fixed() + 
   ggplot2::xlab("log(T4)") + 
   ggplot2::ylab("log(TSH)") + 
-  ggplot2::ggtitle("TSH vs. T4 Results") +
+  ggplot2::ggtitle("TSH vs. T4 Results, K=3") +
   ggforce::geom_circle(mapping = aes(x0 = t4_mean_k3[1], y0 = tsh_mean_k3[1], r = 2*sqrt(g1_var_k3)),
                         alpha=0, linetype = "dashed") +
   ggforce::geom_circle(mapping = aes(x0 = t4_mean_k3[2], y0 = tsh_mean_k3[2], r = 2*sqrt(g2_var_k3)),
@@ -313,7 +313,7 @@ ggplot2::ggplot(data = data, mapping = aes(x = T3, y = TSH, color = Diagnosis, f
   coord_fixed() + 
   ggplot2::xlab("log(T3)") + 
   ggplot2::ylab("log(TSH)") + 
-  ggplot2::ggtitle("TSH vs. T3 Results") +
+  ggplot2::ggtitle("TSH vs. T3 Results, K=3") +
   ggforce::geom_circle(mapping = aes(x0 = t3_mean_k3[1], y0 = tsh_mean_k3[1], r = 2*sqrt(g1_var_k3)),
                         alpha=0, linetype = "dashed") +
   ggforce::geom_circle(mapping = aes(x0 = t3_mean_k3[2], y0 = tsh_mean_k3[2], r = 2*sqrt(g2_var_k3)),
@@ -321,6 +321,98 @@ ggplot2::ggplot(data = data, mapping = aes(x = T3, y = TSH, color = Diagnosis, f
   ggforce::geom_circle(mapping = aes(x0 = t3_mean_k3[3], y0 = tsh_mean_k3[3], r = 2*sqrt(g3_var_k3)),
                       alpha=0, linetype = "dashed")
 
+
+##################
+### K=4 2D plots
+##################
+
+ggplot2::ggplot(data = data, mapping = aes(x = T4, y = T3, color = Diagnosis, fill = Diagnosis)) +
+  ggplot2::geom_point(alpha = 0.75) + 
+  # posterior mean
+  ggplot2::geom_label(mapping = aes(x = t4_mean_k4[1], y = t3_mean_k4[1], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_k4[2], y = t3_mean_k4[2], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_k4[3], y = t3_mean_k4[3], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_k4[4], y = t3_mean_k4[4], label = "X"), color = "blue", alpha=0, label.size=0) +
+  # true empirical mean
+  ggplot2::geom_label(mapping = aes(x = t4_mean_true[1], y = t3_mean_true[1], label = "O"), color = "red", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_true[2], y = t3_mean_true[2], label = "O"), color = "red", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_true[3], y = t3_mean_true[3], label = "O"), color = "red", alpha=0, label.size=0) +
+  # settings
+  ggplot2::theme_classic() +
+  ggplot2::theme(plot.title = element_text(size=18), legend.position = "none") + 
+  scale_x_continuous(minor_breaks=0, breaks = c(seq(-5,3.5,1)), limits=c(-5,3.5)) +
+  scale_y_continuous(minor_breaks=0, breaks = c(seq(-4,4,1)), limits=c(-4,4.5)) +
+  coord_fixed() + 
+  ggplot2::xlab("log(T4)") + 
+  ggplot2::ylab("log(T3)") + 
+  ggplot2::ggtitle("T3 vs. T4 Results, K=4") +
+  # 95% posterior interval
+  ggforce::geom_circle(mapping = aes(x0 = t4_mean_k4[1], y0 = t3_mean_k4[1], r = 2*sqrt(g1_var_k4)),
+                        alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t4_mean_k4[2], y0 = t3_mean_k4[2], r = 2*sqrt(g2_var_k4)),
+                      alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t4_mean_k4[3], y0 = t3_mean_k4[3], r = 2*sqrt(g3_var_k4)),
+                      alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t4_mean_k4[4], y0 = t3_mean_k4[4], r = 2*sqrt(g4_var_k4)),
+                      alpha=0, linetype = "dashed")
+
+ggplot2::ggplot(data = data, mapping = aes(x = T4, y = TSH, color = Diagnosis, fill = Diagnosis)) +
+  ggplot2::geom_point(alpha = 0.75) + 
+  # posterior mean
+  ggplot2::geom_label(mapping = aes(x = t4_mean_k4[1], y = tsh_mean_k4[1], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_k4[2], y = tsh_mean_k4[2], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_k4[3], y = tsh_mean_k4[3], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_k4[4], y = tsh_mean_k4[4], label = "X"), color = "blue", alpha=0, label.size=0) +
+  # true empirical mean
+  ggplot2::geom_label(mapping = aes(x = t4_mean_true[1], y = tsh_mean_true[1], label = "O"), color = "red", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_true[2], y = tsh_mean_true[2], label = "O"), color = "red", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t4_mean_true[3], y = tsh_mean_true[3], label = "O"), color = "red", alpha=0, label.size=0) +
+  # settings
+  ggplot2::theme_classic() +
+  ggplot2::theme(plot.title = element_text(size=18), legend.position = "none") + 
+  scale_x_continuous(minor_breaks=0, breaks = c(seq(-5,4,1)), limits=c(-5,3.5)) +
+  scale_y_continuous(minor_breaks=0, breaks = c(seq(-3,4,1)), limits=c(-3.5,4.5)) +
+  coord_fixed() + 
+  ggplot2::xlab("log(T4)") + 
+  ggplot2::ylab("log(TSH)") + 
+  ggplot2::ggtitle("TSH vs. T4 Results, K=4") +
+  ggforce::geom_circle(mapping = aes(x0 = t4_mean_k4[1], y0 = tsh_mean_k4[1], r = 2*sqrt(g1_var_k4)),
+                        alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t4_mean_k4[2], y0 = tsh_mean_k4[2], r = 2*sqrt(g2_var_k4)),
+                      alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t4_mean_k4[3], y0 = tsh_mean_k4[3], r = 2*sqrt(g3_var_k4)),
+                      alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t4_mean_k4[4], y0 = tsh_mean_k4[4], r = 2*sqrt(g4_var_k4)),
+                      alpha=0, linetype = "dashed")
+
+ggplot2::ggplot(data = data, mapping = aes(x = T3, y = TSH, color = Diagnosis, fill = Diagnosis)) +
+  ggplot2::geom_point(alpha = 0.75) + 
+  # posterior mean
+  ggplot2::geom_label(mapping = aes(x = t3_mean_k4[1], y = tsh_mean_k4[1], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t3_mean_k4[2], y = tsh_mean_k4[2], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t3_mean_k4[3], y = tsh_mean_k4[3], label = "X"), color = "blue", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t3_mean_k4[4], y = tsh_mean_k4[4], label = "X"), color = "blue", alpha=0, label.size=0) +
+  # true empirical mean
+  ggplot2::geom_label(mapping = aes(x = t3_mean_true[1], y = tsh_mean_true[1], label = "O"), color = "red", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t3_mean_true[2], y = tsh_mean_true[2], label = "O"), color = "red", alpha=0, label.size=0) +
+  ggplot2::geom_label(mapping = aes(x = t3_mean_true[3], y = tsh_mean_true[3], label = "O"), color = "red", alpha=0, label.size=0) +
+  # settings
+  ggplot2::theme_classic() +
+  ggplot2::theme(plot.title = element_text(size=18), legend.position = "none") + 
+  scale_x_continuous(minor_breaks=0, breaks = c(seq(-4,4,1)), limits=c(-4,4)) +
+  scale_y_continuous(minor_breaks=0, breaks = c(seq(-3.5,4,1)), limits=c(-3.5,4.5)) +
+  coord_fixed() + 
+  ggplot2::xlab("log(T3)") + 
+  ggplot2::ylab("log(TSH)") + 
+  ggplot2::ggtitle("TSH vs. T3 Results, K=4") +
+  ggforce::geom_circle(mapping = aes(x0 = t3_mean_k4[1], y0 = tsh_mean_k4[1], r = 2*sqrt(g1_var_k4)),
+                        alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t3_mean_k4[2], y0 = tsh_mean_k4[2], r = 2*sqrt(g2_var_k4)),
+                      alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t3_mean_k4[3], y0 = tsh_mean_k4[3], r = 2*sqrt(g3_var_k4)),
+                      alpha=0, linetype = "dashed") +
+  ggforce::geom_circle(mapping = aes(x0 = t3_mean_k4[3], y0 = tsh_mean_k4[4], r = 2*sqrt(g4_var_k4)),
+                      alpha=0, linetype = "dashed")
 # save model summary
 # saveRDS(object = mod1_sum, file = "../MCMC_Runs/thyroid_DEV_modsum.rds")
 ```
