@@ -41,19 +41,12 @@ group_prob_calc_diag <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0
   p = length(mu[,1])
   
   # DEV case, variance differs by group but still diagonal within group
+  
+  k_minus = k-1 # number of distinct groups excluding the jth group
     
     if(singleton == 1){
       
-      dn_prob = k_minus/(k_minus+1)
-      do_nothing = sample(x = c(TRUE, FALSE), prob = c(dn_prob, 1-dn_prob))
-      
-      if(do_nothing == TRUE){
-        
-        # do nothing, leave group label unchanged
-        pr_c = dn_prob
-        
-      } else{
-        
+
         # label at k_minus + 1
         
         ## draw params for new group from G_0 in step below -- will be same
@@ -71,9 +64,7 @@ group_prob_calc_diag <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0
                                                  sigma = diag(sigma2[[x]], p)) 
                            return(c1*c2)
                          })
-      }
-      
-
+ 
     } else{
       
       pr_curr = sapply(X = 1:k, 

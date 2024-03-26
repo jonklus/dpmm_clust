@@ -77,7 +77,7 @@ print(summary_table %>%
   dplyr::summarize(n()), n=100)
 
 ARI_table = summary_table %>%
-  dplyr::filter(Tag == "ENAR") %>%
+  #dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
   dplyr::summarize(ARI = mean(ARI)) %>%
   tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = ARI) %>%
@@ -92,7 +92,7 @@ ARI_table = summary_table %>%
 xtable::xtable(ARI_table, digits = 2)
 
 KL_table = summary_table %>%
-  dplyr::filter(Tag == "ENAR") %>%
+  #dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
   dplyr::summarize(KL = mean(KL)) %>%
   tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = KL) %>%
@@ -107,7 +107,7 @@ KL_table = summary_table %>%
 xtable::xtable(KL_table, digits = 2)
 
 time_table = summary_table %>%
-  dplyr::filter(Tag == "ENAR") %>%
+  #dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
   dplyr::summarize(Time = mean(Time)) %>%
   tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = Time) %>%

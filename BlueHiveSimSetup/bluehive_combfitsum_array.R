@@ -41,7 +41,6 @@ if(dir.exists(dir_name) == FALSE){
 # extract seed
 seeds = readRDS("./BHsimseeds.rds") # file with 100 random seeds
 
-SLURM_ID = as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 print(SLURM_ID)
 
 # simulate data

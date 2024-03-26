@@ -942,7 +942,7 @@ make_k_traceplot <- function(k, group_assign, burn_in = NULL, show_min_obs = FAL
     ggplot(mapping = aes(x = 1:n_iter)) + 
       geom_col(aes(y = a + min_obs*b), color = "lightblue") +
       geom_line(aes(y = k)) +
-      ggtitle("Traceplot of no. components K") +
+      ggtitle("no. groups K") +
       xlab("iter") + 
       #ylab("K") + 
       theme_classic() + 
@@ -957,7 +957,7 @@ make_k_traceplot <- function(k, group_assign, burn_in = NULL, show_min_obs = FAL
     
     ggplot(mapping = aes(x = 1:n_iter, y = k)) + 
       geom_line() +
-      ggtitle("Traceplot of no. components K") +
+      ggtitle("no. groups K") +
       scale_y_continuous(breaks = seq(0, max_yaxis, by = 1), 
                          limits = c(0,max_yaxis)) + 
       xlab("iter") + 
@@ -970,7 +970,8 @@ make_k_traceplot <- function(k, group_assign, burn_in = NULL, show_min_obs = FAL
 
 
 
-make_traceplot <- function(param_list_by_k, k, component_no, param_type, p, legend = FALSE, log_scale = FALSE){
+make_traceplot <- function(param_list_by_k, k, component_no, param_type, p, 
+                           legend = FALSE, log_scale = FALSE, title_text = NULL){
   # takes a data frame of MCMC draws and outputs labeled traceplots
   # generic version of make_mean_traceplot
   
@@ -1005,10 +1006,16 @@ make_traceplot <- function(param_list_by_k, k, component_no, param_type, p, lege
                                 values_to = "param")
   
   # make color coded traceplots
-  title_text = paste0("Traceplot of ", param_type, " Component ", component_no, " (K=", k, ")")
+  if(is.null(title_text) == TRUE){
+    title_text = paste0(param_type, " Component ", component_no, " (K=", k, ")")
+  } else{
+    # use provided title text
+    title_text = paste0(title_text, " (K=", k, ")")
+  }
+  
   
   if(log_scale == TRUE){
-    
+    plot_df$param = plot_df$param+1
     # check no params  = 0
     if(sum(plot_df$param == 0)){
       stop("Log scale not defined. Parameter takes on values that are equal to 0.")
@@ -1019,7 +1026,7 @@ make_traceplot <- function(param_list_by_k, k, component_no, param_type, p, lege
       ggtitle(title_text) +
       # ylab() +
       theme_classic() +
-      ggplot2::theme(legend.position = ifelse(legend == TRUE, "right","none"))
+      ggplot2::theme(plot.title = element_text(size=12), legend.position = ifelse(legend == TRUE, "right","none"))
     
   } else{
     
@@ -1028,7 +1035,7 @@ make_traceplot <- function(param_list_by_k, k, component_no, param_type, p, lege
       ggtitle(title_text) +
       # ylab() +
       theme_classic() +
-      ggplot2::theme(legend.position = ifelse(legend == TRUE, "right","none"))
+      ggplot2::theme(plot.title = element_text(size=12), legend.position = ifelse(legend == TRUE, "right","none"))
     
   }
   
