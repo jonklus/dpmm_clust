@@ -559,27 +559,71 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
       
     }
     
+  } else if(param_type == "Covar"){
+    # Option to include off-diagonal elements and diagonal elements
+    # drop burn-in AND any singleton iterations before proceeding
+    temp_param_list = draws[keep_iters]
+    k_vec = k_vec[keep_iters]
+    param_symbol = "sigma"
+    if(equal_var == TRUE){
+      
+      stop("Incorrect combination of args. Cannot have param_type = Covar and equal_var = TRUE simultaneously.")
+      
+    } else{
+      # num_params = k_vec[keep_iters]
+      # num params is really just the number of cov matrices -- used to pull out
+      # values, not used to index sigma_11, sigma_12, for example
+      num_params = sapply(X = 1:length(temp_param_list),
+                          FUN = function(x){
+                            length(temp_param_list[[x]])
+                          })
+    }
+    
+    
+    
+    # get var diagonal components into similar format as means
+    param_list = vector(mode = "list", length = length(num_params))
+    for(i in 1:length(num_params)){
+      
+      param_list[[i]] = sapply(X = 1:num_params[i], 
+                               FUN = function(x){ # if a scalar -- diag will cause weird results
+                                 if(is.null(dim(temp_param_list[[i]][[x]])) == TRUE){
+                                   temp_param_list[[i]][[x]]
+                                 } else{ # if a matrix
+                                   c(diag(temp_param_list[[i]][[x]]), 
+                                     temp_param_list[[i]][[x]][upper.tri(temp_param_list[[i]][[x]])])
+                                 }
+                               })
+      # each column is a group k, each row is a parameter sigma (either variance or covariance)
+      # print(param_list[[i]])
+      
+    }
+    
   } else{
     
-    stop("param_type not recognized. Please specify Mean or Var only.")
+    stop("param_type not recognized. Please specify Mean, Var, or Covar only.")
     
   }
   
-  # need to add an option for covariance here --- capture off-diagonal elements as well
-  if(equal_var == TRUE){
+
     unique_k = sort(unique(k_vec))
-  } else{
-    unique_k = sort(unique(num_params))
-  }
+ 
  
   # cat("\n unique_k:", unique_k)
 
   # number of parameters per group, does not change with k
-  if(equal_var == TRUE){
-    npar = 1
-  } else{
-    npar = ifelse(is.null(nrow(param_list[[1]])) == TRUE, 1, nrow(param_list[[1]]))
-  }
+    if(param_type == "Covar"){
+      
+      npar = ifelse(is.null(nrow(param_list[[1]])) == TRUE, 1, 
+                    nrow(param_list[[1]]))
+      
+    } else{
+      
+      npar = ifelse(is.null(nrow(param_list[[1]])) == TRUE, 1, nrow(param_list[[1]]))
+      
+    }
+    
+  
   
   # print(npar)
   # need to create separate object for each # of groups k 
@@ -613,6 +657,10 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
                                            paste0(param_symbol, 1:unique_k[i], x)
                                          }))
         names(param_list_by_k[[i]]) = gtools::mixedsort(col_header_names)
+        
+        if(off_diag == TRUE){
+          
+        }
         
       }
       
@@ -750,11 +798,40 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
           
           # name columns i.e. mu23 is mean for group 2, 3rd component 
           # (i.e. from a length 3 mean vector)
-          col_header_names = unlist(lapply(X = 1:npar, 
-                                           FUN = function(x){
-                                             paste0(param_symbol, "_", 1:unique_k[i], "_", x)
-                                           }))
-          names(param_list_by_k[[i]]) = gtools::mixedsort(col_header_names)
+          if(param_type == "Var"){
+            
+            col_header_names = unlist(lapply(X = 1:npar, 
+                                             FUN = function(x){
+                                               paste0(param_symbol, "_", 1:unique_k[i], "_", x)
+                                             }))
+            names(param_list_by_k[[i]]) = gtools::mixedsort(col_header_names)
+            
+          } else if(param_type == "Covar"){
+            
+            param_mat = t(sapply(X = 1:(npar/2), 
+                                FUN = function(x){
+                                  i = 1:(npar/2)
+                                  paste0(x,i)
+                                }))
+            
+            param_lab = c(diag(param_mat), param_mat[upper.tri(param_mat)])
+            
+            col_header_names = unlist(lapply(X = 1:unique_k[i], 
+                                             FUN = function(x){
+                                               paste0(param_symbol, "_", x, "_", param_lab)
+                                             }))
+            # names(param_list_by_k[[i]]) = gtools::mixedsort(col_header_names)
+            
+          } else{
+            
+            col_header_names = unlist(lapply(X = 1:npar, 
+                                             FUN = function(x){
+                                               paste0(param_symbol, "_", 1:unique_k[i], "_", x)
+                                             }))
+            names(param_list_by_k[[i]]) = gtools::mixedsort(col_header_names)
+            
+          }
+
           
       }
         
@@ -1015,7 +1092,8 @@ make_traceplot <- function(param_list_by_k, k, component_no, param_type, p,
   
   
   if(log_scale == TRUE){
-    plot_df$param = plot_df$param+1
+    # tol = .001
+    # plot_df$param = ifelse(abs(plot_df$param) <tol, plot_df$param+1, plot_df$param) 
     # check no params  = 0
     if(sum(plot_df$param == 0)){
       stop("Log scale not defined. Parameter takes on values that are equal to 0.")
