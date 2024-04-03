@@ -323,9 +323,12 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         sigma2 = c(sigma2, sigma2_k)
         
         #### draw a mean for newly created group from FC posterior of mu 
-        mu_cov_k = diag(1/(1/sigma2[[x]] + 1/sigma0), p) 
+        mu_cov_k = 1/(1/sigma2[[x]] + 1/sigma0)
         mu_mean_k = (y[[i]]/sigma2_k + mu0/sigma0)/mu_cov_k
-        mu_k = matrix(mvtnorm::rmvnorm(n = 1, mean = mu_mean_k, sigma = mu_cov_k), nrow = p) # kth mean
+        mu_k = matrix(mvtnorm::rmvnorm(n = 1, 
+                                       mean = mu_mean_k, 
+                                       sigma = diag(mu_cov_k,p)), 
+                      nrow = p) # kth mean
         mu = cbind(mu, mu_k)
         
       }
@@ -395,7 +398,8 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                      })
     
     mu_cov = lapply(X = 1:k, 
-                    FUN = function(x){diag(1/(count_assign[x]/sigma2[[x]] + 1/sigma0), p)}) 
+                    # FUN = function(x){diag(1/(count_assign[x]/sigma2[[x]] + 1/sigma0), p)}) 
+                    FUN = function(x){1/(count_assign[x]/sigma2[[x]] + 1/sigma0)}) 
     
     mu_mean = lapply(X = 1:k, 
                      FUN = function(x){(sum_y_i[,x]/sigma2[[x]] + mu0/sigma0)/mu_cov[[x]]})
@@ -404,7 +408,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                      FUN = function(x){
                        t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
                                           mean = mu_mean[[x]], 
-                                          sigma = mu_cov[[x]]))
+                                          sigma = diag(mu_cov[[x]],p)))
                      }) 
     
     mu = matrix(data = unlist(x = mu_list), nrow = p) # put draws of mu back into same
@@ -522,7 +526,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
     # and save for label switching fix
     pr_c = sapply(X = 1:length(y), FUN = function(x){
       group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, a = a, b = b, 
-                      y_i = y[[x]], mu = mu, sigma2 = sigma2, r = r, mu0 = mu0,
+                      y_i = y[[x]], mu = mu, sigma2 = sigma2, mu0 = mu0, sigma0 = sigma0,
                       singleton = 0, curr_group_assign = group_assign[s,x], 
                       curr_labels = curr_labels)
     }) # result is a k*n matrix
