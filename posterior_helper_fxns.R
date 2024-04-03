@@ -821,6 +821,8 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
                                                paste0(param_symbol, "_", x, "_", param_lab)
                                              }))
             # names(param_list_by_k[[i]]) = gtools::mixedsort(col_header_names)
+            names(param_list_by_k[[i]]) = col_header_names # dont sort this one, 
+            # the apply statement was written to ensure correct ordering
             
           } else{
             

@@ -30,7 +30,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
                          print_k_sum = TRUE, make_traceplot = TRUE,
                          burn_in = 1000, t_hold = 0, num_dims = 2, 
                          calc_perf = FALSE, mu_true = NULL, var_true = NULL, 
-                         assign_true = NULL, equal_var = FALSE
+                         assign_true = NULL, equal_var = FALSE, off_diag = FALSE
                          ){
   # output is the list of results from the DPMM simulation study function
   # dataset is a numeric argument to summarize a specific result in the output, the desired index
@@ -68,6 +68,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
                                     n_groups = output$k, 
                                     burn_in = burn_in, 
                                     iter_threshold = t_hold)
+    
     group_assign_list_by_k = get_assign_by_k(assign = output$group_assign, 
                                              n_groups = output$k, 
                                              burn_in = burn_in, 
@@ -87,12 +88,26 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
                                                permutation = stephens_result, 
                                                param_type = "Mean")
     
-    var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
+    if(off_diag == FALSE){
+      
+      var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
+                                                iter_list = prob_list_by_k$iter_list,
+                                                k_vec = output$k,
+                                                relabel = TRUE, equal_var = equal_var,
+                                                permutation = stephens_result,
+                                                param_type = "Var")
+      
+      
+    } else{
+      
+        var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
                                               iter_list = prob_list_by_k$iter_list,
                                               k_vec = output$k,
                                               relabel = TRUE, equal_var = equal_var,
                                               permutation = stephens_result,
-                                              param_type = "Var")
+                                              param_type = "Covar")
+        }
+
     
     # compute KL divergence
     group_assign_list_by_k_corr = correct_group_assign(

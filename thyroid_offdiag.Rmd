@@ -1,0 +1,192 @@
+---
+title: "Thyroid Example"
+author: "Jonathan Klus"
+date: "2024-03-21"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+# load necessary functions
+# source("./Multivariate_DPMM_unknownvar_DEV.R")
+# source("./Multivariate_DPMM_unknownvar_DEE.R")
+# source("./Multivariate_DPMM_unknownvar_UVV.R")
+source("./posterior_helper_fxns.R")
+source("./post_processing_inf.R")
+
+# load R libraries
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(ggpubr)
+library(ggforce) # draw circles
+library(stringr)
+library(mclust)
+library(xtable)
+```
+
+## Data
+
+```{r, echo = FALSE}
+# visualize data
+raw_data = mclust::thyroid
+exposure = scale(log(raw_data[,3:5])) # data.frame(scale(raw_data[,2:6])) # center and scale exposure data
+# exposure$Diagnosis = factor(raw_data$Diagnosis)
+data = data.frame(exposure)
+data$Diagnosis = raw_data$Diagnosis
+# 5d plot?? or just do multiple 2d plots ## should this data be log transformed
+# before centering and scaling???
+# put exposure data into format that model will accept
+y = lapply(X = 1:nrow(exposure), 
+           FUN = function(x){
+             matrix(exposure[x,], nrow = length(exposure[x,]))
+           })
+
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/RealData"
+```
+
+
+
+
+```{r, eval = FALSE, include=FALSE}
+## Model Fitting
+
+# fit model
+
+mod1 = MVN_CRP_sampler_DEV(
+  S = 12000, seed = 516, y = y,
+  alpha = 1, r = 10, g = 1, h = 10,
+  sigma_hyperprior = FALSE, fix_r = FALSE,
+  mu0 = matrix(rep(0, nrow(y[[1]])), ncol = 1),
+  a = 1, b = 10,
+  k_init = 1, diag_weights = FALSE,
+  verbose = TRUE, split_merge = TRUE)
+
+saveRDS(object = mod1, file = "../MCMC_Runs/thyroid_DEV_modfit.rds")
+
+lambda_mat = diag(x = 5, nrow = nrow(y[[1]]))
+offdiag_mag = 0.2*5
+lambda_mat[1,2] = offdiag_mag
+lambda_mat[1,3] = -offdiag_mag
+lambda_mat[2,1] = offdiag_mag
+lambda_mat[2,3] = -offdiag_mag
+lambda_mat[3,1] = -offdiag_mag
+lambda_mat[3,2] = -offdiag_mag
+
+mod2 = MVN_CRP_sampler_UVV(
+  S = 12000, seed = 516, y = y,
+  alpha = 1, r = 10, g = 1, h = 10, nu = 4, 
+  fix_r = FALSE,
+  mu0 = matrix(rep(0, nrow(y[[1]])), ncol = 1),
+  lambda0 = lambda_mat,
+  k_init = 1, diag_weights = FALSE,
+  verbose = TRUE, split_merge = TRUE)
+
+saveRDS(object = mod2, file = "../MCMC_Runs/thyroid_UVV_modfit.rds")
+```
+
+## Model Summary
+
+```{r, eval=FALSE}
+### DEV without split/merge
+
+# read in results and summarize models fit
+mod1 = readRDS(paste0(data_path, "/thyroid_modfit_conjDEV_noSM.rds"))
+mod1_sum = dpmm_summary(output = mod1,
+                        print_phi_sum = TRUE,
+                        print_k_sum = TRUE,
+                        make_traceplot = TRUE,
+                        burn_in = 2000, t_hold = 250,
+                        num_dims = 3,
+                        calc_perf = FALSE,
+                        equal_var = FALSE)
+
+
+# rm(mod1) # free up memory
+
+mod1_sum$settings
+mod1_sum$mean_summary
+mod1_sum$var_summary
+mod1_sum$splitmerge_accept
+mod1_sum$k_relfreqtab
+mod1_sum$fit_runtime
+
+# xtable(mod1_sum$k_freqtab)
+# xtable(mod1_sum$mean_summary[[1]])
+# xtable(mod1_sum$mean_summary[[2]])
+# 
+# xtable(mod1_sum$var_summary[[1]])
+# xtable(mod1_sum$var_summary[[2]])
+
+```
+
+### DEV with split/merge
+
+```{r, eval=FALSE}
+mod2 = readRDS(paste0(data_path, "/thyroid_modfit_conjDEV_withSM.rds"))
+mod2_sum = dpmm_summary(output = mod2,
+                        print_phi_sum = TRUE,
+                        print_k_sum = TRUE,
+                        make_traceplot = TRUE,
+                        burn_in = 2000, t_hold = 250,
+                        num_dims = 3,
+                        calc_perf = FALSE,
+                        equal_var = FALSE)
+
+mod2_sum$settings
+mod2_sum$mean_summary
+mod2_sum$var_summary
+mod2_sum$splitmerge_accept
+mod2_sum$k_relfreqtab
+mod2_sum$fit_runtime
+
+```
+
+
+```{r}
+mod3 = readRDS(paste0(data_path, "/thyroid_modfit_conjUVV_noSM.rds"))
+mod3_sum = dpmm_summary(output = mod3,
+                        print_phi_sum = TRUE,
+                        print_k_sum = TRUE,
+                        make_traceplot = FALSE,
+                        burn_in = 2000, t_hold = 250,
+                        num_dims = 3, 
+                        calc_perf = FALSE,
+                        equal_var = FALSE, off_diag = TRUE)
+# rm(mod3) # free up memory
+
+mod3_sum$settings
+mod3_sum$mean_summary
+mod3_sum$var_summary
+mod3_sum$splitmerge_accept
+mod3_sum$k_relfreqtab
+mod3_sum$fit_runtime
+
+
+```
+
+\newpage
+
+
+```{r}
+mod4 = readRDS(paste0(data_path, "/thyroid_modfit_conjUVV_withSM.rds"))
+mod4_sum = dpmm_summary(output = mod4,
+                        print_phi_sum = TRUE,
+                        print_k_sum = TRUE,
+                        make_traceplot = FALSE,
+                        burn_in = 2000, t_hold = 250,
+                        num_dims = 3,
+                        calc_perf = FALSE,
+                        equal_var = FALSE, off_diag = TRUE)
+# rm(mod4) # free up memory
+
+mod4_sum$settings
+mod4_sum$mean_summary
+mod4_sum$var_summary
+mod4_sum$splitmerge_accept
+mod4_sum$k_relfreqtab
+mod4_sum$fit_runtime
+
+```
+
