@@ -85,7 +85,7 @@ group_prob_calc <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0,
     
   } else{
     
-    # VEE case, variance differs by group but still diagonal within group
+    # DEV case, variance differs by group but still diagonal within group
     
     if(singleton == 1){
       
@@ -482,7 +482,7 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
 
 ##################### ASSUMING VARIANCE DIAGONAL AND EQUAL #####################
 
-MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1/2, b = 10, mu0, k_init = 2,
+MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1/2, b = 10, mu0, k_init = 1,
                                 d = 1, f = 1, g = 1, h = 1, sigma_hyperprior = TRUE, fix_r = FALSE,
                                 diag_weights = FALSE, verbose = TRUE, print_iter = 100, truth = NA,
                                 split_merge = TRUE, sm_iter = 5){
@@ -1299,23 +1299,23 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       cat("b",b)
       cat("\n")
       
-      if(nrow(mu0) == 2){
-        # if this is a 2D problem, can make scatterplot of group assign
-        yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
-        plot_y = data.frame(
-          y1 = yvals[,1],
-          y2 = yvals[,2],
-          curr_assign = group_assign[s,]
-        )
-        print(plot_y$curr_assign)
-        prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = rownames(plot_y))) +
-          #geom_point(color = assign) +
-          #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
-          geom_text(size = 3, color = plot_y$curr_assign) +
-          ggtitle(paste0("Group Assignments at Iteration s=", s, ", k=", k)) + 
-          theme_classic()
-        print(prog_plot)
-      }
+      # if(nrow(mu0) == 2){
+      #   # if this is a 2D problem, can make scatterplot of group assign
+      #   yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
+      #   plot_y = data.frame(
+      #     y1 = yvals[,1],
+      #     y2 = yvals[,2],
+      #     curr_assign = group_assign[s,]
+      #   )
+      #   print(plot_y$curr_assign)
+      #   prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = rownames(plot_y))) +
+      #     #geom_point(color = assign) +
+      #     #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+      #     geom_text(size = 3, color = plot_y$curr_assign) +
+      #     ggtitle(paste0("Group Assignments at Iteration s=", s, ", k=", k)) + 
+      #     theme_classic()
+      #   print(prog_plot)
+      # }
       
       
     }

@@ -1422,23 +1422,23 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       cat("b",b)
       cat("\n")
    
-      if(nrow(mu0) == 2){
-        # if this is a 2D problem, can make scatterplot of group assign
-        yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
-        plot_y = data.frame(
-          y1 = yvals[,1],
-          y2 = yvals[,2],
-          curr_assign = group_assign[s,]
-        )
-        print(plot_y$curr_assign)
-        prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = rownames(plot_y))) +
-          #geom_point(color = assign) +
-          #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
-          geom_text(size = 3, color = plot_y$curr_assign) +
-          ggtitle(paste0("Group Assignments at Iteration s=", s, ", k=", k)) + 
-          theme_classic()
-        print(prog_plot)
-      }
+      # if(nrow(mu0) == 2){
+      #   # if this is a 2D problem, can make scatterplot of group assign
+      #   yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
+      #   plot_y = data.frame(
+      #     y1 = yvals[,1],
+      #     y2 = yvals[,2],
+      #     curr_assign = group_assign[s,]
+      #   )
+      #   print(plot_y$curr_assign)
+      #   prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = rownames(plot_y))) +
+      #     #geom_point(color = assign) +
+      #     #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+      #     geom_text(size = 3, color = plot_y$curr_assign) +
+      #     ggtitle(paste0("Group Assignments at Iteration s=", s, ", k=", k)) + 
+      #     theme_classic()
+      #   print(prog_plot)
+      # }
       
       
     }

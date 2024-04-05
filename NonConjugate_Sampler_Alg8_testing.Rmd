@@ -14,16 +14,11 @@ source("./posterior_helper_fxns.R")
 
 # load R libraries
 library(ggplot2)
+library(gridExtra)
 library(label.switching)
 library(LaplacesDemon)
 library(stringr)
 ```
-
-## DEV Sampler Setup
-
-- $y_1, \dots, y_n \sim \sum_{k=1}^K\pi_kN(\mu_k, \sigma^2_k I_J)$
-- $\mu_1, \dots, \mu_K \sim N(\mu_0, \sigma_0 I_J)$
-- $\sigma^2_1,\dots, \sigma^2_K \sim IG(a,b)$
 
 ## Sampler Examples
 
@@ -33,7 +28,7 @@ Mixture of 3 multivariate normal densities all with diagonal variance structure
 and $\sigma^2 = 10$. The true means are $(-20,20)$, $(20,-20)$, and $(0,0)$, and
 $\sum_{j}n_j = 30$.
 
-```{r, echo=FALSE}
+```{r}
 ################## simulate data ##############################################
 
 set.seed(516)
@@ -93,7 +88,7 @@ rm(w, means)
 ##### without split-merge step
 
 ```{r}
-n_iter = 5000
+n_iter = 12000
 # use_cores = min(parallel::detectCores(), nreps)
 # sim_results_DEV_no_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
 #       FUN = function(x){MVN_CRP_sampler_DEV(
@@ -107,16 +102,20 @@ n_iter = 5000
 #         )}
 #       )
 
-x = 1 # first simulated data set 
+x = 2 # first simulated data set 
 y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
-mod_test = MVN_CRP_nonconj_DEV(
+mod_test1 = MVN_CRP_nonconj_DEV(
         S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1, 
         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-        sigma0 = round(max(apply(X = y_matrix, MARGIN = 2, FUN = var)),-1), 
-        a = 1, b = 50, sigma_hyperprior = FALSE,
+        sigma0 = 225, # round(max(apply(X = y_matrix, MARGIN = 2, FUN = var)),-1), 
+        a = 1, b = 10, sigma_hyperprior = FALSE,
         k_init = 1, diag_weights = FALSE,
-        verbose = FALSE, split_merge = FALSE
+        verbose = TRUE, print_iter = 500, split_merge = FALSE
         )
+
+table(mod_test1$k)
+
+saveRDS(object = mod_test1, file = "../MCMC_Runs/nonconjDEV_ds2_test_wellsep.rds")
 
 
 # datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_noSM_", 
@@ -195,24 +194,22 @@ rm(w, means)
 ##### without split-merge step
 
 ```{r}
-n_iter = 5000
-use_cores = min(parallel::detectCores(), nreps)
-sim_results_DEV_no_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
-      FUN = function(x){MVN_CRP_sampler_DEV(
-        S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
-        alpha = 1, r = 10, g = 1, h = 50,
-        sigma_hyperprior = FALSE, fix_r = FALSE,
+x = 2 # first simulated data set 
+y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
+mod_test2 = MVN_CRP_nonconj_DEV(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1, 
         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-        a = 1, b = 50,
+        sigma0 = 225, # round(max(apply(X = y_matrix, MARGIN = 2, FUN = var)),-1), 
+        a = 1, b = 10, sigma_hyperprior = FALSE,
         k_init = 1, diag_weights = FALSE,
-        verbose = FALSE, split_merge = FALSE
-        )}
-      )
+        verbose = TRUE, print_iter = 500, split_merge = FALSE
+        )
 
+table(mod_test2$k)
 
-datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_", 
-                       stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
-saveRDS(object = sim_results_DEV_no_sm, file = datafile_name)
+# datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_",
+#                        stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
+saveRDS(object = mod_test2, file = "../MCMC_Runs/nonconjDEV_ds2_test_close.rds")
 # sim_results_DEV_no_sm = readRDS(file = datafile_name)
 
 # for(rep in 1:nreps){
