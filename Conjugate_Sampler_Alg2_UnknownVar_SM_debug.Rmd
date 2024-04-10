@@ -9,9 +9,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 # load necessary functions
-source("./Multivariate_DPMM_unknownvar_DEV.R")
-source("./Multivariate_DPMM_unknownvar_DEE.R")
-source("./Multivariate_DPMM_unknownvar_UVV.R")
+#source("./Multivariate_DPMM_unknownvar_DEV.R")
+source("./Multivariate_DPMM_unknownvar_DEE_debug_rewrite.R")
+#source("./Multivariate_DPMM_unknownvar_UVV.R")
 source("./posterior_helper_fxns.R")
 source("./post_processing_inf.R")
 
@@ -52,7 +52,7 @@ var = diag(10, length(means[[1]])) # variances known, diagonal, and equal
 yreps = lapply(X = 1:nreps, 
            FUN = function(x){
              set.seed(seeds[x])
-             assign = sample(x = 1:length(means), size = 30, replace = TRUE, prob = w)
+             assign = sample(x = 1:length(means), size = 100, replace = TRUE, prob = w)
              y = lapply(X = assign,
                         FUN = function(x){
                         t(mvtnorm::rmvnorm(n = 1, mean = means[[x]], sigma = var))
@@ -96,31 +96,42 @@ rm(w, means)
 ##### without split-merge step
 
 ```{r}
-n_cores = max(parallel::detectCores()-2, 2)
-sim_results_DEE_no_sm = readRDS(file = "../MCMC_Runs/conjDEEsamp_minisimstudy_noSM_2024_01_16.rds")
-
-DEE_no_sm_sum = lapply(X = 1:length(sim_results_DEE_no_sm),
-                         # mc.cores = n_cores,
-                         FUN = function(x){
-                           cat("\n Dataset #", x)
-                           dpmm_summary(output = sim_results_DEE_no_sm, 
-                             dataset_ind = x, 
-                             print_k_sum = TRUE, 
-                             # print_phi_sum = TRUE,
-                             make_traceplot = FALSE,
-                             burn_in = 1000, t_hold = 100, 
-                             num_dims = 2, equal_var = TRUE,
-                             calc_KL = TRUE, mu_true = mu_true, 
-                             var_true = var_true, assign_true = yreps[[x]]$assign)
-                           })
-
-# extract KL divergence and summarize
-kld_DEE_no_sm_sum = sapply(X = 1:length(DEE_no_sm_sum), 
-                           FUN = function(x){
-                             DEE_no_sm_sum[[x]]$kl_div
-                             })
-print(kld_DEE_no_sm_sum)
-mean(kld_DEE_no_sm_sum)
+# n_cores = max(parallel::detectCores()-2, 2)
+# sim_results_DEE_no_sm = readRDS(file = "../MCMC_Runs/conjDEEsamp_minisimstudy_noSM_2024_01_16.rds")
+# 
+# DEE_no_sm_sum = lapply(X = 1:length(sim_results_DEE_no_sm),
+#                          # mc.cores = n_cores,
+#                          FUN = function(x){
+#                            cat("\n Dataset #", x)
+#                            dpmm_summary(output = sim_results_DEE_no_sm, 
+#                              dataset_ind = x, 
+#                              print_k_sum = TRUE, 
+#                              # print_phi_sum = TRUE,
+#                              make_traceplot = FALSE,
+#                              burn_in = 1000, t_hold = 100, 
+#                              num_dims = 2, equal_var = TRUE,
+#                              calc_KL = TRUE, mu_true = mu_true, 
+#                              var_true = var_true, assign_true = yreps[[x]]$assign)
+#                            })
+# 
+# # extract KL divergence and summarize
+# kld_DEE_no_sm_sum = sapply(X = 1:length(DEE_no_sm_sum), 
+#                            FUN = function(x){
+#                              DEE_no_sm_sum[[x]]$kl_div
+#                              })
+# print(kld_DEE_no_sm_sum)
+# mean(kld_DEE_no_sm_sum)
+n_iter = 12000
+x=1
+sim_results_DEE_with_sm = MVN_CRP_sampler_DEE(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+        alpha = 1, r = 10, g = 1, h = 50,
+        sigma_hyperprior = FALSE, fix_r = FALSE,
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        a = 1, b = 50,
+        k_init = 1, diag_weights = FALSE,
+        verbose = TRUE, split_merge = FALSE
+        )
 ```
 
 #### with split merge step

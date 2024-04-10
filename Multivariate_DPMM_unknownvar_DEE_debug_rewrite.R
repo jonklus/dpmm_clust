@@ -598,7 +598,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       ### used to compute acceptance prob in later steps
       curr_assign = which(label_assign == group_assign[s,i]) 
       mu_curr = mu[,curr_assign]
-      sigma2_curr = sigma2[[curr_assign]]
+      # sigma2_curr = sigma2[[curr_assign]]
       
       # print("Current state")
       # print(curr_assign)
