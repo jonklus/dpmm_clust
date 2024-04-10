@@ -12,7 +12,7 @@
 ## parameter r. 
 
 ############################# load packages ####################################
-
+# set.seed(516)
 library(ggplot2)
 library(LaplacesDemon)
 
@@ -20,8 +20,9 @@ library(LaplacesDemon)
 
 ## calculate group membership probabilities
 
-group_prob_calc <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0, 
-                            singleton = 0, curr_group_assign = NULL, curr_labels = NULL){
+group_prob_calc_diag <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0, 
+                                  singleton = 0, curr_group_assign = NULL, 
+                                  curr_labels = NULL){
   # k is the number of existing groups
   # n is total number of observations
   # n_j is a vector of length k with the total number of observations in each group
@@ -40,7 +41,7 @@ group_prob_calc <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0,
   p = length(mu[,1])
   
   if(length(sigma2) == 1){
-    # DEE case, variance assumed equal across groups
+    # EEE case, variance assumed equal across groups
     
     if(singleton == 1){
       
@@ -169,23 +170,20 @@ post_pred_DEE <- function(obs, which_group, group_assign, split_labs, r, sm_coun
   n_minus = sm_counts[which_group] - 1 
   
   sum_ysq = lapply(X = 1:2, 
-                   FUN = function(x){
-                     
-                     col_ind = x  # from outer apply
-                     group_ind = which(group_assign == split_labs[x])
-                     if(obs %in% group_ind){
-                       obs_ind = which(obs == group_ind)
-                       group_ind = group_ind[-obs_ind]
-                     } # else continue
-                     
-                     Reduce(f = "+", 
-                            x = lapply(X = group_ind, FUN = function(x){
-                              t(y[[x]])%*%y[[x]]}))
-                     
-                   })
-  
-  # cat("\n sum_ysq \n")
-  # print(sum_ysq)
+                     FUN = function(x){
+                       
+                       col_ind = x  # from outer apply
+                       group_ind = which(group_assign == split_labs[x])
+                       if(obs %in% group_ind){
+                         obs_ind = which(obs == group_ind)
+                         group_ind = group_ind[-obs_ind]
+                       } # else continue
+                       
+                       Reduce(f = "+", 
+                              x = lapply(X = group_ind, FUN = function(x){
+                                t(y[[x]])%*%y[[x]]}))
+                       
+                     })
   
   loss_mu0 = (ybar[[which_group]] - mu0)%*%t(ybar[[which_group]] - mu0)
   
@@ -212,10 +210,8 @@ post_pred_DEE <- function(obs, which_group, group_assign, split_labs, r, sm_coun
   a_n = a + n_minus/2
   
   b_n = b + (t(mu0)%*%mu0/r + sum_ysq[[which_group]] - (1/r + n_minus)*t(mu_n)%*%mu_n)/2
-  
+
   lambda_n = diag(b_n[,1]*(1+(1/r + n_minus)^(-1))/a_n, length(mu_n[,1]))
-  # cat("\n lambda_n")
-  # print(lambda_n)
   # take first "column" of scalar b_n snce R was still recognizing as a matrix
   
   # print(mu_n)
@@ -223,9 +219,9 @@ post_pred_DEE <- function(obs, which_group, group_assign, split_labs, r, sm_coun
   # print(nu_n)
   
   val = n_minus*LaplacesDemon::dmvt(x = y[[obs]][,1], 
-                                                   mu = mu_n[,1], 
-                                                   S = lambda_n, 
-                                                   df = 2*a_n)
+                                    mu = mu_n[,1], 
+                                    S = lambda_n, 
+                                    df = 2*a_n)
   
   return(val)
   
@@ -253,8 +249,8 @@ final_post_pred_DEE <- function(y_i, r, y, mu0, a, b){
   sum_ysq = Reduce(f = "+", x = lapply(X = 1:length(y), 
                                        FUN = function(x){
                                          t(y[[x]])%*%y[[x]]
-                                       }))
-  
+                                         }))
+                     
   loss_mu0 = (ybar - mu0)%*%t(ybar - mu0)
   
   mu_n = ((1/r)*mu0 + sm_counts*ybar)/((1/r) + sm_counts)
@@ -266,7 +262,7 @@ final_post_pred_DEE <- function(y_i, r, y, mu0, a, b){
   # print(mu_n)
   # print(b_n)
   # print(lambda_n)
-  
+
   val = sm_counts*LaplacesDemon::dmvt(x = y_i[,1], 
                                       mu = mu_n[,1], 
                                       S = lambda_n, 
@@ -284,8 +280,8 @@ ll_components_DEE <- function(subset_index, obs_ind, y, mu0, r, a, b){
   if(obs_ind == 1){
     # first observation --- prior predictive
     val = prior_pred_NinvGa(y_i = y[[subset_index[obs_ind]]], 
-                            mu0 = mu0, r = r, 
-                            a = a, b = b)
+                           mu0 = mu0, r = r, 
+                           a = a, b = b)
   } else{
     # posterior predictive
     # need to calculate for all obs, in same group
@@ -294,7 +290,7 @@ ll_components_DEE <- function(subset_index, obs_ind, y, mu0, r, a, b){
                               y = y[subset_index[1:(obs_ind-1)]], 
                               mu0 = mu0, a = a, b = b)
     
-    
+
   }
   
   return(val)  
@@ -435,7 +431,7 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
     if(which_zero == 1){
       
       num = prior_pred_NinvGa(y_i = y[[obs]], mu0 = mu0, r = r, 
-                              a = a, b = b)
+                             a = a, b = b)
       
       denom = num + post_pred_DEE(obs = obs, which_group = 2, r = r, group_assign = group_assign,
                                   sm_counts = sm_counts, y = y, ybar = ybar, split_labs = split_labs,
@@ -479,13 +475,12 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
   
 }
 
+############################ INDEPENDENT IG PRIORS ############################# 
 
-##################### ASSUMING VARIANCE DIAGONAL AND EQUAL #####################
-
-MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1/2, b = 10, mu0, k_init = 1,
+MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1/2, b = 10, mu0, k_init = 2,
                                 d = 1, f = 1, g = 1, h = 1, sigma_hyperprior = TRUE, fix_r = FALSE,
-                                diag_weights = FALSE, verbose = TRUE, print_iter = 100, truth = NA,
-                                split_merge = TRUE, sm_iter = 5){
+                                split_merge = FALSE, sm_iter = 5, truth = NA,
+                                diag_weights = FALSE, verbose = TRUE, print_iter = 100){
   
   # S is number of MCMC iterations
   # y is a list of data of length n
@@ -495,12 +490,11 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   # value for b if sigma_hyperprior option is used
   # d, f are the hyperprior parameters on the Gamma dist placed on b, assume a known
   # sigma_hyperprior is a logical argument of whether to use the hyperprior or assume indep.
-  # g, h are the hyperprior parameters on the Gamma dist placed on r
   # mu0 is the prior mean - must be of dimension p*1
   # K_init is the initial number of groups
-  # verbose & print_iter tells the function if and how often to print a progress summary
-  # diag_weights
-  # truth is a list of true parameter values used to generate simulated data. optional argument.
+  # diag_weights is an argument to the Laplacian matrix - whether the diagonal should be 1 or not
+  # verbose & printmod tells the function if and how often to print a progress summary
+  # truth is an optional list argument with the true parameters used to generate simulated data
   
   start = Sys.time()
   
@@ -545,6 +539,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
     extra_params[1,1] = b
   } 
   
+  
   # need to find p*1 vector of means based on this list of observed p*1 y_i values
   means[[1]] = sapply(X = 1:k, 
                       FUN = function(x){
@@ -553,8 +548,6 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                       })
   
   vars[[1]] = mean(diag(var(matrix(unlist(y), ncol = p))))
-  
-  
   
   # initial allocation probs
   if(k == 1){
@@ -575,11 +568,8 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   # iterate 1:S
   for(s in 2:S){
     
-    # cat("\n *********************************** \n")
-    # cat("\n s=", s, "\n" )
-    
     # print progress
-    if(s %% print_iter == 0 & verbose == TRUE){
+    if((s %% print_iter == 0) & (verbose == TRUE)){
       
       cat("\n\n")
       cat("*******************************************************************")
@@ -590,13 +580,12 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       
     }    
     
+    
     ## initialize group assignments for current iteration using ending state from prior iteration
     group_assign[s, ] = group_assign[s-1, ]
     
     ## iterate through observations 1:n 
     for(i in 1:n){
-    
-      # cat("\n i=", i, "\n" )
       
       #cat("S =", S, " i =", i, "\n")
       
@@ -609,7 +598,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       ### used to compute acceptance prob in later steps
       curr_assign = which(label_assign == group_assign[s,i]) 
       mu_curr = mu[,curr_assign]
-      # Sigma_curr = Sigma[[curr_assign]] ### assuming equal variance in this model
+      sigma2_curr = sigma2[[curr_assign]]
       
       # print("Current state")
       # print(curr_assign)
@@ -636,7 +625,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         
         # remove current values for singleton from index
         mu = matrix(mu[,-singleton_index], nrow = p)
-        # Sigma = Sigma[-singleton_index]  ## no need to do this for sigma since assume eq var
+        # sigma2 = sigma2[-singleton_index] ## no need to do this for sigma since assume eq var
         
         count_assign = count_assign[-singleton_index]
         label_assign = label_assign[-singleton_index]
@@ -647,7 +636,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         
         #### calculate proposal distribution for group assignment
         ### for any observation i, calculate group membership probabilities
-        pr_c = group_prob_calc(k = k, n = n, n_j = count_assign, alpha = alpha, 
+        pr_c = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
                                y_i = y[[i]], mu = mu, sigma2 = sigma2, r = r, 
                                a = a, b = b, mu0 = mu0, singleton = 1)
         
@@ -656,7 +645,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         
         #### calculate proposal distribution for group assignment
         #### if obs i is not presently a singleton
-        pr_c = group_prob_calc(k = k, n = n, n_j = count_assign, alpha = alpha, 
+        pr_c = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
                                y_i = y[[i]], mu = mu, sigma2 = sigma2, r = r, 
                                a = a, b = b, mu0 = mu0, singleton = 0, 
                                curr_group_assign = group_assign[s,i], 
@@ -665,7 +654,8 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       }
       
       ### draw a group assignment conditional on group membership probs
-      group_assign[s,i] = sample(x = c(curr_labels, avail_labels[1]), size = 1, prob = pr_c)
+      group_assign[s,i] = sample(x = c(curr_labels, avail_labels[1]), 
+                                 size = 1, prob = pr_c)
       
       #### if new group selected
       if(group_assign[s,i] == avail_labels[1]){
@@ -675,9 +665,14 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         avail_labels = avail_labels[-1]
         k = length(curr_labels)
         
+        
+        ### using only the ith observation:
+        
         #### draw a mean for newly created group from FC posterior of mu using
         #### only the ith observation
         ### don't need to draw variance because of DEE assumption here
+        
+        #### draw a mean for newly created group from FC posterior of mu 
         mu_mean = (y[[i]] + (1/r)*mu0)/(1/r + 1)
         mu_cov = diag(sigma2/(1/r + 1), p)
         mu_k = matrix(mvtnorm::rmvnorm(n = 1, mean = mu_mean, sigma = mu_cov), nrow = p) # kth mean
@@ -720,17 +715,19 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       print(sigma2)
       cat("\n")
     }
-    
+
     # final update of counts after a sweep
     count_assign = as.numeric(table(group_assign[s,]))
     label_assign = as.numeric(names(table(group_assign[s,])))
     num_groups[s,] = k
     
-    # print results after each sweep
+    # proceed to split-merge step if true
     
     # Split-Merge step --- every 10 iterations
     
     if(split_merge == TRUE & (s %% sm_iter) == 0){
+      
+      # print(table(group_assign[s,]))
       
       k_start = k
       
@@ -746,7 +743,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       lab1 = temp_group_assign[1, sampled_obs[1]]
       lab2 = temp_group_assign[1, sampled_obs[2]]
       move_type = ifelse(lab1 == lab2, "SPLIT", "MERGE")
-      # cat("move_type:", move_type)
+      # cat("\n \n *****move_type:", move_type)
       # cat("\n")
       # cat("sampled_obs:", sampled_obs)
       # cat("\n")
@@ -899,11 +896,9 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
               
             } 
             
-            
-            
           } # iterate through all observations in the two split groups under consideration
         } # scans 1:(sm_iter+1)
-        
+          
         
         
         # calculate & evaluate acceptance prob
@@ -926,7 +921,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         prob3_num1 = 0
         for(obs_ind in 1:length(subset_index_grp1)){
           val = ll_components_DEE(subset_index = subset_index_grp1, obs_ind = obs_ind, 
-                                  y = y, mu0 = mu0, a = a, b = b, r = r)
+                              y = y, mu0 = mu0, a = a, b = b, r = r)
           prob3_num1 = prob3_num1 + log(val)
         }
         
@@ -934,7 +929,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         prob3_num2 = 0
         for(obs_ind in 1:length(subset_index_grp2)){
           val = ll_components_DEE(subset_index = subset_index_grp2, obs_ind = obs_ind, 
-                                  y = y, mu0 = mu0, a = a, b = b, r = r)
+                              y = y, mu0 = mu0, a = a, b = b, r = r)
           prob3_num2 = prob3_num2 + log(val)
         }
         
@@ -943,7 +938,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         prob3_denom = 0
         for(obs_ind in 1:length(subset_index)){
           val = ll_components_DEE(subset_index = subset_index, obs_ind = obs_ind,
-                                  y = y, mu0 = mu0, a = a, b = b, r = r)
+                              y = y, mu0 = mu0, a = a, b = b, r = r)
           prob3_denom = prob3_denom + log(val)
         }
         
@@ -951,6 +946,9 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         prob3 = prob3_num1 + prob3_num2 - prob3_denom
         accept_prob = min(1, exp(prob1 + prob2 + prob3))
         u = runif(n = 1)
+        # cat("\n split")
+        # cat("\n Prob components", c(prob1, prob2, prob3))
+        # cat("\n AcceptProb", accept_prob)
         if(accept_prob > u){
           # accept
           accept = 1
@@ -964,10 +962,11 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           label_assign = as.numeric(names(table(group_assign[s,])))
           which_split_labs = which(label_assign %in% split_lab) 
           num_groups[s,] = k
+
+          # if new group created by split, give it a mean and variance
           
-          # if new group created by split, give it a mean 
-          # no need to assign new variance in DEE sampler since assumed equal
-          # across groups! 
+          ## draw variances for both groups - use marginal posterior variance 
+          ## NOT NECESSARY IN DEE
           
           sum_y_i = sapply(X = split_lab, 
                            FUN = function(x){
@@ -975,24 +974,18 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                              # unravel list of p*1 observations, put in matrix, find sum
                            })
           
-          #print(sum_y_i)
-          
           mu_cov = lapply(X = 1:2, 
                           FUN = function(x){
                             n_k = count_assign[which_split_labs[x]]
-                            # print(n_k)
                             diag(sigma2/(1/r + n_k), p)
-                          }) 
-          
-          #print(mu_cov)
+                            }) 
+
           
           mu_mean = lapply(X = 1:2, 
                            FUN = function(x){
                              n_k = count_assign[which_split_labs[x]]
                              return((sum_y_i[,x] + mu0/r)/(1/r + n_k))
                            })
-          
-          #print(mu_mean)
           
           mu_list = lapply(X = 1:2, 
                            FUN = function(x){
@@ -1001,18 +994,16 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                                                 sigma = mu_cov[[x]]))
                            }) 
           
-          
-          ## add new means to relevant vectors/lists
+          ## add new means and variances to relevant vectors/lists
           mu[,which_split_labs[1]] = mu_list[[1]]
           mu = cbind(mu, mu_list[[2]])
           #mu = matrix(data = unlist(x = mu_list), nrow = p) # put draws of mu back into same
+          
         } else{
           # reject
           accept = 0
           # group assign remains unchanged
         }
-        
-        
         
         
         # if MERGE    
@@ -1045,12 +1036,9 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           
           # current observation under consideration cannot be included here
           
-          # cat("\n y_obs", y[[obs]])
-          # cat("\n group_assign")
-          # print(temp_group_assign[scan,])
           split_assign_prob = split_merge_prob_DEE(obs = obs, split_labs = split_lab, r=r, 
-                                                   group_assign = temp_group_assign[scan,], 
-                                                   y = y, mu0 = mu0, a = a, b = b)
+                                                    group_assign = temp_group_assign[scan,], 
+                                                    y = y, mu0 = mu0, a = a, b = b)
           
           sm_prop_index = sample(x = 1:2, size = 1,
                                  prob = split_assign_prob)
@@ -1076,12 +1064,15 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         # print(sm_counts_before)
         # cat("\n")
         # cat("split_group_count_index:", split_group_count_index)
-        
+
         prob2 = -log(alpha) + sum_log(n_tot = sm_counts_before[[split_group_count_index[1]]] + 
                                         sm_counts_before[[split_group_count_index[2]]], 
-                                      n_1 = sm_counts_before[[split_group_count_index[1]]], 
-                                      n_2 = sm_counts_before[[split_group_count_index[2]]])
-        
+                                     n_1 = sm_counts_before[[split_group_count_index[1]]], 
+                                     n_2 = sm_counts_before[[split_group_count_index[2]]])
+        # cat("\n prob2_num", prob2_num)
+        # cat("\n prob2_denom", prob2_denom)
+        # cat("\n sm_counts_before", sm_counts_before)
+        # cat("\n split_group_count_index", split_group_count_index)
         ## likelihood ratio
         subset_index_grp1 = which(temp_group_assign[1,] %in% split_lab[1]) 
         subset_index_grp2 = which(temp_group_assign[1,] %in% split_lab[2]) 
@@ -1090,7 +1081,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         prob3_num1 = 0
         for(obs_ind in 1:length(subset_index_grp1)){
           val = ll_components_DEE(subset_index = subset_index_grp1, obs_ind = obs_ind, 
-                                  y = y, mu0 = mu0, r = r, a = a, b = b)
+                              y = y, mu0 = mu0, r = r, a = a, b = b)
           prob3_num1 = prob3_num1 + log(val)
         }
         
@@ -1098,7 +1089,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         prob3_num2 = 0
         for(obs_ind in 1:length(subset_index_grp2)){
           val = ll_components_DEE(subset_index = subset_index_grp2, obs_ind = obs_ind, 
-                                  y = y, mu0 = mu0, r = r, a = a, b = b)
+                              y = y, mu0 = mu0, r = r, a = a, b = b)
           prob3_num2 = prob3_num2 + log(val)
         }
         
@@ -1107,7 +1098,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         prob3_denom = 0
         for(obs_ind in 1:length(subset_index)){
           val = ll_components_DEE(subset_index = subset_index, obs_ind = obs_ind, 
-                                  y = y, mu0 = mu0, r = r, a = a, b = b)
+                              y = y, mu0 = mu0, r = r, a = a, b = b)
           prob3_denom = prob3_denom + log(val)
         }
         
@@ -1115,6 +1106,10 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         prob3 = -(prob3_num1 + prob3_num2 - prob3_denom)
         accept_prob = min(1, exp(prob1 + prob2 + prob3))
         u = runif(n = 1)
+        # cat("\n Merge")
+        # cat("\n Prob components", c(prob1, prob2, prob3))
+        # cat("\n AcceptProb", accept_prob)
+        
         if(accept_prob > u){
           # accept
           accept = 1
@@ -1122,7 +1117,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           
           # bookeeping if merge step ACCEPTED only, keep first group -- remove 2nd 
           mu = matrix(mu[,-which_split_labs[2]], nrow = p)
-          sigma2 = sigma2[-which_split_labs[2]]
+          # sigma2 = sigma2[-which_split_labs[2]]
           
           # count_assign = count_assign[-which_split_labs[2]]
           # label_assign = label_assign[-which_split_labs[2]]
@@ -1144,9 +1139,8 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           
           # save info about accept/reject & probs
           
-          # merged group...give it a mean and variance
+          # merged group...give it a mean - no need for variance since DEE
           
-          group_ind = which(group_assign[s,] == split_lab[1])
           ## draw means for both groups conditional on drawn variances...
           
           sum_y_i = rowSums(matrix(unlist(y[group_assign[s,] == split_lab[1]]), nrow = p))
@@ -1160,9 +1154,10 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                                        mean = mu_mean, 
                                        sigma = mu_cov))
           
-          ## add new means to relevant vectors/lists
+          ## add new means and variances to relevant vectors/lists
           mu[,which_split_lab] = mu_list
           #mu = matrix(data = unlist(x = mu_list), nrow = p) # put draws of mu back into same
+          
           
         } else{
           # reject
@@ -1194,11 +1189,13 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       
     }
     
+    # print results after each sweep
     
     # Proceed to Gibbs step
     
     # draw group means for all K groups
     # Sigma = diag(x = sigma2, nrow = p)
+    
     sum_y_i = sapply(X = 1:k, 
                      FUN = function(x){
                        rowSums(matrix(unlist(y[group_assign[s,] == label_assign[x]]), nrow = p))
@@ -1227,9 +1224,11 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                         rowSums((matrix(unlist(y[group_assign[s,] == label_assign[x]]), nrow = p) - mu[,x])^2)
                         # unravel list of p*1 observations, put in matrix, find sum
                       })
+    
+    
     loss_mu_k = sapply(X = 1:k, 
                        FUN = function(x){
-                         t(mu0 - mu[,x])%*%(mu0 - mu[,x])
+                         t(mu0 - matrix(mu[,x], nrow = p))%*%(mu0 - matrix(mu[,x], nrow = p))
                        })
     
     # Sigma = lapply(X = 1:k, 
@@ -1238,17 +1237,25 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
     #                                shape = rep(count_assign[x]/2 + a, p),
     #                                rate = loss_y_i[,x]/2 + b))
     #                })
+
     sigma2 = 1/rgamma(n = 1, 
-                      shape = ((n+1)*p*k + 2*a)/2,
+                      shape = ((n+k)*p + 2*a)/2,
                       rate = sum(loss_y_i)/2 + sum(loss_mu_k)/(2*r) + b)
     
     # draw r parameter for variance of means
     if(fix_r == FALSE){
       
+      loss_mu_k = sapply(X = 1:k, 
+                         FUN = function(x){
+                           t(matrix(mu[,x], nrow = p) - mu0)%*%(matrix(mu[,x], nrow = p) - mu0)/sigma2
+                         })
+      
       r = 1/rgamma(n = 1, 
-                   shape = p*k/2 + g, 
-                   rate = (1/(2*sigma2))*sum(loss_mu_k) + h)
+                   shape = (p*k + 2*g)/2, 
+                   rate = sum(loss_mu_k)/2 + h)
+      
       extra_params[s,"r"] = r
+      
     }
     
     
@@ -1262,8 +1269,12 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       #                                 1/diag(Sigma[[x]])
       #                               })
       #                    )
+
+      # draw r parameter for variance of means
       
-      b = rgamma(n = 1, shape = a + d, rate = 1/sigma2 + f)
+      b = rgamma(n = 1, 
+                 shape = a + d, 
+                 rate = 1/sigma2 + f)
       
       extra_params[s,"b"] = b
       
@@ -1272,7 +1283,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
     # save draws of mu and Sigma
     means[[s]] = mu
     vars[[s]] = sigma2
-
+    
     # save empirical mean and variance
     
     emp_means[[s]] = sapply(X = 1:k, 
@@ -1303,7 +1314,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       cat("\n")
       cat("b",b)
       cat("\n")
-      
+   
       # if(nrow(mu0) == 2){
       #   # if this is a 2D problem, can make scatterplot of group assign
       #   yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
@@ -1325,15 +1336,16 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       
     }
     
-    
     # at the end of each iteration, recalculate group probs based on final k
     # and save for label switching fix
     pr_c = sapply(X = 1:length(y), FUN = function(x){
-      group_prob_calc(k = k, n = n, n_j = count_assign, alpha = alpha, a = a, b = b, 
+      group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, a = a, b = b, 
                       y_i = y[[x]], mu = mu, sigma2 = sigma2, r = r, mu0 = mu0,
                       singleton = 0, curr_group_assign = group_assign[s,x], 
                       curr_labels = curr_labels)
     }) # result is a k*n matrix
+
+    # cat("\n Final prob calc dimension dim:", dim(pr_c), " length:", length(pr_c), "\n")
     
     #print(dim(pr_c))
     if(k == 1){
@@ -1363,7 +1375,6 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   pairwise_mats = pairwise_prob_mat(group_assign = group_assign, probs = probs, diag_weights = diag_weights)
   
   end = Sys.time()
-  
   
   if(sigma_hyperprior == TRUE | fix_r == FALSE){
     
