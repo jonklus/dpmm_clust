@@ -20,6 +20,7 @@ library(dplyr)
 library(ggplot2)
 library(gridExtra)
 library(ggpubr)
+library(scatterplot3d)
 library(ggforce) # draw circles
 library(stringr)
 library(mclust)
@@ -38,7 +39,8 @@ data$Diagnosis = raw_data$Diagnosis
 # 5d plot?? or just do multiple 2d plots ## should this data be log transformed
 # before centering and scaling???
 p1 = ggplot2::ggplot(data = data, mapping = aes(x = TSH, y = T3)) +
-  ggplot2::geom_point(aes(color = Diagnosis), size=0.5) +
+  ggplot2::geom_point(size=0.5) +
+  # ggplot2::geom_point(aes(color = Diagnosis), size=0.5) +
   ggplot2::theme_classic() +
   #ggplot2::xlim(c(-4.5,4.5)) + ggplot2::ylim(c(-4.5,4.5)) +
   ggplot2::theme(legend.position = "none",plot.title = element_text(size=18)) + 
@@ -48,7 +50,8 @@ p1 = ggplot2::ggplot(data = data, mapping = aes(x = TSH, y = T3)) +
   ggplot2::ggtitle("T3 vs. TSH")
 
 p2 = ggplot2::ggplot(data = data, mapping = aes(x = TSH, y = T4)) +
-  ggplot2::geom_point(aes(color = Diagnosis), size=0.5) +
+  ggplot2::geom_point(size=0.5) +
+  # ggplot2::geom_point(aes(color = Diagnosis), size=0.5) +
   ggplot2::theme_classic() +
   coord_fixed() + 
   #ggplot2::xlim(c(-4.5,4.5)) + ggplot2::ylim(c(-4.5,4.5)) +
@@ -59,7 +62,8 @@ p2 = ggplot2::ggplot(data = data, mapping = aes(x = TSH, y = T4)) +
   ggplot2::ggtitle("T4 vs. TSH")
 
 p3 = ggplot2::ggplot(data = data, mapping = aes(x = T3, y = T4)) +
-  ggplot2::geom_point(aes(color = Diagnosis), size=0.5) +
+  ggplot2::geom_point(size=0.5) +
+  # ggplot2::geom_point(aes(color = Diagnosis), size=0.5) +
   ggplot2::theme_classic() +
   coord_fixed() + 
   #ggplot2::xlim(c(-4.5,4.5)) + ggplot2::ylim(c(-4.5,4.5)) +
@@ -68,12 +72,16 @@ p3 = ggplot2::ggplot(data = data, mapping = aes(x = T3, y = T4)) +
   ggplot2::ylab("log(T4)") + 
   ggplot2::ggtitle("T4 vs. T3")
 
-
 # gridplot = arrangeGrob(p1, p2, p3,
 #                        nrow = 1,
 #                        respect = TRUE)
 ggarrange(p1, p2, p3, nrow = 1, common.legend = TRUE, legend = "bottom")
-# ggsave(filename = "../thyroid_3blockplot.png", device = "png")
+
+## 3d plot
+attach(data)
+scatterplot3d(x = TSH, y = T3, z = T4, angle = 60)
+
+ggsave(filename = "../thyroid_3blockplot_nocolor.png", device = "png")
 # dev.off()
 
 # put exposure data into format that model will accept

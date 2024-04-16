@@ -108,7 +108,7 @@ group_prob_calc_diag <- function(k, n, n_j, alpha, y_i, mu, sigma2, a, b, mu0, s
     #### normalize probs to account for "b"
     pr_c = c(pr_curr, pr_new)/(sum(pr_curr) + pr_new)
     
-    return(pr_c)
+    return(list(pr_c = pr_c, sigma2_new = sigma2_new))
     
   }
   
@@ -285,20 +285,23 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         
         #### calculate proposal distribution for group assignment
         ### for any observation i, calculate group membership probabilities
-        pr_c = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
+        pr_res = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
                                y_i = y[[i]], mu = mu, sigma2 = sigma2,
                                a = a, b = b, mu0 = mu0, sigma0 = sigma0, 
                                singleton = 1)
+        pr_c = pr_res$pr_c
         
       } else{
         
         #### calculate proposal distribution for group assignment
         #### if obs i is not presently a singleton
-        pr_c = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
+        pr_res = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
                                y_i = y[[i]], mu = mu, sigma2 = sigma2, 
                                a = a, b = b, mu0 = mu0, sigma0 = sigma0, singleton = 0, 
                                curr_group_assign = group_assign[s,i], 
                                curr_labels = curr_labels)
+        
+        pr_c = pr_res$pr_c
         
       }
       
@@ -319,12 +322,12 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         
         #### draw variance for newly created group from FC posterior of sigma2
         #### according to algo, but this is conditional on mean so do prior for now
-        sigma2_k = 1/rgamma(n = 1, shape = a, rate = b)
+        sigma2_k = pr_res$sigma2_new #1/rgamma(n = 1, shape = a, rate = b)
         sigma2 = c(sigma2, sigma2_k)
         
         #### draw a mean for newly created group from FC posterior of mu 
-        mu_cov_k = 1/(1/sigma2[[x]] + 1/sigma0)
-        mu_mean_k = (y[[i]]/sigma2_k + mu0/sigma0)/mu_cov_k
+        mu_cov_k = 1/(1/sigma2_k + 1/sigma0)
+        mu_mean_k = (y[[i]]/sigma2_k + mu0/sigma0)*mu_cov_k
         mu_k = matrix(mvtnorm::rmvnorm(n = 1, 
                                        mean = mu_mean_k, 
                                        sigma = diag(mu_cov_k,p)), 
@@ -402,7 +405,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                     FUN = function(x){1/(count_assign[x]/sigma2[[x]] + 1/sigma0)}) 
     
     mu_mean = lapply(X = 1:k, 
-                     FUN = function(x){(sum_y_i[,x]/sigma2[[x]] + mu0/sigma0)/mu_cov[[x]]})
+                     FUN = function(x){(sum_y_i[,x]/sigma2[[x]] + mu0/sigma0)*mu_cov[[x]]})
     
     mu_list = lapply(X = 1:k, 
                      FUN = function(x){
@@ -528,7 +531,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
       group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, a = a, b = b, 
                       y_i = y[[x]], mu = mu, sigma2 = sigma2, mu0 = mu0, sigma0 = sigma0,
                       singleton = 0, curr_group_assign = group_assign[s,x], 
-                      curr_labels = curr_labels)
+                      curr_labels = curr_labels)$pr_c
     }) # result is a k*n matrix
 
     # cat("\n Final prob calc dimension dim:", dim(pr_c), " length:", length(pr_c), "\n")
