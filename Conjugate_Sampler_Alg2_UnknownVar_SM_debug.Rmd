@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # load necessary functions
 #source("./Multivariate_DPMM_unknownvar_DEV.R")
-source("./Multivariate_DPMM_unknownvar_DEE_debug_rewrite.R")
+source("./Multivariate_DPMM_unknownvar_DEE.R")
 #source("./Multivariate_DPMM_unknownvar_UVV.R")
 source("./posterior_helper_fxns.R")
 source("./post_processing_inf.R")
