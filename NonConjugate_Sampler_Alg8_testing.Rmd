@@ -9,15 +9,15 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 # load necessary functions
-# source("./Multivariate_DPMM_nonconj_DEV.R")
-source("./Multivariate_DPMM_nonconj_UVV.R")
+source("./Multivariate_DPMM_nonconj_DEV.R")
+# source("./Multivariate_DPMM_nonconj_UVV.R")
 source("./posterior_helper_fxns.R")
 
 # load R libraries
 library(ggplot2)
-library(gridExtra)
 library(label.switching)
 library(LaplacesDemon)
+library(mvtnorm)
 library(stringr)
 ```
 
@@ -57,31 +57,31 @@ yreps = lapply(X = 1:nreps,
            })
 
 # make a grid of plots
-pltlist = list()
-for(rep in 1:nreps){
-
-  y_matrix = matrix(data = unlist(yreps[[rep]]$y), ncol = 2, byrow = TRUE)
-  assign = yreps[[rep]]$assign
-
-  data = data.frame(
-    assign = assign,
-    y1 = y_matrix[,1],
-    y2 = y_matrix[,2]
-  )
-
-  p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
-    geom_point(color = assign, size = 0.75) +
-    #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
-    # geom_text(size = 3, color = assign) +
-    theme_classic()
-
-  pltlist[[rep]] = p
-}
-
-do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignments")
-
-# drop params used to generate data, except for var which is assumed known
-rm(w, means)
+# pltlist = list()
+# for(rep in 1:nreps){
+# 
+#   y_matrix = matrix(data = unlist(yreps[[rep]]$y), ncol = 2, byrow = TRUE)
+#   assign = yreps[[rep]]$assign
+# 
+#   data = data.frame(
+#     assign = assign,
+#     y1 = y_matrix[,1],
+#     y2 = y_matrix[,2]
+#   )
+# 
+#   p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
+#     geom_point(color = assign, size = 0.75) +
+#     #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+#     # geom_text(size = 3, color = assign) +
+#     theme_classic()
+# 
+#   pltlist[[rep]] = p
+# }
+# 
+# do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignments")
+# 
+# # drop params used to generate data, except for var which is assumed known
+# rm(w, means)
 ```
 
 #### DEV sampler 
@@ -90,48 +90,34 @@ rm(w, means)
 
 ```{r}
 n_iter = 12000
-# use_cores = min(parallel::detectCores(), nreps)
-# sim_results_DEV_no_sm = parallel::mclapply(X = 1:10, mc.cores = use_cores,
-#       FUN = function(x){MVN_CRP_sampler_DEV(
-#         S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
-#         alpha = 1, r = 10, g = 1, h = 50,
-#         sigma_hyperprior = FALSE, fix_r = FALSE,
-#         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-#         a = 1, b = 50,
-#         k_init = 1, diag_weights = FALSE,
-#         verbose = FALSE, split_merge = FALSE
-#         )}
-#       )
-
-x = 2 # first simulated data set 
+x = 5 
 y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
 mod_test1 = MVN_CRP_nonconj_DEV(
         S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1, 
         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-        sigma0 = 50,
+        sigma0 = 100,
         a = 1, b = 10, sigma_hyperprior = FALSE,
         k_init = 1, diag_weights = FALSE,
         verbose = TRUE, print_iter = 1000, split_merge = FALSE
         )
 
 table(mod_test1$k)
-
-saveRDS(object = mod_test1, file = "../MCMC_Runs/nonconjDEV_ds2_test_wellsep.rds")
-
-
-# datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_noSM_", 
-#                        stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
-# saveRDS(object = sim_results_DEV_no_sm, file = datafile_name)
-# # sim_results_DEV_no_sm = readRDS(file = datafile_name)
-# 
-# for(rep in 1:nreps){
-#   print(table(sim_results_DEV_no_sm[[rep]]$k))
-#   p1 = make_k_traceplot(k = sim_results_DEV_no_sm[[rep]]$k, 
-#                         group_assign = sim_results_DEV_no_sm[[rep]]$group_assign)
-#   print(p1)
-# }
 ```
 
+```{r, eval=FALSE, include = FALSE}
+n_iter = 12000
+x = 5 # first simulated data set 
+y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
+mod_test1 = MVN_CRP_nonconj_UVV(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1, 
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        Sigma0 = diag(50, 2), Lambda0 = diag(50,2), nu = 5,
+        k_init = 1, diag_weights = FALSE,
+        verbose = TRUE, print_iter = 100, split_merge = FALSE
+        )
+
+table(mod_test1$k)
+```
 
 ## 2D Example - close together
 
@@ -195,29 +181,17 @@ rm(w, means)
 ##### without split-merge step
 
 ```{r}
-x = 2 # first simulated data set 
+x = 5 # first simulated data set 
 y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
 mod_test2 = MVN_CRP_nonconj_DEV(
         S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1, 
         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-        sigma0 = 225, # round(max(apply(X = y_matrix, MARGIN = 2, FUN = var)),-1), 
-        a = 1, b = 10, sigma_hyperprior = FALSE,
+        sigma0 = 100, # round(max(apply(X = y_matrix, MARGIN = 2, FUN = var)),-1), 
+        a = 1, b = 10,
         k_init = 1, diag_weights = FALSE,
         verbose = TRUE, print_iter = 500, split_merge = FALSE
         )
 
 table(mod_test2$k)
-
-# datafile_name = paste0("../MCMC_Runs/conjDEVsamp_minisimstudy_close_noSM_",
-#                        stringr::str_replace_all(Sys.Date(), pattern = "-", replacement = "_"), ".rds")
-saveRDS(object = mod_test2, file = "../MCMC_Runs/nonconjDEV_ds2_test_close.rds")
-# sim_results_DEV_no_sm = readRDS(file = datafile_name)
-
-# for(rep in 1:nreps){
-#   print(table(sim_results_DEV_no_sm[[rep]]$k))
-#   p1 = make_k_traceplot(k = sim_results_DEV_no_sm[[rep]]$k, 
-#                         group_assign = sim_results_DEV_no_sm[[rep]]$group_assign)
-#   print(p1)
-# }
 ```
 

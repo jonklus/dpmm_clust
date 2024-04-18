@@ -121,7 +121,7 @@ group_prob_calc_diag <- function(k, n, n_j, alpha, y_i, mu, Sigma, mu0, Sigma0,
 
 ############################ INDEPENDENT IG PRIORS ############################# 
 
-MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
+MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
                                 mu0, Sigma0, nu, Lambda0,
                                 split_merge = FALSE, sm_iter = 5, truth = NA,
                                 diag_weights = FALSE, verbose = TRUE, print_iter = 100){
@@ -323,7 +323,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
         
         #### draw a mean for newly created group from FC posterior of mu 
         mu_cov_k = solve(solve(Sigma_k) + solve(Sigma0))
-        mu_mean_k = (y[[i]]%*%solve(Sigma_k) + mu0%*%solve(Sigma0))%*%mu_cov_k
+        mu_mean_k = (t(y[[i]])%*%solve(Sigma_k) + t(mu0)%*%solve(Sigma0))%*%mu_cov_k
         mu_k = matrix(mvtnorm::rmvnorm(n = 1, 
                                        mean = mu_mean_k, 
                                        sigma = mu_cov_k), 
@@ -401,7 +401,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
                     FUN = function(x){solve(count_assign[x]*solve(Sigma[[x]]) + solve(Sigma0))}) 
     
     mu_mean = lapply(X = 1:k, 
-                     FUN = function(x){(sum_y_i[,x]*solve(Sigma[[x]]) + mu0*solve(Sigma0))*mu_cov[[x]]})
+                     FUN = function(x){(t(sum_y_i[,x])%*%solve(Sigma[[x]]) + t(mu0)%*%solve(Sigma0))*mu_cov[[x]]})
     
     mu_list = lapply(X = 1:k, 
                      FUN = function(x){
