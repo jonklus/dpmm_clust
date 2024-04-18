@@ -166,11 +166,11 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
   sm_results = matrix(data = NA, nrow = 1, ncol = 7)
   colnames(sm_results) = c("s", "sm_iter", "move_type","accept", "prob", "k_start", "k_end")
   
-  if(sigma_hyperprior == TRUE){
-    extra_params = matrix(data = NA, nrow = S, ncol = 2)
-    colnames(extra_params) = c("b")
-    extra_params[1,1] = b # note that here b has dimension 1, diagonal var
-  } 
+  # if(sigma_hyperprior == TRUE){
+  #   extra_params = matrix(data = NA, nrow = S, ncol = 2)
+  #   colnames(extra_params) = c("b")
+  #   extra_params[1,1] = b # note that here b has dimension 1, diagonal var
+  # } 
   
   # need to find p*1 vector of means based on this list of observed p*1 y_i values
   means[[1]] = sapply(X = 1:k, 
@@ -181,8 +181,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
   
   vars[[1]] = lapply(X = 1:k,
                      FUN = function(x){
-                       mean(apply(X = matrix(unlist(y[group_assign[1,] == x]), nrow = p),
-                                  MARGIN = 1, FUN = var))
+                       cov(t(matrix(unlist(y[group_assign[1,] == x]), nrow = p)))
                        # collapse Sigma vector initially - start by assuming diagonal & equal
                        # for convenience
                        # if you want matrix instead, replace "mean" with "diag"
@@ -205,7 +204,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
   num_groups = matrix(data = NA, nrow = S, ncol = 1)
   num_groups[1,1] = k_init
   mu = means[[1]]
-  sigma2 = vars[[1]]
+  Sigma = vars[[1]]
   curr_labels = 1:k
   avail_labels = c(1:n)[-curr_labels]
   
@@ -242,7 +241,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
       ### used to compute acceptance prob in later steps
       curr_assign = which(label_assign == group_assign[s,i]) 
       mu_curr = mu[,curr_assign]
-      sigma2_curr = sigma2[[curr_assign]]
+      Sigma_curr = Sigma[[curr_assign]]
       
       # print("Current state")
       # print(curr_assign)
@@ -269,7 +268,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
         
         # remove current values for singleton from index
         mu = matrix(mu[,-singleton_index], nrow = p)
-        sigma2 = sigma2[-singleton_index]
+        Sigma = Sigma[-singleton_index]
         
         count_assign = count_assign[-singleton_index]
         label_assign = label_assign[-singleton_index]
@@ -281,8 +280,9 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
         #### calculate proposal distribution for group assignment
         ### for any observation i, calculate group membership probabilities
         pr_res = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
-                               y_i = y[[i]], mu = mu, sigma2 = sigma2,
-                               a = a, b = b, mu0 = mu0, sigma0 = sigma0, 
+                               y_i = y[[i]], mu = mu, Sigma = Sigma,
+                               a = a, b = b, mu0 = mu0, Sigma0 = Sigma0,
+                               nu = nu, Lambda0 = Lambda0, 
                                singleton = 1)
         pr_c = pr_res$pr_c
         
@@ -291,9 +291,9 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
         #### calculate proposal distribution for group assignment
         #### if obs i is not presently a singleton
         pr_res = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
-                               y_i = y[[i]], mu = mu, sigma2 = sigma2, 
-                               a = a, b = b, mu0 = mu0, sigma0 = sigma0, singleton = 0, 
-                               curr_group_assign = group_assign[s,i], 
+                               y_i = y[[i]], mu = mu, Sigma = Sigma, 
+                               mu0 = mu0, Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0, 
+                               singleton = 0, curr_group_assign = group_assign[s,i], 
                                curr_labels = curr_labels)
         
         pr_c = pr_res$pr_c
@@ -315,17 +315,18 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
         
         ### using only the ith observation:
         
-        #### draw variance for newly created group from FC posterior of sigma2
+        #### draw variance for newly created group from FC posterior of Sigma
         #### according to algo, but this is conditional on mean so do prior for now
-        sigma2_k = pr_res$sigma2_new #1/rgamma(n = 1, shape = a, rate = b)
-        sigma2 = c(sigma2, sigma2_k)
+        Sigma_k = pr_res$Sigma_new #1/rgamma(n = 1, shape = a, rate = b)
+        length_Sigma = length(Sigma)
+        Sigma[[length_Sigma+1]] = Sigma_k
         
         #### draw a mean for newly created group from FC posterior of mu 
-        mu_cov_k = 1/(1/sigma2_k + 1/sigma0)
-        mu_mean_k = (y[[i]]/sigma2_k + mu0/sigma0)*mu_cov_k
+        mu_cov_k = solve(solve(Sigma_k) + solve(Sigma0))
+        mu_mean_k = (y[[i]]%*%solve(Sigma_k) + mu0%*%solve(Sigma0))%*%mu_cov_k
         mu_k = matrix(mvtnorm::rmvnorm(n = 1, 
                                        mean = mu_mean_k, 
-                                       sigma = diag(mu_cov_k,p)), 
+                                       sigma = mu_cov_k), 
                       nrow = p) # kth mean
         mu = cbind(mu, mu_k)
         
@@ -363,7 +364,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
       cat("\n")
       print(mu)
       cat("\n")
-      print(sigma2)
+      print(Sigma)
       cat("\n")
     }
 
@@ -387,7 +388,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
     # Proceed to Gibbs step
     
     # draw group means for all K groups
-    # Sigma = diag(x = sigma2, nrow = p)
+    # Sigma = diag(x = Sigma, nrow = p)
     
     sum_y_i = sapply(X = 1:k, 
                      FUN = function(x){
@@ -396,46 +397,41 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
                      })
     
     mu_cov = lapply(X = 1:k, 
-                    # FUN = function(x){diag(1/(count_assign[x]/sigma2[[x]] + 1/sigma0), p)}) 
-                    FUN = function(x){1/(count_assign[x]/sigma2[[x]] + 1/sigma0)}) 
+                    # FUN = function(x){diag(1/(count_assign[x]/Sigma[[x]] + 1/Sigma0), p)}) 
+                    FUN = function(x){solve(count_assign[x]*solve(Sigma[[x]]) + solve(Sigma0))}) 
     
     mu_mean = lapply(X = 1:k, 
-                     FUN = function(x){(sum_y_i[,x]/sigma2[[x]] + mu0/sigma0)*mu_cov[[x]]})
+                     FUN = function(x){(sum_y_i[,x]*solve(Sigma[[x]]) + mu0*solve(Sigma0))*mu_cov[[x]]})
     
     mu_list = lapply(X = 1:k, 
                      FUN = function(x){
                        t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
                                           mean = mu_mean[[x]], 
-                                          sigma = diag(mu_cov[[x]],p)))
+                                          sigma = mu_cov[[x]]))
                      }) 
     
     mu = matrix(data = unlist(x = mu_list), nrow = p) # put draws of mu back into same
     # p*K matrix format we were using before
     
     # draw group variances for all K groups
-    loss_y_i = sapply(X = 1:k, 
+    loss_y_i = lapply(X = 1:k, 
                       FUN = function(x){
-                        rowSums((matrix(unlist(y[group_assign[s,] == label_assign[x]]), nrow = p) - mu[,x])^2)
-                        # unravel list of p*1 observations, put in matrix, find sum
+                        k = x # outer apply - group number
+                        y_k = y[group_assign == k]
+                        # inner apply, go through all observations assigned to group k
+                        Reduce(f = "+", 
+                                x = lapply(X = 1:length(y_k), 
+                                       FUN = function(x){
+                                         (y_k[[x]] - mu[,k])%*%t(y_k[[x]] - mu[,k])
+                                       }))
                       })
+
     
-    
-    loss_mu_k = sapply(X = 1:k, 
-                       FUN = function(x){
-                         t(mu0 - matrix(mu[,x], nrow = p))%*%(mu0 - matrix(mu[,x], nrow = p))
-                       })
-    
-    # Sigma = lapply(X = 1:k, 
-    #                FUN = function(x){
-    #                  diag(1/rgamma(n = p, 
-    #                                shape = rep(count_assign[x]/2 + a, p),
-    #                                rate = loss_y_i[,x]/2 + b))
-    #                })
-    sigma2 = lapply(X = 1:k, 
+    Sigma = lapply(X = 1:k, 
                     FUN = function(x){
-                      1/rgamma(n = 1, 
-                               shape = (p*count_assign[x] + 2*a)/2,
-                               rate = sum(loss_y_i[,x])/2 + b)
+                      LaplacesDemon::rinvwishart(
+                        nu = nu + count_assign[x], 
+                        S = loss_y_i[[x]] + Lambda0)
                     })
     
 
@@ -455,7 +451,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
       
       # inv_vars = lapply(X = 1:k,
       #                   FUN = function(x){
-      #                     1/sigma2[[x]]
+      #                     1/Sigma[[x]]
       #                   })
       # 
       # b = rgamma(n = 1, 
@@ -468,7 +464,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
     
     # save draws of mu and Sigma
     means[[s]] = mu
-    vars[[s]] = sigma2
+    vars[[s]] = Sigma
     
     # save empirical mean and variance
     
@@ -492,13 +488,11 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
       cat("\n")
       print(mu)
       cat("\n")
-      cat("sigma2")
+      cat("Sigma")
       cat("\n")
-      print(sigma2)
+      print(Sigma)
       cat("\n")
-      cat("b",b)
-      cat("\n")
-   
+
       if(nrow(mu0) == 2){
         # if this is a 2D problem, can make scatterplot of group assign
         yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
@@ -523,8 +517,9 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
     # at the end of each iteration, recalculate group probs based on final k
     # and save for label switching fix
     pr_c = sapply(X = 1:length(y), FUN = function(x){
-      group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, a = a, b = b, 
-                      y_i = y[[x]], mu = mu, sigma2 = sigma2, mu0 = mu0, sigma0 = sigma0,
+      group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
+                      y_i = y[[x]], mu = mu, Sigma = Sigma, mu0 = mu0, 
+                      Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0,
                       singleton = 0, curr_group_assign = group_assign[s,x], 
                       curr_labels = curr_labels)$pr_c
     }) # result is a k*n matrix
@@ -560,35 +555,37 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
   
   end = Sys.time()
   
-  if(sigma_hyperprior == TRUE){
-    
-    settings = list(S = S, alpha = alpha, a = a, b = b, mu0 = mu0, sigma0 = sigma0,
-                    k_init = k_init, #d = d, f = f, g = g, h = h,
-                    mod_type = "conjDEV", 
-                    split_merge = split_merge, sm_iter = sm_iter)
-    
-    return_list = list(settings = settings,
-                       runtime = difftime(end, start, units = "m"),
-                       data = y,
-                       truth = truth,
-                       k = num_groups, 
-                       means = means,
-                       vars = vars,
-                       emp_means = emp_means,
-                       emp_vars = emp_vars,
-                       extra_params = extra_params,
-                       accept = accept_ind,
-                       sm_results = sm_results,
-                       group_probs = probs,
-                       group_assign = group_assign,
-                       pairwise_mats = pairwise_mats)
-    
-  } else{
-    
+  # if(sigma_hyperprior == TRUE){
+  #   
+  #   settings = list(S = S, alpha = alpha, a = a, b = b, mu0 = mu0, Sigma0 = Sigma0,
+  #                   k_init = k_init, #d = d, f = f, g = g, h = h,
+  #                   mod_type = "conjDEV", 
+  #                   split_merge = split_merge, sm_iter = sm_iter)
+  #   
+  #   return_list = list(settings = settings,
+  #                      runtime = difftime(end, start, units = "m"),
+  #                      data = y,
+  #                      truth = truth,
+  #                      k = num_groups, 
+  #                      means = means,
+  #                      vars = vars,
+  #                      emp_means = emp_means,
+  #                      emp_vars = emp_vars,
+  #                      extra_params = extra_params,
+  #                      accept = accept_ind,
+  #                      sm_results = sm_results,
+  #                      group_probs = probs,
+  #                      group_assign = group_assign,
+  #                      pairwise_mats = pairwise_mats)
+  #   
+  # } else{
+  #   
     settings = list(S = S, seed = seed, alpha = alpha,
-                    a = a, b = b, mu0 = mu0, sigma0 = sigma0, k_init = k_init, 
-                    #d = d, f = f,
-                    mod_type = "conjDEV", split_merge = split_merge, sm_iter = sm_iter)
+                    mu0 = mu0, Sigma0 = Sigma0, 
+                    nu = nu, Lambda0 = Lambda0,
+                    k_init = k_init, 
+                    mod_type = "nonconjUVV", 
+                    split_merge = split_merge, sm_iter = sm_iter)
     
     return_list = list(settings = settings,
                        runtime = difftime(end, start, units = "m"),
@@ -606,7 +603,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
                        group_assign = group_assign,
                        pairwise_mats = pairwise_mats)
     
-  }
+ # }
   
   return(return_list)
   

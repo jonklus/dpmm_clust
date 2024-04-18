@@ -569,7 +569,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
     
     settings = list(S = S, alpha = alpha, a = a, b = b, mu0 = mu0, sigma0 = sigma0,
                     k_init = k_init, #d = d, f = f, g = g, h = h,
-                    mod_type = "conjDEV", 
+                    mod_type = "nonconjDEV", 
                     split_merge = split_merge, sm_iter = sm_iter)
     
     return_list = list(settings = settings,
@@ -593,7 +593,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
     settings = list(S = S, seed = seed, alpha = alpha,
                     a = a, b = b, mu0 = mu0, sigma0 = sigma0, k_init = k_init, 
                     #d = d, f = f,
-                    mod_type = "conjDEV", split_merge = split_merge, sm_iter = sm_iter)
+                    mod_type = "nonconjDEV", split_merge = split_merge, sm_iter = sm_iter)
     
     return_list = list(settings = settings,
                        runtime = difftime(end, start, units = "m"),
