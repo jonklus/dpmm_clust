@@ -9,8 +9,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 # load necessary functions
-source("./Multivariate_DPMM_nonconj_DEV.R")
-# source("./Multivariate_DPMM_nonconj_UVV.R")
+# source("./Multivariate_DPMM_nonconj_DEV.R")
+source("./Multivariate_DPMM_nonconj_UVV.R")
 source("./posterior_helper_fxns.R")
 
 # load R libraries
@@ -148,49 +148,51 @@ yreps = lapply(X = 1:nreps,
              return(list(y = y, assign = assign))
            })
 
-# make a grid of plots
-pltlist = list()
-for(rep in 1:nreps){
-
-  y_matrix = matrix(data = unlist(yreps[[rep]]$y), ncol = 2, byrow = TRUE)
-  assign = yreps[[rep]]$assign
-
-  data = data.frame(
-    assign = assign,
-    y1 = y_matrix[,1],
-    y2 = y_matrix[,2]
-  )
-
-  p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
-    geom_point(color = assign, size = 0.75) +
-    #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
-    # geom_text(size = 3, color = assign) +
-    theme_classic()
-
-  pltlist[[rep]] = p
-}
-
-do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignments")
-
-# drop params used to generate data, except for var which is assumed known
-rm(w, means)
+# # make a grid of plots
+# pltlist = list()
+# for(rep in 1:nreps){
+# 
+#   y_matrix = matrix(data = unlist(yreps[[rep]]$y), ncol = 2, byrow = TRUE)
+#   assign = yreps[[rep]]$assign
+# 
+#   data = data.frame(
+#     assign = assign,
+#     y1 = y_matrix[,1],
+#     y2 = y_matrix[,2]
+#   )
+# 
+#   p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
+#     geom_point(color = assign, size = 0.75) +
+#     #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+#     # geom_text(size = 3, color = assign) +
+#     theme_classic()
+# 
+#   pltlist[[rep]] = p
+# }
+# 
+# do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignments")
+# 
+# # drop params used to generate data, except for var which is assumed known
+# rm(w, means)
 ```
 
 #### DEV sampler 
 
 ##### without split-merge step
 
-```{r}
+```{r, eval=FALSE}
 x = 5 # first simulated data set 
+n_iter = 12000
 y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
 mod_test2 = MVN_CRP_nonconj_DEV(
         S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1, 
         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-        sigma0 = 100, # round(max(apply(X = y_matrix, MARGIN = 2, FUN = var)),-1), 
-        a = 1, b = 10,
+        sigma0 = 25,
+        a = 1, b = 10, sigma_hyperprior = FALSE,
         k_init = 1, diag_weights = FALSE,
-        verbose = TRUE, print_iter = 500, split_merge = FALSE
+        verbose = TRUE, print_iter = 1000, split_merge = FALSE
         )
+
 
 table(mod_test2$k)
 ```

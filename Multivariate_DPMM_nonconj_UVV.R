@@ -30,7 +30,6 @@ group_prob_calc_diag <- function(k, n, n_j, alpha, y_i, mu, Sigma, mu0, Sigma0,
   # alpha is the scalar concentration parameter from the dirichlet process
   # y_i is the single data vector of dimension p*1 that we are considering
   # mu is a matrix with k columns, contains k group mean vectors of dimension p*1
-  # 
 
   
   # calculate unnormalized probabilities of group membership for obs i
@@ -321,7 +320,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
         length_Sigma = length(Sigma)
         Sigma[[length_Sigma+1]] = Sigma_k
         
-        #### draw a mean for newly created group from FC posterior of mu 
+        #### draw a mean for newly created group from FC posterior of mu
         mu_cov_k = solve(solve(Sigma_k) + solve(Sigma0))
         mu_mean_k = (t(y[[i]])%*%solve(Sigma_k) + t(mu0)%*%solve(Sigma0))%*%mu_cov_k
         mu_k = matrix(mvtnorm::rmvnorm(n = 1, 
@@ -329,6 +328,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
                                        sigma = mu_cov_k), 
                       nrow = p) # kth mean
         mu = cbind(mu, mu_k)
+        
         
       }
       
@@ -398,10 +398,15 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
     
     mu_cov = lapply(X = 1:k, 
                     # FUN = function(x){diag(1/(count_assign[x]/Sigma[[x]] + 1/Sigma0), p)}) 
-                    FUN = function(x){solve(count_assign[x]*solve(Sigma[[x]]) + solve(Sigma0))}) 
+                    FUN = function(x){
+                      solve(count_assign[x]*solve(Sigma[[x]]) + solve(Sigma0))
+                      }) 
     
     mu_mean = lapply(X = 1:k, 
-                     FUN = function(x){(t(sum_y_i[,x])%*%solve(Sigma[[x]]) + t(mu0)%*%solve(Sigma0))*mu_cov[[x]]})
+                     FUN = function(x){
+                       (t(sum_y_i[,x])%*%solve(Sigma[[x]]) + 
+                          t(mu0)%*%solve(Sigma0))%*%mu_cov[[x]]
+                       })
     
     mu_list = lapply(X = 1:k, 
                      FUN = function(x){
@@ -416,14 +421,14 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
     # draw group variances for all K groups
     loss_y_i = lapply(X = 1:k, 
                       FUN = function(x){
-                        k = x # outer apply - group number
-                        y_k = y[group_assign == k]
-                        # inner apply, go through all observations assigned to group k
+                        
+                        col_ind = x  # from outer apply
+                        group_ind = which(group_assign[s,] == label_assign[x])
+                        
                         Reduce(f = "+", 
-                                x = lapply(X = 1:length(y_k), 
-                                       FUN = function(x){
-                                         (y_k[[x]] - mu[,k])%*%t(y_k[[x]] - mu[,k])
-                                       }))
+                               x = lapply(X = group_ind, FUN = function(x){
+                                 (y[[x]] - mu[,col_ind])%*%t(y[[x]] - mu[,col_ind])}))
+                        
                       })
 
     

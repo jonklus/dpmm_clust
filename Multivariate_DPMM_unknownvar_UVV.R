@@ -1257,7 +1257,6 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
     
     # draw group variances for all K groups
     
-    #### need to redo loss fxns for cov matrix --- X %*% X' now --- p*p matrix!!!
     loss_y_i = lapply(X = 1:k, 
                       FUN = function(x){
                         
