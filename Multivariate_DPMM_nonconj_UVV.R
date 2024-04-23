@@ -21,7 +21,7 @@ library(mvtnorm)
 
 ## calculate group membership probabilities
 
-group_prob_calc_diag <- function(k, n, n_j, alpha, y_i, mu, Sigma, mu0, Sigma0, 
+group_prob_calc_UVV <- function(k, n, n_j, alpha, y_i, mu, Sigma, mu0, Sigma0, 
                                  nu, Lambda0, singleton = 0, curr_group_assign = NULL, 
                                   curr_labels = NULL){
   # k is the number of existing groups
@@ -278,7 +278,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
         
         #### calculate proposal distribution for group assignment
         ### for any observation i, calculate group membership probabilities
-        pr_res = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
+        pr_res = group_prob_calc_UVV(k = k, n = n, n_j = count_assign, alpha = alpha, 
                                y_i = y[[i]], mu = mu, Sigma = Sigma,
                                a = a, b = b, mu0 = mu0, Sigma0 = Sigma0,
                                nu = nu, Lambda0 = Lambda0, 
@@ -289,7 +289,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
         
         #### calculate proposal distribution for group assignment
         #### if obs i is not presently a singleton
-        pr_res = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
+        pr_res = group_prob_calc_UVV(k = k, n = n, n_j = count_assign, alpha = alpha, 
                                y_i = y[[i]], mu = mu, Sigma = Sigma, 
                                mu0 = mu0, Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0, 
                                singleton = 0, curr_group_assign = group_assign[s,i], 
@@ -440,32 +440,32 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
                     })
     
 
-    # draw b parameter if indicated
-    if(sigma_hyperprior == TRUE){
-      
-      # not implemented in this model at this time
-      print("Sigma hyperprior not implemented in this model at this time.")
-      
-      # find sum of precision for each variance element across k groups
-      # sum_prec_k = Reduce(f = "+", 
-      #                    x = lapply(X = 1:k,
-      #                               FUN = function(x){
-      #                                 1/diag(Sigma[[x]])
-      #                               })
-      #                    )
-      
-      # inv_vars = lapply(X = 1:k,
-      #                   FUN = function(x){
-      #                     1/Sigma[[x]]
-      #                   })
-      # 
-      # b = rgamma(n = 1, 
-      #            shape = k*a + d, 
-      #            rate = Reduce(f = "+", x = inv_vars) + f)
-      # 
-      # extra_params[s,"b"] = b
-      
-    } # else continue as usual
+    # # draw b parameter if indicated
+    # if(sigma_hyperprior == TRUE){
+    #   
+    #   # not implemented in this model at this time
+    #   print("Sigma hyperprior not implemented in this model at this time.")
+    #   
+    #   # find sum of precision for each variance element across k groups
+    #   # sum_prec_k = Reduce(f = "+", 
+    #   #                    x = lapply(X = 1:k,
+    #   #                               FUN = function(x){
+    #   #                                 1/diag(Sigma[[x]])
+    #   #                               })
+    #   #                    )
+    #   
+    #   # inv_vars = lapply(X = 1:k,
+    #   #                   FUN = function(x){
+    #   #                     1/Sigma[[x]]
+    #   #                   })
+    #   # 
+    #   # b = rgamma(n = 1, 
+    #   #            shape = k*a + d, 
+    #   #            rate = Reduce(f = "+", x = inv_vars) + f)
+    #   # 
+    #   # extra_params[s,"b"] = b
+    #   
+    # } # else continue as usual
     
     # save draws of mu and Sigma
     means[[s]] = mu
@@ -522,7 +522,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
     # at the end of each iteration, recalculate group probs based on final k
     # and save for label switching fix
     pr_c = sapply(X = 1:length(y), FUN = function(x){
-      group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
+      group_prob_calc_UVV(k = k, n = n, n_j = count_assign, alpha = alpha, 
                       y_i = y[[x]], mu = mu, Sigma = Sigma, mu0 = mu0, 
                       Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0,
                       singleton = 0, curr_group_assign = group_assign[s,x], 

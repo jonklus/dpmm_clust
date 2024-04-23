@@ -20,7 +20,7 @@ library(LaplacesDemon)
 
 ## calculate group membership probabilities
 
-group_prob_calc_diag <- function(k, n, n_j, alpha, y_i, mu, sigma2, a, b, mu0, sigma0,
+group_prob_calc_DEV <- function(k, n, n_j, alpha, y_i, mu, sigma2, a, b, mu0, sigma0,
                                   singleton = 0, curr_group_assign = NULL, 
                                   curr_labels = NULL){
   # k is the number of existing groups
@@ -285,7 +285,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         
         #### calculate proposal distribution for group assignment
         ### for any observation i, calculate group membership probabilities
-        pr_res = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
+        pr_res = group_prob_calc_DEV(k = k, n = n, n_j = count_assign, alpha = alpha, 
                                y_i = y[[i]], mu = mu, sigma2 = sigma2,
                                a = a, b = b, mu0 = mu0, sigma0 = sigma0, 
                                singleton = 1)
@@ -295,7 +295,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         
         #### calculate proposal distribution for group assignment
         #### if obs i is not presently a singleton
-        pr_res = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
+        pr_res = group_prob_calc_DEV(k = k, n = n, n_j = count_assign, alpha = alpha, 
                                y_i = y[[i]], mu = mu, sigma2 = sigma2, 
                                a = a, b = b, mu0 = mu0, sigma0 = sigma0, singleton = 0, 
                                curr_group_assign = group_assign[s,i], 
@@ -528,7 +528,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
     # at the end of each iteration, recalculate group probs based on final k
     # and save for label switching fix
     pr_c = sapply(X = 1:length(y), FUN = function(x){
-      group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, a = a, b = b, 
+      group_prob_calc_DEV(k = k, n = n, n_j = count_assign, alpha = alpha, a = a, b = b, 
                       y_i = y[[x]], mu = mu, sigma2 = sigma2, mu0 = mu0, sigma0 = sigma0,
                       singleton = 0, curr_group_assign = group_assign[s,x], 
                       curr_labels = curr_labels)$pr_c
