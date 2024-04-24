@@ -1,3 +1,6 @@
+# test DEE summary issue w/ SM on BlueHive
+# run data set # 73
+
 ##############################################################
 ############## BLUEHIVE SIM COMBINED SCRIPT ##################
 ######################  DPM MODELS ###########################
@@ -14,28 +17,32 @@ source("./posterior_helper_fxns.R")
 source("./post_processing_inf.R")
 
 # DEFINE INPUTS --- USER DEFINED IN R SCRIPT
-model = c("conjDEV", "conjDEE", "conjUVV", "nonconjDEV", "nonconjUVV")[4]
-scenario = c("3close", "3wellsep")[2]
-SM = FALSE # do split merge
+model = c("conjDEV", "conjDEE", "conjUVV")[2]
+scenario = c("3close", "3wellsep")[1]
+SM = TRUE # do split merge
 cat("\n", model, scenario, SM, "\n")
-n = c(30,100,300)[3]
+
+# sbatch-fed settings
+n_array = c(30,100,300)
+i = 3 # as.numeric(Sys.getenv("i"))
+n = n_array[i]
 cat("\n n=", n, "\n")
 
-dir_name = paste0("./Summary/MODSUM_", model, "_", scenario, "_n", n, 
-                  ifelse(SM == TRUE, "_withSM", "_noSM"),"_sim_results_",
-                  #"ENAR")
-                  stringr::str_replace_all(string = Sys.Date(),
-                                           pattern = "-",
-                                           replacement = "_"))
+SLURM_ID = 73 # as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 
-if(dir.exists(dir_name) == FALSE){
-  dir.create(dir_name)
-} 
+# dir_name = paste0("./Summary2/MODSUM_", model, "_", scenario, "_n", n, 
+#                   ifelse(SM == TRUE, "_withSM", "_noSM"),"_sim_results_",
+#                   "ENAR")
+# stringr::str_replace_all(string = Sys.Date(),
+#                          pattern = "-",
+#                          replacement = "_"))
+
+# if(dir.exists(dir_name) == FALSE){
+#   dir.create(dir_name)
+# } 
 
 # extract seed
-seeds = readRDS("./BHsimseeds.rds") # file with 100 random seeds
-
-SLURM_ID = as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
+seeds = readRDS("./BHsimseeds.rds") # file with 100 random seed
 print(SLURM_ID)
 
 # simulate data
@@ -112,7 +119,7 @@ if(model == "conjDEE"){
       alpha = 1, r = 10, g = 1, h = 50,
       sigma_hyperprior = FALSE, fix_r = FALSE,
       mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1),
-      a = 1, b = 50,
+      a = 1, b = 8, #alt a=1, b=8
       truth = list(mu_true = means, var_true = var, assign_true = assign),
       k_init = 1, diag_weights = FALSE,
       verbose = FALSE, split_merge = SM)
@@ -132,68 +139,19 @@ if(model == "conjDEE"){
     
     output = MVN_CRP_sampler_UVV(
       S = 12000, seed = seeds[SLURM_ID], y = y,
-      alpha = 1, r = 10, g = 1, h = 50, nu = 2, fix_r = FALSE,
+      alpha = 1, r = 10, g = 1, h = 25, nu = 2, fix_r = FALSE,
       mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1),
-      lambda0 = diag(x = 15, nrow = 2),
+      lambda0 = diag(x = 8, nrow = 2),
       truth = list(mu_true = means, var_true = var, assign_true = assign),
       k_init = 1, diag_weights = FALSE,
       verbose = FALSE, split_merge = SM)
   },
-  
-  outFile = stdout()
-  
-  )
-  
-}  else if(model == "nonconjDEV"){
-  
-  ############################ nonconj DEV #####################################
-  source("./Multivariate_DPMM_nonconj_DEV.R")
-  
-  try(expr = {
-    
-   output = MVN_CRP_nonconj_DEV(
-      S = 12000, seed = seeds[SLURM_ID], y = y, alpha = 1, 
-      mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1),
-      sigma0 = 100,
-      a = 1, b = 10, sigma_hyperprior = FALSE,
-      k_init = 1, diag_weights = FALSE,
-      truth = list(mu_true = means, var_true = var, assign_true = assign),
-      verbose = FALSE, split_merge = SM)
-  },
-
-  
-  outFile = stdout()
-  
-  )
-  
-} else if(model == "nonconjUVV"){
-  
-  ############################ nonconj DEV #####################################
-  source("./Multivariate_DPMM_nonconj_UVV.R")
-  
-  try(expr = {
-    
-    output = MVN_CRP_nonconj_UVV(
-      S = 12000, seed = seeds[SLURM_ID], y = y, alpha = 1, 
-      mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1),
-      Sigma0 = diag(100, 2), Lambda0 = diag(15,2), nu = 5,
-      k_init = 1, diag_weights = FALSE,
-      truth = list(mu_true = means, var_true = var, assign_true = assign),
-      verbose = FALSE, split_merge = SM)
-  },
-  
   
   outFile = stdout()
   
   )
   
 }
-
-
-
-
-
-
 
 
 ########################### summarize results ##################################

@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # source("./Multivariate_DPMM_nonconj_DEV.R")
 source("./Multivariate_DPMM_nonconj_UVV.R")
 source("./posterior_helper_fxns.R")
+source("./post_processing_inf.R")
 
 # load R libraries
 library(ggplot2)
@@ -108,15 +109,28 @@ table(mod_test1$k)
 n_iter = 12000
 x = 5 # first simulated data set 
 y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
-mod_test1 = MVN_CRP_nonconj_UVV(
-        S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1, 
+mod_test2 = MVN_CRP_nonconj_UVV(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1,
         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-        Sigma0 = diag(50, 2), Lambda0 = diag(50,2), nu = 5,
-        k_init = 1, diag_weights = FALSE,
+        Sigma0 = diag(50, 2), Lambda0 = diag(10,2), nu = 5,
+        k_init = 1, diag_weights = FALSE, 
+        truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
         verbose = TRUE, print_iter = 100, split_merge = FALSE
         )
 
 table(mod_test1$k)
+
+# do summary
+var_true = list(var, var, var)
+modsum1 = dpmm_summary(output = mod_test1, 
+                        # dataset_ind = x, 
+                        print_k_sum = TRUE, 
+                        # print_phi_sum = TRUE,
+                        make_traceplot = FALSE,
+                        burn_in = 2000, t_hold = 100, 
+                        num_dims = 2, equal_var = FALSE,
+                        calc_perf = TRUE, mu_true = means, 
+                        var_true = var_true, assign_true = yreps[[x]]$assign)
 ```
 
 ## 2D Example - close together

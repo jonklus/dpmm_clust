@@ -280,7 +280,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
         ### for any observation i, calculate group membership probabilities
         pr_res = group_prob_calc_UVV(k = k, n = n, n_j = count_assign, alpha = alpha, 
                                y_i = y[[i]], mu = mu, Sigma = Sigma,
-                               a = a, b = b, mu0 = mu0, Sigma0 = Sigma0,
+                               mu0 = mu0, Sigma0 = Sigma0,
                                nu = nu, Lambda0 = Lambda0, 
                                singleton = 1)
         pr_c = pr_res$pr_c
