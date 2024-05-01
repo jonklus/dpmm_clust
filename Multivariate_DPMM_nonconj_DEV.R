@@ -125,7 +125,7 @@ group_prob_calc_DEV <- function(k, n, n_j, alpha, y_i, mu, sigma2, a, b, mu0, si
 MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, 
                                 a = 1/2, b = 10, mu0, sigma0, k_init = 2,
                                 # d = 1, f = 1, 
-                                sigma_hyperprior = TRUE, 
+                                sigma_hyperprior = TRUE, standardize_y = TRUE,
                                 split_merge = FALSE, sm_iter = 5, truth = NA,
                                 diag_weights = FALSE, verbose = TRUE, print_iter = 100){
   
@@ -137,6 +137,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
   # value for b if sigma_hyperprior option is used
   # d, f are the hyperprior parameters on the Gamma dist placed on b, assume a known
   # sigma_hyperprior is a logical argument of whether to use the hyperprior or assume indep.
+  # standardize_y is a logical argument for whether to center & scale data y before fitting model
   # mu0 is the prior mean - must be of dimension p*1
   # K_init is the initial number of groups
   # diag_weights is an argument to the Laplacian matrix - whether the diagonal should be 1 or not
@@ -151,6 +152,15 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
   n = length(y)
   p = length(y[[1]]) # dimensionality of MVN
   k = k_init # initial number of groups
+  
+  # center and scale data if standardize_y == TRUE
+  if(standardize_y == TRUE){
+    
+    y_matrix = matrix(data = unlist(y), ncol = p, byrow = TRUE)
+    std_y_matrix = scale(y_matrix)
+    y = lapply(X = 1:nrow(std_y_matrix), 
+               FUN = function(x){matrix(std_y_matrix[x,], ncol=1)})
+  }
   
   # preallocate memory and set initial values
   accept_ind = matrix(data = NA, nrow = S, ncol = n)

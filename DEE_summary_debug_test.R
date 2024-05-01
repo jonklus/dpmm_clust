@@ -99,7 +99,7 @@ if(model == "conjDEE"){
       a = 1, b = 50,
       truth = list(mu_true = means, var_true = var, assign_true = assign),
       k_init = 1, diag_weights = FALSE,
-      verbose = FALSE, split_merge = SM)
+      verbose = TRUE, split_merge = SM)
     
   },
   
@@ -207,5 +207,5 @@ if(model == "conjDEE"){
 
 
 # save summary
-saveRDS(object = mod_sum, 
-        file = paste0(dir_name,"/sum_", SLURM_ID,".rds"))
+# saveRDS(object = mod_sum, 
+#         file = paste0(dir_name,"/sum_", SLURM_ID,".rds"))

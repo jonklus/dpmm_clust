@@ -388,8 +388,9 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
   
 }
 
-MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambda0, mu0, k_init = 2,
-                                g = 1, h = 1, nu = 2, nu_hyperprior = FALSE, fix_r = FALSE, 
+MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambda0, mu0, 
+                                k_init = 2, g = 1, h = 1, nu = 2, nu_hyperprior = FALSE, 
+                                fix_r = FALSE, standardize_y = TRUE,
                                 split_merge = FALSE, sm_iter = 5, diag_weights = FALSE, 
                                 verbose = TRUE, print_iter = 100, truth = NA){
   
@@ -414,6 +415,15 @@ MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambd
   n = length(y)
   p = length(y[[1]]) # dimensionality of MVN
   k = k_init # initial number of groups
+  
+  # center and scale data if standardize == TRUE
+  if(standardize_y == TRUE){
+    
+    y_matrix = matrix(data = unlist(y), ncol = p, byrow = TRUE)
+    std_y_matrix = scale(y_matrix)
+    y = lapply(X = 1:nrow(std_y_matrix), 
+               FUN = function(x){matrix(std_y_matrix[x,], ncol=1)})
+  }
   
   # preallocate memory and set initial values
   accept_ind = matrix(data = NA, nrow = S, ncol = n)
