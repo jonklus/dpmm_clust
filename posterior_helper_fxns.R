@@ -595,6 +595,7 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
                                  }
                                })
       # each column is a group k, each row is a parameter sigma (either variance or covariance)
+      # that has been pulled out of the original covariance matrix and been reorganized
       # print(param_list[[i]])
       
     }
@@ -613,7 +614,9 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
 
   # number of parameters per group, does not change with k
     if(param_type == "Covar"){
-      
+      # dimension of original covariance matrix  
+      p = ifelse(is.null(nrow(param_list[[1]])) == TRUE, 1, 
+                 nrow(temp_param_list[[1]][[1]]))
       npar = ifelse(is.null(nrow(param_list[[1]])) == TRUE, 1, 
                     nrow(param_list[[1]]))
       
@@ -808,9 +811,9 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
             
           } else if(param_type == "Covar"){
             
-            param_mat = t(sapply(X = 1:(npar/2), 
+            param_mat = t(sapply(X = 1:p, 
                                 FUN = function(x){
-                                  i = 1:(npar/2)
+                                  i = 1:p
                                   paste0(x,i)
                                 }))
             
