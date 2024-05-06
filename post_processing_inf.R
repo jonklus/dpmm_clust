@@ -53,10 +53,10 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
   k_relfreqtab = round((table(output$k)/sum(table(output$k)))*100,1)
   
   if(print_k_sum == TRUE){
-    cat("\n Frequency of MCMC iterations finding K groups:")
+    cat("\n Frequency of MCMC iterations finding k groups:")
     print(k_freqtab)
     
-    cat("\n Percentage of MCMC iterations finding K groups:")
+    cat("\n Percentage of MCMC iterations finding k groups:")
     print(k_relfreqtab)
     
     cat("\n *Note that above frequency summaries of MCMC iterations were made before burn-in or thresholds were applied. 
@@ -153,10 +153,12 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
       # make variance summary table
       var_summary[[k]] = make_postsum(mcmc_df = var_list_by_k_stephens[[k]], digits = 2)
       
-      k_i = ncol(var_list_by_k_stephens[[k]])
+      k_i = max(as.numeric(stringr::str_extract_all(
+        string = stringr::str_extract_all(string = row.names(mean_summary[[k]]), 
+                                          pattern = "_[:digit:]_"), pattern = "[:digit:]")))
       if(print_phi_sum == TRUE){
         # give summary of counts after thresholding
-        cat("\n K =", k_i, " n_k =", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
+        cat("\n k =", k_i, " n_k =", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
         print(mean_summary[[k]])
         print(var_summary[[k]])
       }

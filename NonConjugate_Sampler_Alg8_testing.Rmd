@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # load necessary functions
 # source("./Multivariate_DPMM_nonconj_DEV.R")
 source("./Multivariate_DPMM_nonconj_UVV.R")
-source("./Multivariate_DPMM_nonconj_DEV.R")
+# source("./Multivariate_DPMM_nonconj_DEV.R")
 source("./posterior_helper_fxns.R")
 source("./post_processing_inf.R")
 
@@ -152,37 +152,63 @@ sim_results_DEV_no_sm = parallel::mclapply(X = 1:10, mc.cores = 10,
 ```
 
 ```{r}
-sim_results_UVV_no_sm = parallel::mclapply(X = 1:10, mc.cores = 10,
-      FUN = function(x){
+n_iter=12000
+x=1
+output = MVN_CRP_nonconj_UVV(
+  S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1,
+  mu0 = matrix(c(0,0), ncol = 2))),0), ncol = 1),
+  # mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+  Sigma0 = (diag(1, 2) - 0.20), 
+  Lambda0 = diag(1,2), nu = 5,
+  k_init = 1, diag_weights = FALSE, 
+  truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
+  verbose = TRUE, print_iter = 1000, split_merge = FALSE)
+
+# summarize model
+mod_sum = dpmm_summary(output = output,
+               print_phi_sum = TRUE,
+               print_k_sum = TRUE,
+               make_traceplot = FALSE,
+               burn_in = 2000, t_hold = 250,
+               num_dims = 2,
+               calc_perf = TRUE,
+               mu_true = output$truth$mu_true,
+               var_true = lapply(X = 1:length(output$truth$mu_true),
+                                 FUN = function(x){output$truth$var_true}),
+               assign_true = output$truth$assign_true,
+               equal_var = FALSE)
         
-        print(x)
-        
-        # fit model
-        output = MVN_CRP_nonconj_UVV(
-          S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1,
-          mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-          Sigma0 = diag(50, 2), Lambda0 = diag(10,2), nu = 5,
-          k_init = 1, diag_weights = FALSE, 
-          truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
-          verbose = FALSE, split_merge = FALSE)
-        
-        # summarize model
-        mod_sum = dpmm_summary(output = output,
-                       print_phi_sum = TRUE,
-                       print_k_sum = TRUE,
-                       make_traceplot = FALSE,
-                       burn_in = 2000, t_hold = 250,
-                       num_dims = 2,
-                       calc_perf = TRUE,
-                       mu_true = output$truth$mu_true,
-                       var_true = lapply(X = 1:length(output$truth$mu_true),
-                                         FUN = function(x){output$truth$var_true}),
-                       assign_true = output$truth$assign_true,
-                       equal_var = FALSE)
-        
-        return(mod_sum)
-        
-        })
+# sim_results_UVV_no_sm = parallel::mclapply(X = 1:10, mc.cores = 10,
+#       FUN = function(x){
+#         
+#         print(x)
+#         
+#         # fit model
+#         output = MVN_CRP_nonconj_UVV(
+#           S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1,
+#           mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+#           Sigma0 = diag(50, 2), Lambda0 = diag(10,2), nu = 5,
+#           k_init = 1, diag_weights = FALSE, 
+#           truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
+#           verbose = FALSE, split_merge = FALSE)
+#         
+#         # summarize model
+#         mod_sum = dpmm_summary(output = output,
+#                        print_phi_sum = TRUE,
+#                        print_k_sum = TRUE,
+#                        make_traceplot = FALSE,
+#                        burn_in = 2000, t_hold = 250,
+#                        num_dims = 2,
+#                        calc_perf = TRUE,
+#                        mu_true = output$truth$mu_true,
+#                        var_true = lapply(X = 1:length(output$truth$mu_true),
+#                                          FUN = function(x){output$truth$var_true}),
+#                        assign_true = output$truth$assign_true,
+#                        equal_var = FALSE)
+#         
+#         return(mod_sum)
+#         
+#         })
 
 ```
 

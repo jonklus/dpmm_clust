@@ -383,13 +383,15 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
                 group_assign = split_temp_group_assign[scan,], 
                 y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
             
-            ### is merge_assign prob by definition always 1?
+            ### merge_assign prob by definition always 1 when proposing merge
+            ### launch state from c_i = c_j, no other way to permute assignment
             merge_assign_prob = 1
             
             # dont sample --- but do record prob of group anchor obs in in!
             which_split_lab_anchor = which(split_lab == split_temp_group_assign[scan,obs])
             # how to do this best for merge????
-            which_merge_lab_anchor = 1
+            which_merge_lab_anchor = 1  # why is this 1?? need to figure out what this should be 
+            
             # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
             # dont need to assign again - already initialized since anchor
             split_sm_probs[scan,obs] = split_assign_prob[which_split_lab_anchor]
