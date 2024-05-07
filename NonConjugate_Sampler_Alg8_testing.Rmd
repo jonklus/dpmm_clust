@@ -114,7 +114,7 @@ x=1
                        var_true = lapply(X = 1:length(output$truth$mu_true),
                                          FUN = function(x){output$truth$var_true}),
                        assign_true = output$truth$assign_true,
-                       equal_var = FALSE)
+                       equal_var = FALSE, off_diag = TRUE)
         
 sim_results_DEV_no_sm = parallel::mclapply(X = 1:10, mc.cores = 10,
       FUN = function(x){
@@ -153,12 +153,13 @@ sim_results_DEV_no_sm = parallel::mclapply(X = 1:10, mc.cores = 10,
 
 ```{r}
 n_iter=12000
-x=1
+x=3
+# remember that all functions now default to centering & scaling y
 output = MVN_CRP_nonconj_UVV(
   S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1,
-  mu0 = matrix(c(0,0), ncol = 2))),0), ncol = 1),
+  mu0 = matrix(c(0,0), ncol = 1),
   # mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-  Sigma0 = (diag(1, 2) - 0.20), 
+  Sigma0 = (diag(1.2, 2) - 0.20), 
   Lambda0 = diag(1,2), nu = 5,
   k_init = 1, diag_weights = FALSE, 
   truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 

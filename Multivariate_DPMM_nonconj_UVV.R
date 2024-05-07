@@ -121,7 +121,7 @@ group_prob_calc_UVV <- function(k, n, n_j, alpha, y_i, mu, Sigma, mu0, Sigma0,
 ############################ INDEPENDENT IG PRIORS ############################# 
 
 MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
-                                mu0, Sigma0, nu, Lambda0, standardize_y = TRUE,
+                                mu0, Sigma0, nu, Lambda0, standardize_y = FALSE,
                                 split_merge = FALSE, sm_iter = 5, truth = NA,
                                 diag_weights = FALSE, verbose = TRUE, print_iter = 100){
   

@@ -125,7 +125,7 @@ group_prob_calc_DEV <- function(k, n, n_j, alpha, y_i, mu, sigma2, a, b, mu0, si
 MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, 
                                 a = 1/2, b = 10, mu0, sigma0, k_init = 2,
                                 # d = 1, f = 1, 
-                                sigma_hyperprior = TRUE, standardize_y = TRUE,
+                                sigma_hyperprior = TRUE, standardize_y = FALSE,
                                 split_merge = FALSE, sm_iter = 5, truth = NA,
                                 diag_weights = FALSE, verbose = TRUE, print_iter = 100){
   

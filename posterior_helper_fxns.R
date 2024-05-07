@@ -1323,6 +1323,7 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
                                          est_var_k[entry_col, entry_row] = Sigma_est[[k]][iter,entry] # also do reverse for
                                          # symmetry of covariance matrix
                                        }
+                                       
                                        # cat("\n mu_est")
                                        # print(as.numeric(mu_est[[k]][iter,mean_ind]))
                                        # cat("\n Sigma_est")
@@ -1330,7 +1331,7 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
                                        mvtnorm::dmvnorm(x = y[[x]][,1], 
                                                         mean = as.numeric(mu_est[[k]][iter,mean_ind]), 
                                                         sigma = est_var_k)
-                                       )
+                                       
                                      })
           
           

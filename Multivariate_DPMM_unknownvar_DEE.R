@@ -479,7 +479,7 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
 
 MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1/2, b = 10, mu0, k_init = 2,
                                 d = 1, f = 1, g = 1, h = 1, sigma_hyperprior = TRUE, fix_r = FALSE,
-                                split_merge = FALSE, sm_iter = 5, truth = NA, standardize_y = TRUE,
+                                split_merge = FALSE, sm_iter = 5, truth = NA, standardize_y = FALSE,
                                 diag_weights = FALSE, verbose = TRUE, print_iter = 100){
   
   # S is number of MCMC iterations

@@ -390,7 +390,7 @@ split_merge_prob_UVV <- function(obs, split_labs, group_assign, r, nu, y, mu0, l
 
 MVN_CRP_sampler_UVV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, lambda0, mu0, 
                                 k_init = 2, g = 1, h = 1, nu = 2, nu_hyperprior = FALSE, 
-                                fix_r = FALSE, standardize_y = TRUE,
+                                fix_r = FALSE, standardize_y = FALSE,
                                 split_merge = FALSE, sm_iter = 5, diag_weights = FALSE, 
                                 verbose = TRUE, print_iter = 100, truth = NA){
   
