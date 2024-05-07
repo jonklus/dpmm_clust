@@ -1241,7 +1241,7 @@ correct_group_assign <- function(group_assign_list_by_k, stephens_result){
 
 
 calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, 
-                           mu_true, Sigma_true, equal_var_assump = FALSE){
+                           mu_true, Sigma_true, equal_var_assump = FALSE, off_diag = FALSE){
   
   # function to calculate KL divergence between truth and posterior mean for
   # a particular clustering (e.g. k=3) after running MCMC
@@ -1286,29 +1286,66 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
 
       est_dens_k = matrix(data = NA, nrow = nrow(mu_est[[k]]), ncol = length(y))
       for(iter in 1:nrow(mu_est[[k]])){
+        
+        if(off_diag == TRUE){
+          
+          est_dens_k[iter,] = sapply(X = 1:length(y), 
+                                     FUN = function(x){
+                                       # cat("\n x ", x)
+                                       # cat("\n iter ", iter)
+                                       # cat("\n group_assign[iter,x] ", group_assign[[k]][iter,x])
+                                       mean_ind = grep(
+                                         pattern = paste0("mu_", group_assign[[k]][iter,x], "_"),
+                                         x = names(mu_est[[k]]))
+                                       # cat("\n mean_ind ", mean_ind)
+                                       p = length(mean_ind)
+                                       var_ind = grep(
+                                         pattern = paste0("sigma_", group_assign[[k]][iter,x]),
+                                         x = names(Sigma_est[[k]]))
+                                       cov_ind = var_ind[(p+1):length(var_ind)]
+                                       est_var_k = diag( # first diag variance part
+                                         var_list_by_k_stephens[[k]][iter, grep(
+                                          pattern = paste0("sigma_", group_assign[[k]][iter,x]),
+                                          x = test)[1:p]]) # then off diag part
+                                       # cat("\n mu_est")
+                                       # print(as.numeric(mu_est[[k]][iter,mean_ind]))
+                                       # cat("\n Sigma_est")
+                                       # print(Sigma_est[[k]][iter,var_ind])
+                                       mvtnorm::dmvnorm(x = y[[x]][,1], 
+                                                        mean = as.numeric(mu_est[[k]][iter,mean_ind]), 
+                                                        sigma = est_var_k)
+                                       )
+                                     })
+          
+          
+        } else{
+          # off_diag == FALSE, do not need to consider off-diagonal variance components
+          
+          est_dens_k[iter,] = sapply(X = 1:length(y), 
+                                     FUN = function(x){
+                                       # cat("\n x ", x)
+                                       # cat("\n iter ", iter)
+                                       # cat("\n group_assign[iter,x] ", group_assign[[k]][iter,x])
+                                       mean_ind = grep(
+                                         pattern = paste0("mu_", group_assign[[k]][iter,x], "_"),
+                                         x = names(mu_est[[k]]))
+                                       # cat("\n mean_ind ", mean_ind)
+                                       var_ind = grep(
+                                         pattern = paste0("sigma_", group_assign[[k]][iter,x]),
+                                         x = names(Sigma_est[[k]]))
+                                       # cat("\n mu_est")
+                                       # print(as.numeric(mu_est[[k]][iter,mean_ind]))
+                                       # cat("\n Sigma_est")
+                                       # print(Sigma_est[[k]][iter,var_ind])
+                                       mvtnorm::dmvnorm(x = y[[x]][,1], 
+                                                        mean = as.numeric(mu_est[[k]][iter,mean_ind]), 
+                                                        sigma = diag(as.numeric(Sigma_est[[k]][iter,var_ind]), 
+                                                                     length(y[[x]][,1]))
+                                       )
+                                     })
+        }
 
-        est_dens_k[iter,] = sapply(X = 1:length(y), 
-                                   FUN = function(x){
-                                     # cat("\n x ", x)
-                                     # cat("\n iter ", iter)
-                                     # cat("\n group_assign[iter,x] ", group_assign[[k]][iter,x])
-                                     mean_ind = grep(
-                                       pattern = paste0("mu_", group_assign[[k]][iter,x], "_"),
-                                       x = names(mu_est[[k]]))
-                                     # cat("\n mean_ind ", mean_ind)
-                                     var_ind = grep(
-                                       pattern = paste0("sigma_", group_assign[[k]][iter,x]),
-                                       x = names(Sigma_est[[k]]))
-                                     # cat("\n mu_est")
-                                     # print(as.numeric(mu_est[[k]][iter,mean_ind]))
-                                     # cat("\n Sigma_est")
-                                     # print(Sigma_est[[k]][iter,var_ind])
-                                     mvtnorm::dmvnorm(x = y[[x]][,1], 
-                                                      mean = as.numeric(mu_est[[k]][iter,mean_ind]), 
-                                                      sigma = diag(as.numeric(Sigma_est[[k]][iter,var_ind]), 
-                                                                   length(y[[x]][,1]))
-                                                      )
-                                   })
+
         
       }
 

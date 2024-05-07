@@ -124,7 +124,9 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
                               true_assign = assign_true,
                               mu_true = mu_true,
                               Sigma_true = var_true,
-                              equal_var_assump = equal_var)
+                              equal_var_assump = equal_var,
+                              off_diag = off_diag)
+      
       # py is truth, px is estimate
       kl_div = kl_res$sum.KLD.py.px # how far is estimate px from truth py
       
