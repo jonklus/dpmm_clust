@@ -814,7 +814,7 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
             param_mat = t(sapply(X = 1:p, 
                                 FUN = function(x){
                                   i = 1:p
-                                  paste0(x,i)
+                                  paste0(x,"_",i)
                                 }))
             
             param_lab = c(diag(param_mat), param_mat[upper.tri(param_mat)])
@@ -1301,12 +1301,28 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
                                        p = length(mean_ind)
                                        var_ind = grep(
                                          pattern = paste0("sigma_", group_assign[[k]][iter,x]),
-                                         x = names(Sigma_est[[k]]))
+                                         x = colnames(Sigma_est[[k]]))
                                        cov_ind = var_ind[(p+1):length(var_ind)]
-                                       est_var_k = diag( # first diag variance part
-                                         var_list_by_k_stephens[[k]][iter, grep(
-                                          pattern = paste0("sigma_", group_assign[[k]][iter,x]),
-                                          x = test)[1:p]]) # then off diag part
+                                       est_var_k = diag( 
+                                         # first diag variance part
+                                         var_list_by_k_stephens[[k]][iter, var_ind[1:p]]
+                                         ) # then off diag part
+                                       
+                                       offdiag_index = lapply(X = stringr::str_split(string = stringr::str_remove_all(
+                                         string = unlist(stringr::str_extract_all(
+                                           string = colnames(Sigma_est[[k]])[var_ind][(p+1):length(var_ind)],
+                                           pattern = "_[:digit:]+_[:digit:]$")),
+                                         pattern = "^_"), pattern = "_"), FUN = as.numeric)
+                                       
+                                       for(entry_index in 1:length(cov_ind)){
+                                         entry = cov_ind[entry_index]
+                                         entry_row = offdiag_index[[entry_index]][1]
+                                         entry_col = offdiag_index[[entry_index]][2]
+                                         est_var_k[entry_row, entry_col] = Sigma_est[[k]][iter,entry] # pull correct element
+                                         # from var_by_k results and use to reconstruct covariance matrix
+                                         est_var_k[entry_col, entry_row] = Sigma_est[[k]][iter,entry] # also do reverse for
+                                         # symmetry of covariance matrix
+                                       }
                                        # cat("\n mu_est")
                                        # print(as.numeric(mu_est[[k]][iter,mean_ind]))
                                        # cat("\n Sigma_est")
