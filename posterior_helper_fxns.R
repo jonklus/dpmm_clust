@@ -1296,16 +1296,19 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
                                        # cat("\n group_assign[iter,x] ", group_assign[[k]][iter,x])
                                        mean_ind = grep(
                                          pattern = paste0("mu_", group_assign[[k]][iter,x], "_"),
-                                         x = names(mu_est[[k]]))
+                                         x = colnames(mu_est[[k]]))
                                        # cat("\n mean_ind ", mean_ind)
                                        p = length(mean_ind)
+                                       cat("\n p=", p, "\n")
                                        var_ind = grep(
                                          pattern = paste0("sigma_", group_assign[[k]][iter,x]),
                                          x = colnames(Sigma_est[[k]]))
+                                       cat("\n var_ind=", var_ind, "\n")
                                        cov_ind = var_ind[(p+1):length(var_ind)]
+                                       cat("\n cov_ind=", cov_ind, "\n")
                                        est_var_k = diag( 
                                          # first diag variance part
-                                         var_list_by_k_stephens[[k]][iter, var_ind[1:p]]
+                                         Sigma_est[[k]][iter, var_ind[1:p]]
                                          ) # then off diag part
                                        
                                        offdiag_index = lapply(X = stringr::str_split(string = stringr::str_remove_all(
@@ -1345,11 +1348,11 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
                                        # cat("\n group_assign[iter,x] ", group_assign[[k]][iter,x])
                                        mean_ind = grep(
                                          pattern = paste0("mu_", group_assign[[k]][iter,x], "_"),
-                                         x = names(mu_est[[k]]))
+                                         x = colnames(mu_est[[k]]))
                                        # cat("\n mean_ind ", mean_ind)
                                        var_ind = grep(
                                          pattern = paste0("sigma_", group_assign[[k]][iter,x]),
-                                         x = names(Sigma_est[[k]]))
+                                         x = colnames(Sigma_est[[k]]))
                                        # cat("\n mu_est")
                                        # print(as.numeric(mu_est[[k]][iter,mean_ind]))
                                        # cat("\n Sigma_est")
@@ -1409,7 +1412,7 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
                                      # cat("\n group_assign[iter,x] ", group_assign[[k]][iter,x])
                                      mean_ind = grep(
                                        pattern = paste0("mu_", group_assign[[k]][iter,x], "_"), 
-                                       x = names(mu_est[[k]]))
+                                       x = colnames(mu_est[[k]]))
                                      # var_ind = grep(
                                      #   pattern = paste0("sigma", group_assign[[k]][iter,x]), 
                                      #   x = names(Sigma_est[[k]]))
@@ -1462,3 +1465,24 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
   return(kl_div)
 }
 
+
+# unit test for KL div - 2d with 2 groups
+# perfect agreement -- should have KL div of 0
+# Sigma_est = list(matrix(c(10,10,0.5,5,5,0.25,
+#                           10,10,0.5,5,5,0.25), ncol=6, byrow=TRUE))
+# colnames(Sigma_est[[1]]) = c("sigma_1_1_1","sigma_1_2_2", "sigma_1_1_2", "sigma_2_1_1","sigma_2_2_2", "sigma_2_1_2")
+# mu_est = list(matrix(c(0,0,10,10,0,0,10,10), ncol=4, byrow=TRUE))
+# colnames(mu_est[[1]]) = c("mu_1_1", "mu_1_2", "mu_2_1", "mu_2_2")
+# calc_KL_diverg(y = list(matrix(c(0,0), ncol=1),
+#                         matrix(c(10.5,10.5), ncol=1),
+#                         matrix(c(0.5,0.5), ncol=1), 
+#                         matrix(c(8.5,8.5), ncol=1)), 
+#                 mu_est = mu_est, 
+#                 Sigma_est = Sigma_est,  
+#                 group_assign = list(matrix(c(1,2,1,2,1,2,1,2), ncol = 4, byrow=TRUE)), 
+#                 true_assign = matrix(c(1,2,1,2), ncol = 4, byrow=TRUE), 
+#                 mu_true = list(matrix(c(0,0), ncol=1), matrix(c(10,10), ncol=1)), 
+#                 Sigma_true = list(matrix(c(10,0.5,0.5,10), ncol=2, byrow=TRUE),
+#                                   matrix(c(5,0.25,0.25,5), ncol=2, byrow=TRUE)),
+#                 equal_var_assump = FALSE, 
+#                 off_diag = TRUE)
