@@ -59,6 +59,17 @@ update_phi_DEV <- function(curr_label, group_assign, count_assign, y,
   
 }
 
+nonconj_priordens_DEV <- function(mu, mu0, Sigma, Sigma0, a, b){
+  
+  # this is the function g(\phi_c) defined in Jain & Neal (2007) - used to 
+  # evaluate group-specific parameters \phi_c under the joint prior density placed
+  # on these parameters
+  
+  sigma2 = diag(Sigma)[1]
+  sigma0 = diag(Sigma0)[1]
+  p = nrow(mu)
+  
+}
 
 
 nonconj_phi_prob <- function(curr_label, group_assign, count_assign, y, 
@@ -429,6 +440,8 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
             split_temp_group_assign[scan,obs] = split_lab[sm_prop_index]
             split_sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
             
+            ### merge_assign prob by definition always 1 when proposing merge
+            ### launch state from c_i = c_j, no other way to permute assignment
             merge_temp_group_assign[scan,obs] = merge_lab
             merge_sm_probs[scan,obs] = 1
             
@@ -495,12 +508,25 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
                                       Sigma = split_vars[[scan]], 
                                       Sigma0 = Sigma0, a = a, b = b)
     
-    prob1_c = Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index]))
-    prob1_phi = Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index]))
-    prob1 = -Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index])) # log1 - sum(logs)
+    merge_phi_prob = nonconj_phi_prob(group_assign = merge_temp_group_assign[sm_iter+1,], 
+                                      count_assign = merge_count_assign, y = y, 
+                                      mu = merge_means[[scan]], 
+                                      mu0 = mu0, 
+                                      Sigma = merge_vars[[scan]], 
+                                      Sigma0 = Sigma0, a = a, b = b)
+    
+    prob1_c_num = Reduce(f = "+", x = log(split_sm_prob[sm_iter+1,subset_index]))
+    prob1_phi_num = Reduce(f = "+", x = log(split_phi_prob[sm_iter+1,subset_index]))
+    
+    prob1_c_denom = Reduce(f = "+", x = log(merge_sm_prob[sm_iter+1,subset_index]))
+    prob1_phi_denom = Reduce(f = "+", x = log(merge_phi_prob[sm_iter+1,subset_index]))
+    
+    prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
     
     ## prior ratio
-    prob2_num = factorial(sm_counts[[split_group_count_index[1]]] -1)*factorial(sm_counts[[split_group_count_index[2]]] -1)
+    prob2_num = factorial(sm_counts[[split_group_count_index[1]]] -1)*
+      factorial(sm_counts[[split_group_count_index[2]]] -1)*
+      
     prob2_denom = factorial(sm_counts[[split_group_count_index[1]]]+sm_counts[[split_group_count_index[2]]]-1)
     prob2 = log(alpha) + (log(prob2_num) - log(prob2_denom))
     

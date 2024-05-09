@@ -1,0 +1,160 @@
+---
+title: "Non-Conjugate Sampler - No SM Testing"
+author: "Jonathan Klus"
+date: "2024-05-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# load necessary functions
+source("./Multivariate_DPMM_nonconj_DEV.R")
+source("./Multivariate_DPMM_nonconj_UVV.R")
+source("./posterior_helper_fxns.R")
+source("./post_processing_inf.R")
+
+# load R libraries
+library(ggplot2)
+library(label.switching)
+library(LaplacesDemon)
+library(mvtnorm)
+library(stringr)
+```
+
+## 2D Example - close together
+
+Mixture of 3 multivariate normal densities all with diagonal variance structure
+and $\sigma^2 = 10$. The true means are $(10,10)$, $(0,-5)$, , $(12,-2)$, and $(0,10)$, and
+$\sum_{j}n_j = 50$.
+
+```{r, echo=FALSE}
+################## simulate data ##############################################
+
+set.seed(516)
+nreps = 10
+seeds = sample(x = 1:10^4, size = nreps, replace = FALSE)
+
+w = c(.35, .25, .4)
+means = list(
+  #c(10, 10),
+  c(0, -5),
+  c(0, 10),
+  c(12,2)
+)
+
+var = diag(9, length(means[[1]])) # variances known, diagonal, and equal
+
+yreps = lapply(X = 1:nreps, 
+           FUN = function(x){
+             set.seed(seeds[x])
+             assign = sample(x = 1:length(means), size = 30, replace = TRUE, prob = w)
+             y = lapply(X = assign,
+                        FUN = function(x){
+                        t(mvtnorm::rmvnorm(n = 1, mean = means[[x]], sigma = var))
+                          })
+             return(list(y = y, assign = assign))
+           })
+
+# # make a grid of plots
+pltlist = list()
+for(rep in 1:nreps){
+
+  y_matrix = matrix(data = unlist(yreps[[rep]]$y), ncol = 2, byrow = TRUE)
+  assign = yreps[[rep]]$assign
+
+  data = data.frame(
+    assign = assign,
+    y1 = y_matrix[,1],
+    y2 = y_matrix[,2]
+  )
+
+  p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
+    geom_point(color = assign, size = 0.75) +
+    #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+    # geom_text(size = 3, color = assign) +
+    theme_classic()
+
+  pltlist[[rep]] = p
+}
+
+do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignments")
+# 
+# # drop params used to generate data, except for var which is assumed known
+# rm(w, means)
+```
+
+#### DEV sampler 
+
+```{r}
+x = 3 
+n_iter = 5000
+y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
+mod_test2 = MVN_CRP_nonconj_DEV(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1, 
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        sigma0 = 25,
+        a = 1, b = 1, sigma_hyperprior = FALSE,
+        k_init = 1, diag_weights = FALSE,
+        verbose = TRUE, print_iter = 1000, split_merge = FALSE
+        )
+
+
+table(mod_test2$k)
+```
+
+#### UVV sampler
+
+```{r}
+n_iter=5000
+x=3
+output = MVN_CRP_nonconj_UVV(
+  S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1,
+  mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+  Sigma0 = diag(25,2), 
+  Lambda0 = diag(10,2), nu = 2,
+  k_init = 1, diag_weights = FALSE, 
+  truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
+  verbose = TRUE, print_iter = 1000, split_merge = FALSE)
+
+# summarize model
+mod_sum = dpmm_summary(output = output,
+               print_phi_sum = FALSE,
+               print_k_sum = FALSE,
+               make_traceplot = FALSE,
+               burn_in = 1000, t_hold = 250,
+               num_dims = 2,
+               calc_perf = TRUE,
+               mu_true = output$truth$mu_true,
+               var_true = lapply(X = 1:length(output$truth$mu_true),
+                                 FUN = function(x){output$truth$var_true}),
+               assign_true = output$truth$assign_true,
+               equal_var = FALSE)
+```
+
+```{r}
+n_iter=5000
+x=3
+output = MVN_CRP_nonconj_UVV(
+  S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1,
+  mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+  Sigma0 = diag(25,2), 
+  Lambda0 = diag(1,2), nu = 2,
+  k_init = 1, diag_weights = FALSE, 
+  truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
+  verbose = TRUE, print_iter = 2000, split_merge = FALSE)
+
+# summarize model
+mod_sum = dpmm_summary(output = output,
+               print_phi_sum = FALSE,
+               print_k_sum = FALSE,
+               make_traceplot = FALSE,
+               burn_in = 2000, t_hold = 250,
+               num_dims = 2,
+               calc_perf = TRUE,
+               mu_true = output$truth$mu_true,
+               var_true = lapply(X = 1:length(output$truth$mu_true),
+                                 FUN = function(x){output$truth$var_true}),
+               assign_true = output$truth$assign_true,
+               equal_var = FALSE)
+```
