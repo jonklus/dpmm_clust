@@ -296,6 +296,13 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
   subset_index = which(split_temp_group_assign[1,] %in% c(lab1, lab2)) 
   existing_group_index = which(label_assign == lab1) 
 
+  
+  # cat("split_labs:", split_lab)
+  # cat("\n")
+  # cat("subset_index:", subset_index)
+  # cat("\n")
+  
+
   # perform restricted Gibbs scans
   
   # if SPLIT
@@ -307,11 +314,6 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
     
     # set launch states for merge
     merge_lab = lab1
-    
-    # cat("split_labs:", split_lab)
-    # cat("\n")
-    # cat("subset_index:", subset_index)
-    # cat("\n")
     
     for(scan in 1:(sm_iter+1)){
       
@@ -637,8 +639,50 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
     # if MERGE    
   } else if(move_type == "MERGE"){
     
-    # specify random launch state
+    # need to set random launch states for both split and merge in non conj algo
     split_lab = c(lab1, lab2) # original labels, assign merged obs to lab1
+    merge_lab = lab1
+    
+    for(scan in 1:(sm_iter+1)){
+      
+      # initialize next scan with result of previous scan
+      if(scan == 1){
+        
+        # intialize anchors so that there are no "zeros" for split groups
+        # under consideration when starting below
+        
+        # split start
+        split_temp_group_assign[scan,sampled_obs[1]] = split_lab[1] 
+        split_temp_group_assign[scan,sampled_obs[2]] = split_lab[2] 
+        
+        # merge start
+        merge_temp_group_assign[scan,sampled_obs[1]] = merge_lab
+        merge_temp_group_assign[scan,sampled_obs[2]] = merge_lab
+        
+        # draw params from prior - random launch state for split proposal
+        split_means[[1]] = lapply(X = 1:2, 
+                                  FUN = function(x){
+                                    mvtnorm::rmvnorm(n = 1, 
+                                                     mean = mu0,
+                                                     sigma = Sigma0)
+                                  })
+        
+        split_vars[[1]] = lapply(X = 1:2, 
+                                 FUN = function(x){
+                                   diag(rgamma(n = 1, shape = a, rate = b), p)
+                                   # for UVV
+                                   # LaplacesDemon::rinvwishart(nu = nu, 
+                                   #                            S = lambda0)
+                                 })
+        
+        # draw params from prior - random launch state for merge proposal
+        merge_means[[1]] = mvtnorm::rmvnorm(n = 1, mean = mu0, sigma = Sigma0)
+        merge_vars[[1]] = diag(rgamma(n = 1, shape = a, rate = b), p)
+        # merge_vars[[1]] = LaplacesDemon::rinvwishart(nu = nu, S = lambda0)
+        
+      }
+      
+    } # end iter 1:(sm_iter+1)
     
     count_assign = as.numeric(table(temp_group_assign[1,]))
     label_assign = as.numeric(names(table(temp_group_assign[1,])))
