@@ -9,14 +9,14 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 # load necessary functions
-source("./Multivariate_DPMM_nonconj_DEV.R")
-source("./Multivariate_DPMM_nonconj_UVV.R")
-source("./posterior_helper_fxns.R")
-source("./post_processing_inf.R")
+# source("./Multivariate_DPMM_nonconj_DEV.R")
+# source("./Multivariate_DPMM_nonconj_UVV.R")
+# source("./posterior_helper_fxns.R")
+# source("./post_processing_inf.R")
 
 # load R libraries
 library(ggplot2)
-library(label.switching)
+library(mclust)
 library(LaplacesDemon)
 library(mvtnorm)
 library(stringr)
@@ -43,7 +43,7 @@ means = list(
   c(10,2)
 )
 
-var = diag(6, length(means[[1]])) # variances known, diagonal, and equal
+var = diag(5, length(means[[1]])) # variances known, diagonal, and equal
 
 yreps = lapply(X = 1:nreps, 
            FUN = function(x){
@@ -58,6 +58,7 @@ yreps = lapply(X = 1:nreps,
 
 # # make a grid of plots
 pltlist = list()
+datalist = list()
 for(rep in 1:nreps){
 
   y_matrix = matrix(data = unlist(yreps[[rep]]$y), ncol = 2, byrow = TRUE)
@@ -68,6 +69,8 @@ for(rep in 1:nreps){
     y1 = y_matrix[,1],
     y2 = y_matrix[,2]
   )
+  
+  datalist[[rep]] = data
 
   p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
     geom_point(color = assign, size = 0.75) +
@@ -84,188 +87,38 @@ do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignm
 # rm(w, means)
 ```
 
-#### DEV sampler 
-
-##### Setting $b = 1$
+### Using k means
 
 ```{r}
-x = 4
-n_iter = 12000
-y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
-output = MVN_CRP_nonconj_DEV(
-        S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1, 
-        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-        sigma0 = 50,
-        a = 1, b = 1, sigma_hyperprior = FALSE,
-        k_init = 1, diag_weights = FALSE,
-        truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
-        verbose = TRUE, print_iter = 5000, split_merge = FALSE
-        )
+km_plot = list()
+ARI = matrix(data = NA, nrow = length(datalist), ncol = 3)
+colnames(ARI) = c("K=3", "K=4", "K=5")
+for(rep in 1:length(datalist)){
+  # fit model
+  km_fit3 = kmeans(x = datalist[[rep]][,c("y1", "y2")], centers = 3)
+  km_fit4 = kmeans(x = datalist[[rep]][,c("y1", "y2")], centers = 4)
+  km_fit5 = kmeans(x = datalist[[rep]][,c("y1", "y2")], centers = 5)
+  # calculate adj RAND index
+  ARI[rep,] = c(adjustedRandIndex(datalist[[rep]]$assign, km_fit3$cluster),
+                adjustedRandIndex(datalist[[rep]]$assign, km_fit4$cluster),
+                adjustedRandIndex(datalist[[rep]]$assign, km_fit5$cluster))
+  # plot results
+  km_plot[[rep]] = ggplot(data = datalist[[rep]][,c("y1", "y2")], aes(x = y1, y = y2)) + #, label = rownames(data))) +
+      geom_point(color = km_fit$cluster, size = 0.75) +
+      #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+      # geom_text(size = 3, color = assign) +
+      theme_classic()
+}
 
-
-# summarize model
-mod_sum = dpmm_summary(output = output,
-               print_phi_sum = FALSE,
-               print_k_sum = TRUE,
-               make_traceplot = FALSE,
-               burn_in = 2000, t_hold = 250,
-               num_dims = 2,
-               calc_perf = TRUE,
-               mu_true = output$truth$mu_true,
-               var_true = lapply(X = 1:length(output$truth$mu_true),
-                                 FUN = function(x){output$truth$var_true}),
-               assign_true = output$truth$assign_true,
-               equal_var = FALSE)
+# do.call(grid.arrange, km_plot)
+print(ARI)
 ```
-
-##### Setting $b = 10$
+### Using MCLUST
 
 ```{r}
-x = 4
-n_iter = 12000
-y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
-output = MVN_CRP_nonconj_DEV(
-        S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1, 
-        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-        sigma0 = 50,
-        a = 1, b = 10, sigma_hyperprior = FALSE,
-        k_init = 1, diag_weights = FALSE,
-        truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
-        verbose = TRUE, print_iter = 5000, split_merge = FALSE
-        )
-
-
-# summarize model
-mod_sum = dpmm_summary(output = output,
-               print_phi_sum = FALSE,
-               print_k_sum = TRUE,
-               make_traceplot = FALSE,
-               burn_in = 2000, t_hold = 250,
-               num_dims = 2,
-               calc_perf = TRUE,
-               mu_true = output$truth$mu_true,
-               var_true = lapply(X = 1:length(output$truth$mu_true),
-                                 FUN = function(x){output$truth$var_true}),
-               assign_true = output$truth$assign_true,
-               equal_var = FALSE)
+BIC = mclust::mclustBIC(data = datalist[[1]])
+plot(BIC)
+mclust_fit = mclust::Mclust(data = datalist[[1]]) #, modelNames = "VVV", G = 2:5)
+summary(mclust_fit)
 ```
 
-##### Setting $b = 25$
-
-```{r}
-x = 4
-n_iter = 12000
-y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
-output = MVN_CRP_nonconj_DEV(
-        S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1, 
-        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-        sigma0 = 50,
-        a = 1, b = 25, sigma_hyperprior = FALSE,
-        k_init = 1, diag_weights = FALSE,
-        truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
-        verbose = TRUE, print_iter = 5000, split_merge = FALSE
-        )
-
-
-# summarize model
-mod_sum = dpmm_summary(output = output,
-               print_phi_sum = FALSE,
-               print_k_sum = TRUE,
-               make_traceplot = FALSE,
-               burn_in = 2000, t_hold = 250,
-               num_dims = 2,
-               calc_perf = TRUE,
-               mu_true = output$truth$mu_true,
-               var_true = lapply(X = 1:length(output$truth$mu_true),
-                                 FUN = function(x){output$truth$var_true}),
-               assign_true = output$truth$assign_true,
-               equal_var = FALSE)
-```
-#### UVV sampler
-
-##### Setting $\Lambda_0 = diag(1)$
-
-```{r}
-n_iter=12000
-x=4
-output = MVN_CRP_nonconj_UVV(
-  S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1,
-  mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-  Sigma0 = diag(50,2), 
-  Lambda0 = diag(1,2), nu = 2,
-  k_init = 1, diag_weights = FALSE, 
-  truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
-  verbose = TRUE, print_iter = 5000, split_merge = FALSE)
-
-# summarize model
-mod_sum = dpmm_summary(output = output,
-               print_phi_sum = FALSE,
-               print_k_sum = TRUE,
-               make_traceplot = FALSE,
-               burn_in = 2000, t_hold = 250,
-               num_dims = 2,
-               calc_perf = TRUE,
-               mu_true = output$truth$mu_true,
-               var_true = lapply(X = 1:length(output$truth$mu_true),
-                                 FUN = function(x){output$truth$var_true}),
-               assign_true = output$truth$assign_true,
-               equal_var = FALSE)
-```
-
-##### Setting $\Lambda_0 = diag(10)$
-
-```{r}
-n_iter=12000
-x=4
-output = MVN_CRP_nonconj_UVV(
-  S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1,
-  mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-  Sigma0 = diag(50,2), 
-  Lambda0 = diag(10,2), nu = 2,
-  k_init = 1, diag_weights = FALSE, 
-  truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
-  verbose = TRUE, print_iter = 5000, split_merge = FALSE)
-
-# summarize model
-mod_sum = dpmm_summary(output = output,
-               print_phi_sum = FALSE,
-               print_k_sum = TRUE,
-               make_traceplot = FALSE,
-               burn_in = 2000, t_hold = 250,
-               num_dims = 2,
-               calc_perf = TRUE,
-               mu_true = output$truth$mu_true,
-               var_true = lapply(X = 1:length(output$truth$mu_true),
-                                 FUN = function(x){output$truth$var_true}),
-               assign_true = output$truth$assign_true,
-               equal_var = FALSE)
-```
-
-##### Setting $\Lambda_0 = diag(25)$
-
-```{r}
-n_iter=12000
-x=4
-output = MVN_CRP_nonconj_UVV(
-  S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1,
-  mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-  Sigma0 = diag(50,2), 
-  Lambda0 = diag(25,2), nu = 2,
-  k_init = 1, diag_weights = FALSE, 
-  truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
-  verbose = TRUE, print_iter = 5000, split_merge = FALSE)
-
-# summarize model
-mod_sum = dpmm_summary(output = output,
-               print_phi_sum = FALSE,
-               print_k_sum = TRUE,
-               make_traceplot = FALSE,
-               burn_in = 2000, t_hold = 250,
-               num_dims = 2,
-               calc_perf = TRUE,
-               mu_true = output$truth$mu_true,
-               var_true = lapply(X = 1:length(output$truth$mu_true),
-                                 FUN = function(x){output$truth$var_true}),
-               assign_true = output$truth$assign_true,
-               equal_var = FALSE)
-```
