@@ -640,7 +640,10 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
   } else if(move_type == "MERGE"){
     
     # need to set random launch states for both split and merge in non conj algo
-    split_lab = c(lab1, lab2) # original labels, assign merged obs to lab1
+    # specify random launch state for split
+    split_lab = c(lab1, avail_labels[1]) # keep original label, new one for 2nd group
+    
+    # set launch states for merge
     merge_lab = lab1
     
     for(scan in 1:(sm_iter+1)){
@@ -680,129 +683,280 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
         merge_vars[[1]] = diag(rgamma(n = 1, shape = a, rate = b), p)
         # merge_vars[[1]] = LaplacesDemon::rinvwishart(nu = nu, S = lambda0)
         
+      } else{
+        
+        # initialize current restricted Gibbs scan iteration with previous result
+        split_temp_group_assign[scan,] = split_temp_group_assign[(scan-1),] 
+        merge_temp_group_assign[scan,] = merge_temp_group_assign[(scan-1),] 
+        split_means[[scan]] = split_means[[scan-1]]
+        split_vars[[scan]] = split_vars[[scan-1]] 
+        
+        # moved this up, was previously nested below, which means this step would
+        # be *repeated* for each observation, thus washing out any split/merge that
+        # was occurring as a result of the algorithm at each step
       }
       
-    } # end iter 1:(sm_iter+1)
-    
-    count_assign = as.numeric(table(temp_group_assign[1,]))
-    label_assign = as.numeric(names(table(temp_group_assign[1,])))
-    which_split_labs = which(label_assign %in% split_lab) 
-    
-    scan = sm_iter + 1 # skip to last row of table
-    temp_group_assign[scan,] = temp_group_assign[1,] # initialize
-    
-    sm_counts_before = table(temp_group_assign[scan,])
-    split_group_count_index = which(as.numeric(names(sm_counts_before)) %in% split_lab)
-    
-    temp_group_assign[scan,sampled_obs] = lab1 # anchor observations that aren't
-    # in subset-index-minus...
-    
-    for(obs in subset_index){
+      # print(table(temp_group_assign[scan,]))
       
-      temp_group_assign[scan,obs] = lab1 # keep 1st group label
+      for(obs in subset_index){
+        
+        # cat("Obs:", obs)
+        
+        if(scan == 1){
+          
+          # specify component assignment - random launch state for split proposal
+          # yes this is redundant, but only way to make using subset_index instead
+          # of subset_index_minus in for loop work properly 
+          if(obs == sampled_obs[2]){
+            split_temp_group_assign[scan,obs] = split_lab[2] 
+            merge_temp_group_assign[scan,obs] = merge_lab
+          } else if(obs == sampled_obs[1]){
+            split_temp_group_assign[scan,obs] = split_lab[1] 
+            merge_temp_group_assign[scan,obs] = merge_lab
+          } else{
+            # random launch state
+            split_temp_group_assign[scan,obs] = sample(x = split_lab, size = 1)
+            # no need to sample for merge...only one option
+            merge_temp_group_assign[scan,obs] = merge_lab
+          }
+          
+        } else{ # for remaining scans after random launch state set
+          # perform restricted gibbs scans for both component assign and params
+          
+          if(obs %in% sampled_obs){
+            # cat(" Anchor, ")
+            # dont sample if anchor obs -- assignment cannot change
+            # specify new group label to 2nd anchor point as well
+            if(obs == sampled_obs[2]){
+              split_temp_group_assign[scan,obs] = split_lab[2] 
+              merge_temp_group_assign[scan,obs] = merge_lab
+            } else if(obs == sampled_obs[1]){
+              split_temp_group_assign[scan,obs] = split_lab[1] 
+              merge_temp_group_assign[scan,obs] = merge_lab
+            }
+            
+            # update parameter vector
+            
+            # cat(" Assign:",temp_group_assign[scan,obs])
+            # cat("\n")
+            
+            # update group assignment probabilities 
+            
+            split_assign_prob = nonconj_component_prob(
+              obs = obs, split_labs = split_lab,
+              group_assign = split_temp_group_assign[scan,], 
+              y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
+            
+            ### merge_assign prob by definition always 1 when proposing merge
+            ### launch state from c_i = c_j, no other way to permute assignment
+            merge_assign_prob = 1
+            
+            # dont sample --- but do record prob of group anchor obs in in!
+            which_split_lab_anchor = which(split_lab == split_temp_group_assign[scan,obs])
+            # how to do this best for merge????
+            which_merge_lab_anchor = 1  # why is this 1?? need to figure out what this should be 
+            
+            # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
+            # dont need to assign again - already initialized since anchor
+            split_sm_probs[scan,obs] = split_assign_prob[which_split_lab_anchor]
+            merge_sm_probs[scan,obs] = merge_assign_prob[which_merge_lab_anchor]
+            
+          } else{
+            
+            split_count_assign = as.numeric(table(split_temp_group_assign[scan,]))
+            split_label_assign = as.numeric(names(table(split_temp_group_assign[scan,])))
+            # split_singletons = split_label_assign[which(split_count_assign == 1)]
+            
+            merge_count_assign = as.numeric(table(merge_temp_group_assign[scan,]))
+            merge_label_assign = as.numeric(names(table(merge_temp_group_assign[scan,])))
+            # merge_singletons = merge_label_assign[which(merge_count_assign == 1)]
+            # should never be a merge singleton --- need at least 2 anchor observations
+            
+            # not subtracted 1 for kth observation here -- do within function
+            split_counts = table(split_temp_group_assign[scan,])
+            merge_counts = table(split_temp_group_assign[scan,])
+            
+            #current_obs_index = which(temp_group_assign[scan,] == obs)
+            #split_group_lab_index1 = which(temp_group_assign[scan,] == split_lab[1])
+            #split_group_lab_index2 = which(temp_group_assign[scan,] == split_lab[2])
+            
+            # current observation under consideration cannot be included here
+            
+            split_assign_prob = nonconj_component_prob(
+              obs = obs, split_labs = split_lab,
+              group_assign = split_temp_group_assign[scan,], 
+              y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
+            
+            sm_prop_index = sample(x = 1:2, size = 1, 
+                                   prob = split_assign_prob)
+            
+            split_temp_group_assign[scan,obs] = split_lab[sm_prop_index]
+            split_sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
+            
+            ### merge_assign prob by definition always 1 when proposing merge
+            ### launch state from c_i = c_j, no other way to permute assignment
+            merge_temp_group_assign[scan,obs] = merge_lab
+            merge_sm_probs[scan,obs] = 1
+            
+            
+          }
+          
+        } 
+        
+      } # iterate through all observations in the two split groups under consideration
       
-      # sm_counts_before = table(temp_group_assign[scan,-obs])
-      # split_group_count_index_before = which(as.numeric(names(sm_counts)) %in% split_lab)
+      # update phi -- should this be done after each scan or after each observation?
+      split_phi = lapply(X = split_lab, 
+                         FUN = function(x){
+                           update_phi_DEV(curr_label = x, 
+                                          group_assign = split_temp_group_assign[scan,], 
+                                          count_assign = split_count_assign, y = y, 
+                                          mu = split_means[[scan]][[x]], 
+                                          mu0 = mu0, 
+                                          Sigma = split_vars[[scan]][[x]], 
+                                          Sigma0 = Sigma0, a = a, b = b)
+                         })
       
-      # current observation under consideration cannot be included here
+      merge_phi = update_phi_DEV(curr_label = merge_lab, 
+                                 group_assign = merge_temp_group_assign[scan,], 
+                                 count_assign = merge_count_assign, y = y, 
+                                 mu = merge_means[[scan]], 
+                                 mu0 = mu0, 
+                                 Sigma = merge_vars[[scan]], 
+                                 Sigma0 = Sigma0, a = a, b = b)
       
-      split_assign_prob = split_merge_prob_UVV(
-        obs = obs, split_labs = split_lab, r=r, 
-        group_assign = temp_group_assign[scan,], nu = nu, 
-        y = y, mu0 = mu0, lambda0= lambda0)
+      split_means[[scan]] = list(split_phi[[1]]$mu, split_phi[[2]]$mu)
+      split_vars[[scan]] = list(split_phi[[1]]$Sigma, split_phi[[2]]$Sigma)
       
-      sm_prop_index = sample(x = 1:2, size = 1,
-                             prob = split_assign_prob)
-      # 
-      # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
-      sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
+      merge_means[[scan]] = merge_phi$mu
+      merge_vars[[scan]] = merge_phi$Sigma
       
-    }  # iterate through all observations in the two split groups under consideration
+    } # scans 1:(sm_iter+1)
     
     
     # calculate & evaluate acceptance prob
-    sm_counts = table(temp_group_assign[sm_iter+1,]) # update counts after scans
+    
+    # update counts after scans
+    split_count_assign = as.numeric(table(split_temp_group_assign[sm_iter+1,]))
+    split_label_assign = as.numeric(names(table(split_temp_group_assign[sm_iter+1,])))
+    # split_singletons = split_label_assign[which(split_count_assign == 1)]
+    
+    merge_count_assign = as.numeric(table(merge_temp_group_assign[sm_iter+1,]))
+    merge_label_assign = as.numeric(names(table(merge_temp_group_assign[sm_iter+1,])))
+    # merge_singletons = merge_label_assign[which(merge_count_assign == 1)]
+    # should never be a merge singleton --- need at least 2 anchor observations
+    
+    split_counts = table(split_temp_group_assign[sm_iter+1,])
+    merge_counts = table(split_temp_group_assign[sm_iter+1,])
+    
+    split_group_count_index = which(as.numeric(names(split_counts)) %in% split_lab)
+    
     ## proposal probability
-    prob1 = Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index])) # log1 - sum(logs)
-    # need to index by subset since NAs for observation not part of split/merge -- as well as the
-    # two anchor observations. shoudl you be calculating a prob for those as well though???
+    
+    # compute P_GS(phi) from launch state to final scan for both split and merge proposals
+    split_phi_prob = nonconj_phi_prob_DEV(group_assign = split_temp_group_assign[sm_iter+1,], 
+                                          count_assign = split_count_assign, y = y, 
+                                          mu = split_means[[scan]], 
+                                          mu0 = mu0, 
+                                          Sigma = split_vars[[scan]], 
+                                          Sigma0 = Sigma0, a = a, b = b)
+    
+    merge_phi_prob = nonconj_phi_prob_DEV(group_assign = merge_temp_group_assign[sm_iter+1,], 
+                                          count_assign = merge_count_assign, y = y, 
+                                          mu = merge_means[[scan]], 
+                                          mu0 = mu0, 
+                                          Sigma = merge_vars[[scan]], 
+                                          Sigma0 = Sigma0, a = a, b = b)
+    
+    prob1_c_num = Reduce(f = "+", x = log(split_sm_prob[sm_iter+1,subset_index]))
+    prob1_phi_num = Reduce(f = "+", x = log(split_phi_prob[sm_iter+1,subset_index]))
+    
+    prob1_c_denom = Reduce(f = "+", x = log(merge_sm_prob[sm_iter+1,subset_index]))
+    prob1_phi_denom = Reduce(f = "+", x = log(merge_phi_prob[sm_iter+1,subset_index]))
+    
+    prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
     
     ## prior ratio
+    prob2_num = factorial(sm_counts[[split_group_count_index[1]]] -1)*
+      factorial(sm_counts[[split_group_count_index[2]]] -1)*
+      nonconj_prior_dens_DEV(mu = split_means[[scan]][[1]], mu0 = mu0, 
+                             Sigma = split_vars[[scan]][[1]], 
+                             Sigma0 = Sigma0, a = a, b = b)*
+      nonconj_prior_dens_DEV(mu = merge_means[[scan]][[2]], mu0 = mu0, 
+                             Sigma = merge_vars[[scan]][[2]], 
+                             Sigma0 = Sigma0, a = a, b = b)
     
-    # cat("\n")
-    # cat("sm_counts_before:")
-    # print(sm_counts_before)
-    # cat("\n")
-    # cat("split_group_count_index:", split_group_count_index)
+    prob2_denom = factorial(sm_counts[[split_group_count_index[1]]] + 
+                              sm_counts[[split_group_count_index[2]]]-1)*
+      nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
+                             Sigma = merge_vars[[scan]], 
+                             Sigma0 = Sigma0, a = a, b = b)
     
-    prob2_num = factorial(sm_counts_before[[split_group_count_index[1]]] -1)*factorial(sm_counts_before[[split_group_count_index[2]]] -1)
-    prob2_denom = factorial(sm_counts_before[[split_group_count_index[1]]]+sm_counts_before[[split_group_count_index[2]]]-1)
-    prob2 = -(log(alpha) + (log(prob2_num) - log(prob2_denom)))
+    prob2 = log(alpha) + (log(prob2_num) - log(prob2_denom))
     
     ## likelihood ratio
-    subset_index_grp1 = which(temp_group_assign[1,] %in% split_lab[1]) 
-    subset_index_grp2 = which(temp_group_assign[1,] %in% split_lab[2]) 
+    subset_index_grp1 = which(temp_group_assign[sm_iter+1,] %in% split_lab[1]) 
+    subset_index_grp2 = which(temp_group_assign[sm_iter+1,] %in% split_lab[2]) 
     
-    ### component 1 - numerator I (group 1)
+    ### component 1 - numerator I (group 1 - split proposal)
     prob3_num1 = 0
     for(obs_ind in 1:length(subset_index_grp1)){
-      val = ll_components_UVV(subset_index = subset_index_grp1, obs_ind = obs_ind, y = y, 
-                              mu0 = mu0, lambda0 = lambda0, r = r, nu = nu)
+      val = ll_components_DEV(obs_ind = subset_index_grp1[obs_ind], y = y, 
+                              mu = split_means[[sm_iter+1]][[1]], 
+                              Sigma = split_vars[[sm_iter+1]][[1]])
       prob3_num1 = prob3_num1 + log(val)
     }
     
-    ### component 2 - numerator II (group 2)
+    ### component 2 - numerator II (group 2 - split proposal)
     prob3_num2 = 0
     for(obs_ind in 1:length(subset_index_grp2)){
-      val = ll_components_UVV(subset_index = subset_index_grp2, obs_ind = obs_ind, y = y, 
-                              mu0 = mu0, lambda0 = lambda0, r = r, nu = nu)
+      val = ll_components_DEV(obs_ind = subset_index_grp2[obs_ind], y = y, 
+                              mu = split_means[[sm_iter+1]][[2]], 
+                              Sigma = split_vars[[sm_iter+1]][[2]])
       prob3_num2 = prob3_num2 + log(val)
     }
     
     
-    ### component 3 - denominator (all in original group)
+    ### component 3 - denominator (all in original group w/ merge proposal params)
     prob3_denom = 0
     for(obs_ind in 1:length(subset_index)){
-      val = ll_components_UVV(subset_index = subset_index, obs_ind = obs_ind, y = y, 
-                              mu0 = mu0, lambda0 = lambda0, r = r, nu = nu)
+      val = ll_components_DEV(obs_ind = subset_index[obs_ind], y = y, 
+                              mu = merge_means[[sm_iter+1]][[1]], 
+                              Sigma = merge_vars[[sm_iter+1]][[1]])
       prob3_denom = prob3_denom + log(val)
     }
     
+    prob3 = prob3_num1 + prob3_num2 - prob3_denom
+    
     ## evaluate acceptance prob
-    prob3 = -(prob3_num1 + prob3_num2 - prob3_denom)
     accept_prob = min(1, exp(prob1 + prob2 + prob3))
     u = runif(n = 1)
     if(accept_prob > u){
+      
       # accept
       accept = 1
-      group_assign[s,] = temp_group_assign[sm_iter+1,]
+      group_assign[s,] = split_temp_group_assign[sm_iter+1,]
       
-      # bookeeping if merge step ACCEPTED only, keep first group -- remove 2nd 
-      mu = matrix(mu[,-which_split_labs[2]], nrow = p)
-      Sigma = Sigma[-which_split_labs[2]]
+      # print(table(group_assign[s,]))
       
-      # count_assign = count_assign[-which_split_labs[2]]
-      # label_assign = label_assign[-which_split_labs[2]]
-      # avail_labels = c(temp_group_assign[1, sampled_obs[2]], avail_labels)
-      # i think the line above is duplicating bookeeping step of adding to availabe
-      # labels...comment out for now and test...
-      
-      # put old group lab out of reserve
-      curr_label_del = which(curr_labels == split_lab[2])
-      avail_labels = c(curr_labels[curr_label_del], avail_labels)
-      curr_labels = curr_labels[-curr_label_del]
-      
+      # take new group lab out of reserve
+      curr_labels = c(curr_labels, avail_labels[1])
+      avail_labels = avail_labels[-1]
       k = length(curr_labels)
-      
-      # update labels, mean, var etc
+      # update labels, etc
       count_assign = as.numeric(table(group_assign[s,]))
       label_assign = as.numeric(names(table(group_assign[s,])))
-      which_split_lab = which(label_assign == split_lab[1]) 
+      which_split_labs = which(label_assign %in% split_lab) 
       num_groups[s,] = k
       
-      Sigma[[which_split_lab]] = Sigma_temp
-      mu[,which_split_lab] = mu_list
+      # if new group created by split, update mean and variance
+      ## add new means and variances from finall Gibbs scan to relevant vectors/lists
+      length_Sigma = length(Sigma)
+      Sigma[[which_split_labs[1]]] = merge_vars[[sm_iter+1]][[1]]
+      Sigma[[length_Sigma+1]] = merge_vars[[sm_iter+1]][[2]]
       
+      mu[,which_split_labs[1]] = merge_means[[sm_iter+1]][[1]]
+      mu = cbind(mu, merge_vars[[sm_iter+1]][[2]])
       
     } else{
       # reject
@@ -810,11 +964,7 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
       # group assign remains unchanged
     }
     
-    
-    
-    
-    
-  }
+  } # end merge proposal
   
   k_end = k
   sm_results = rbind(sm_results, c(s, sm_iter, move_type, accept, accept_prob, k_start, k_end))

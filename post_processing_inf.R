@@ -53,6 +53,8 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
   k_relfreqtab = round((table(output$k)/sum(table(output$k)))*100,1)
   
   if(print_k_sum == TRUE){
+    cat("\n Raw summary: \n")
+    
     cat("\n Frequency of MCMC iterations finding k groups:")
     print(k_freqtab)
     
@@ -147,6 +149,10 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
     
     mean_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
     var_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
+    # total_iter = sapply(X = 1:length(mean_list_by_k_stephens), 
+    #                     FUN = function(x){
+    #                       
+    #                     })
     for(k in 1:length(mean_list_by_k_stephens)){
       
       # make mean summary table
@@ -160,8 +166,11 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
                                           pattern = "_[:digit:]_"), pattern = "[:digit:]")))
       if(print_phi_sum == TRUE){
         # give summary of counts after thresholding
-        cat("\n k =", k_i, " n_k =", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
+        cat("\n k =", k_i, " n_iter =", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
+        
+        cat("\n Mean Summary: \n")
         print(mean_summary[[k]])
+        cat("\n (Co)variance Summary: \n")
         print(var_summary[[k]])
       }
       

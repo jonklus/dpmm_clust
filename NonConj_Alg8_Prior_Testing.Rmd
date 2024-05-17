@@ -88,7 +88,7 @@ do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignm
 
 ```{r}
 x = 3 
-n_iter = 5000
+n_iter = 12000
 y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
 mod_test2 = MVN_CRP_nonconj_DEV(
         S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1, 
@@ -96,7 +96,7 @@ mod_test2 = MVN_CRP_nonconj_DEV(
         sigma0 = 25,
         a = 1, b = 1, sigma_hyperprior = FALSE,
         k_init = 1, diag_weights = FALSE,
-        verbose = TRUE, print_iter = 1000, split_merge = FALSE
+        verbose = TRUE, print_iter = 5000, split_merge = FALSE
         )
 
 
@@ -106,7 +106,6 @@ table(mod_test2$k)
 #### UVV sampler
 
 ```{r}
-n_iter=5000
 x=3
 output = MVN_CRP_nonconj_UVV(
   S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1,
@@ -115,7 +114,7 @@ output = MVN_CRP_nonconj_UVV(
   Lambda0 = diag(10,2), nu = 2,
   k_init = 1, diag_weights = FALSE, 
   truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
-  verbose = TRUE, print_iter = 1000, split_merge = FALSE)
+  verbose = TRUE, print_iter = 5000, split_merge = FALSE)
 
 # summarize model
 mod_sum = dpmm_summary(output = output,
@@ -133,7 +132,6 @@ mod_sum = dpmm_summary(output = output,
 ```
 
 ```{r}
-n_iter=5000
 x=3
 output = MVN_CRP_nonconj_UVV(
   S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1,
@@ -142,7 +140,7 @@ output = MVN_CRP_nonconj_UVV(
   Lambda0 = diag(1,2), nu = 2,
   k_init = 1, diag_weights = FALSE, 
   truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
-  verbose = TRUE, print_iter = 2000, split_merge = FALSE)
+  verbose = TRUE, print_iter = 5000, split_merge = FALSE)
 
 # summarize model
 mod_sum = dpmm_summary(output = output,
