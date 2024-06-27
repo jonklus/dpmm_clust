@@ -23,7 +23,7 @@ library(kableExtra) # use for complex tables http://haozhu233.github.io/kableExt
 # data_path = "//GENE.bst.rochester.edu/Projects/JKSTproj/BlueHive_Sim_Results/"
 
 # running on server
-data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/Summary3"
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryWorkshop"
 
 # dev_withSM = readRDS(paste0(data_path, "/MODSUM_conjDEV_3close_n30_withSM_sim_results_ENAR/sum_1.rds"))
 
