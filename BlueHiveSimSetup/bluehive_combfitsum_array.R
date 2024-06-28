@@ -15,7 +15,7 @@ source("./post_processing_inf.R")
 
 # DEFINE INPUTS --- USER DEFINED IN R SCRIPT
 model = c("conjDEV", "conjDEE", "conjUVV", "nonconjDEV", "nonconjUVV")[1]
-scenario = c("3close", "3wellsep", "5grp3d")[2]
+scenario = c("3close", "3wellsep", "5grp3d")[3]
 SM = TRUE # do split merge
 cat("\n", model, scenario, SM, "\n")
 

@@ -250,6 +250,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
     } else{
       
       return(list(
+        data = output$data,
         settings = output$settings,
         mean_list_by_k_stephens = mean_list_by_k_stephens,
         var_list_by_k_stephens = var_list_by_k_stephens,

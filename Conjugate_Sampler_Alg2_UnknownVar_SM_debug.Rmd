@@ -125,12 +125,12 @@ n_iter = 12000
 x=1
 sim_results_DEE_with_sm = MVN_CRP_sampler_DEE(
         S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
-        alpha = 1, r = 10, g = 1, h = 50,
+        alpha = 1, r = 10, d = 1, f = 1 , g = 1, h = 50,
         sigma_hyperprior = FALSE, fix_r = FALSE,
         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
         a = 1, b = 50,
         k_init = 1, diag_weights = FALSE,
-        verbose = TRUE, split_merge = FALSE
+        verbose = TRUE, split_merge = TRUE, sm_iter = 5
         )
 ```
 

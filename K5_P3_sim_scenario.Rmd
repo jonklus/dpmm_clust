@@ -118,7 +118,7 @@ sim_results_DEV = MVN_CRP_sampler_DEV(
         S = n_iter, seed = seeds[x], y = y,
         alpha = 1, r = 10, d = 1, f = 1 , g = 1, h = 10,
         sigma_hyperprior = FALSE, fix_r = FALSE,
-        mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 3))),0), ncol = 1),
+        mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 3  ))),0), ncol = 1),
         a = 1, b = 1,
         k_init = 1, diag_weights = FALSE,
         verbose = TRUE, split_merge = FALSE #, sm_iter = 5
