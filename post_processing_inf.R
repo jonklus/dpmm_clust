@@ -232,6 +232,8 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
     if(calc_perf == TRUE){
       
       return(list(
+        data = output$data,
+        group_assign = output$group_assign,
         settings = output$settings,
         mean_list_by_k_stephens = mean_list_by_k_stephens,
         var_list_by_k_stephens = var_list_by_k_stephens,
@@ -251,6 +253,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
       
       return(list(
         data = output$data,
+        group_assign = output$group_assign,
         settings = output$settings,
         mean_list_by_k_stephens = mean_list_by_k_stephens,
         var_list_by_k_stephens = var_list_by_k_stephens,

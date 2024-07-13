@@ -1,7 +1,7 @@
 ---
 title: "Model Spec Comparison"
 author: "Jonathan Klus"
-date: "2024-03-05"
+date: "2024-07-12"
 output: html_document
 ---
 
@@ -9,7 +9,11 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE)
 
 # homemade functions
+source("./Multivariate_DPMM_unknownvar_DEV.R")
+# source("./Multivariate_DPMM_unknownvar_DEE.R")
+#source("./Multivariate_DPMM_unknownvar_UVV.R")
 source("./posterior_helper_fxns.R")
+source("./post_processing_inf.R")
 
 # load R libraries
 library(ggplot2)
@@ -17,6 +21,7 @@ library(dplyr)
 library(stringr)
 library(knitr) # kable
 library(kableExtra) # use for complex tables http://haozhu233.github.io/kableExtra/awesome_table_in_pdf.pdf 
+library(scatterplot3d)
 
 ######################## DEFINE HELPER FUNCTIONS################################
 # running locally
@@ -68,11 +73,50 @@ for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
 }
 
 summary_table = summary_table[-1,] # get rid of first row of NAs 
+  #vdplyr::filter(Scenario == "5grp3d")
 ```
 
 We fit the DEE and DEV models to a new scenario, with three dimensions and five 
 latent groups. The data are generated from a mixture of 5 multivariate normal densities all with diagonal variance structure
 and $\sigma^2 = 0.25. The true means are $(4, 4, -2)$, $(2, 3, 2)$, $(3, 2, 5)$, $(8, 8, 0)$, and $(9, 7, 3)$.
+
+We also fit the original two scenarios (close together and well separated).
+
+## Priors
+
+### For close together scenarios
+
+#### IG prior (DEV, DEE)
+
+- Conjugate: $\sigma^2 \sim IG(a=1,b=25)$, and $s \sim Ga(f=1,g=50)$
+
+#### InvW prior (UVV)
+
+- Conjugate: $\Lambda_0 = diag(1)$ and $s \sim Ga(f=1,g=50)$
+
+### For well separated scenarios
+
+#### IG prior (DEV, DEE)
+
+- Conjugate: $\sigma^2 \sim IG(a=1,b=50)$ and $s \sim Ga(f=1,g=50)$
+- Non-Conjugate: $\sigma^2 \sim IG(a=1,b=50)$, and $\mu_k \sim N(\mu_0, \sigma^2_0 = 200)$
+
+#### InvW prior (UVV)
+
+- Conjugate: $\Lambda_0 = diag(1)$ and $s \sim Ga(f=1,g=50)$
+- Non-Conjugate: $\Lambda_0 = diag(25)$ and $\mu_k \sim N(\mu_0, \Sigma_0 = diag(200))$
+
+### For 3D 5 group scenarios
+
+#### IG prior (DEV, DEE)
+
+- Conjugate: $\sigma^2 \sim IG(a=1,b=1)$ and $s \sim Ga(f=1,g=10)$
+- Non-Conjugate: $\sigma^2 \sim IG(a=1,b=1)$, and $\mu_k \sim N(\mu_0, \sigma^2_0 = 100)$
+
+#### InvW prior (UVV)
+
+- Conjugate: $\Lambda_0 = diag(1)$ and $s \sim Ga(f=1,g=10)$
+- Non-Conjugate: $\Lambda_0 = diag(1)$ and $\mu_k \sim N(\mu_0, \Sigma_0 = diag(100))$
 
 ## Summary of Results
 
@@ -116,9 +160,65 @@ summary_table %>%
   knitr::kable(caption = "KL Divergence")
 ```
 
+
+
+```{r, include=FALSE, eval=FALSE}
+
 ## Example of clustering
+# resultex = readRDS(paste0(data_path, "/MODSUM_conjDEV_5grp3d_n100_noSM_sim_results_2024_06_27/sum_1.rds"))
+seeds = readRDS("./BHsimseeds.rds") 
+set.seed(seeds[1])
+w = rep(0.2, 5)
+means = list(
+  c(4, 4, -2),
+  c(2, 3, 2),
+  c(3, 2, 5),
+  c(8, 8, 0),
+  c(9, 7, 3)
+)
+var = diag(0.25, length(means[[1]]))
+assign = sample(x = 1:length(means), size = 100, replace = TRUE, prob = w)
+y = lapply(X = assign,
+           FUN = function(x){
+             t(mvtnorm::rmvnorm(n = 1, mean = means[[x]], sigma = var))
+           })
+y_matrix = matrix(data = unlist(y), ncol = 3, byrow = TRUE)
+data = data.frame(
+  assign = assign,
+  y1 = y_matrix[,1],
+  y2 = y_matrix[,2],
+  y3 = y_matrix[,3]
+)
+attach(data)
 
-```{r}
+sim_results_DEV = MVN_CRP_sampler_DEV(
+        S = 5000, seed = seeds[1], y = y,
+        alpha = 1, r = 10, d = 1, f = 1 , g = 1, h = 10,
+        sigma_hyperprior = FALSE, fix_r = FALSE,
+        mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 3))),0), ncol = 1),
+        a = 1, b = 1,
+        k_init = 1, diag_weights = FALSE,
+        verbose = TRUE, split_merge = FALSE #, sm_iter = 5
+        )
 
+scatterplot3d(x = y1, y = y2, z = y3, 
+              color = sim_results_DEV$group_assign[1000,], 
+              angle = -45)
+
+scatterplot3d(x = y1, y = y2, z = y3, 
+              color = sim_results_DEV$group_assign[2000,], 
+              angle = -45)
+
+scatterplot3d(x = y1, y = y2, z = y3, 
+              color = sim_results_DEV$group_assign[3000,], 
+              angle = -45)
+
+scatterplot3d(x = y1, y = y2, z = y3, 
+              color = sim_results_DEV$group_assign[4000,], 
+              angle = -45)
+
+scatterplot3d(x = y1, y = y2, z = y3, 
+              color = sim_results_DEV$group_assign[5000,], 
+              angle = -45)
 ```
 
