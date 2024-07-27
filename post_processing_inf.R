@@ -76,6 +76,32 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
                                              burn_in = burn_in, 
                                              iter_threshold = t_hold)
     
+    # summary table by k after burn-in
+    if(print_k_sum == TRUE){
+      cat("\n Summary aftern burn-in and thresholding: \n")
+      
+      num_groups = unlist(sapply(X = 1:length(group_assign_list_by_k),
+                                 FUN = function(x){
+                                   k = x # list entry
+                                   sapply(X = 1:nrow(group_assign_list_by_k[[x]]), 
+                                          FUN = function(x){
+                                            length(unique(group_assign_list_by_k[[k]][x,]))
+                                          })
+                                 }))
+      
+      
+      adj_k_freqtab = table(num_groups)
+      adj_k_relfreqtab = round((table(num_groups)/sum(table(num_groups)))*100,1)
+      
+      cat("\n Frequency of MCMC iterations finding k groups after burn-in:")
+      print(adj_k_freqtab)
+      
+      cat("\n Percentage of MCMC iterations finding k groups after burn-in:")
+      print(adj_k_relfreqtab)
+      
+    }
+    
+    
     # correct label switching 
     stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
                                           prob_list_by_k = prob_list_by_k$prob_list)
