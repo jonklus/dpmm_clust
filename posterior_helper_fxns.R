@@ -723,15 +723,18 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
     
     for(i in i_init:length(unique_k)){
       
-      cat("\n i:", i)
-      cat("\n unique_k[i]:", unique_k[i])
-      cat("\n unique_k:", unique_k)
-      print(head(permutation[[i]]))
+      # cat("\n i:", i)
+      # cat("\n unique_k[i]:", unique_k[i])
+      # cat("\n unique_k:", unique_k)
+      # print(head(permutation[[i]]))
       
       k_index = which(k_vec == unique_k[i]) # indices of all iters with k params
-      new_labs = permutation[[i]]$permutations$STEPHENS
       
       if(equal_var == FALSE){
+        
+        new_labs = permutation[[i]]$permutations$STEPHENS # moving inside if 
+        # statement to avoid errors when equal_var == TRUE and we don't alter 
+        # permutation object
         
         # fix label switching before reformatting params
         for(j in 1:length(k_index)){
