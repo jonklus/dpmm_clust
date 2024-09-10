@@ -62,7 +62,7 @@ data = data.frame(
 )
 
 attach(data)
-scatterplot3d(x = y1, y = y2, z = y3, color = assign, angle = -45)
+scatterplot3d(x = y1, y = y2, z = y3, color = assign, angle = -45, pch = 20)
 
 # ggplot(data = data, aes(x = y1, y = y2, label = rownames(data))) +
 #   geom_point(color = assign) +

@@ -1,7 +1,7 @@
 ---
-title: "Model Spec Comparison"
+title: "Simulation Study Results"
 author: "Jonathan Klus"
-date: "2024-03-05"
+date: "2024-08-12"
 output: html_document
 ---
 
@@ -9,21 +9,27 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE)
 
 # homemade functions
+# source("./Multivariate_DPMM_unknownvar_DEV.R")
+# source("./Multivariate_DPMM_unknownvar_DEE.R")
+#source("./Multivariate_DPMM_unknownvar_UVV.R")
 source("./posterior_helper_fxns.R")
+source("./post_processing_inf.R")
 
 # load R libraries
 library(ggplot2)
 library(dplyr)
 library(stringr)
 library(knitr) # kable
-library(kableExtra) # use for complex tables http://haozhu233.github.io/kableExtra/awesome_table_in_pdf.pdf 
+library(kableExtra) # use for complex tables http://haozhu233.github.io/kableExtra/awesome_table_in_pdf.pdf
+library(xtable)
+library(scatterplot3d)
 
 ######################## DEFINE HELPER FUNCTIONS################################
 # running locally
 # data_path = "//GENE.bst.rochester.edu/Projects/JKSTproj/BlueHive_Sim_Results/"
 
 # running on server
-data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/Summary_ENAR"
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryProposal"
 
 # dev_withSM = readRDS(paste0(data_path, "/MODSUM_conjDEV_3close_n30_withSM_sim_results_ENAR/sum_1.rds"))
 
@@ -45,10 +51,10 @@ for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
     # parse out attributes and save
     short_file_ext = stringr::str_split(string = file_ext[ext_index], pattern = "/MODSUM")[[1]][2]
     parsed_dirname = unlist(stringr::str_extract_all(string = file_ext[ext_index], pattern = "_[:alnum:]+"))
-    temp_summary_table[1:length(file_list), "Model"] = stringr::str_remove(string = parsed_dirname[4], pattern = "_")
-    temp_summary_table[1:length(file_list), "Scenario"] = stringr::str_remove(string = parsed_dirname[5], pattern = "_")
-    temp_summary_table[1:length(file_list), "n_obs"] = stringr::str_remove(string = parsed_dirname[6], pattern = "_n")
-    temp_summary_table[1:length(file_list), "SM"] = stringr::str_remove(string = parsed_dirname[7], pattern = "_")
+    temp_summary_table[1:length(file_list), "Model"] = stringr::str_remove(string = parsed_dirname[3], pattern = "_")
+    temp_summary_table[1:length(file_list), "Scenario"] = stringr::str_remove(string = parsed_dirname[4], pattern = "_")
+    temp_summary_table[1:length(file_list), "n_obs"] = stringr::str_remove(string = parsed_dirname[5], pattern = "_n")
+    temp_summary_table[1:length(file_list), "SM"] = stringr::str_remove(string = parsed_dirname[6], pattern = "_")
     # temp_summary_table[1:length(file_list), "Tag"] = stringr::str_remove(string = parsed_dirname[length(parsed_dirname)], pattern = "_")
     temp_summary_table[, "dataset_no"] = as.numeric(stringr::str_remove_all(string = file_list, pattern = "sum_|.rds"))
     
@@ -68,58 +74,10 @@ for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
 }
 
 summary_table = summary_table[-1,] # get rid of first row of NAs 
+  #vdplyr::filter(Scenario == "5grp3d")
 ```
 
-## Model Specification
-
-- Likelihood: $y_1, \dots, y_n \sim \sum_{k=1}^{K} \pi_k \mathcal{N}(\mu_k, \Sigma_k)$
-
-### DEV
-  
-#### Well separated:
-  
-  $$
-  \mu_k \sim \mathcal{N}(\mu_0, \Sigma_0 = diag(100))\\
-  \mu_0 = \frac{1}{n}\sum_{i=1}^{n}y_i\\
-  \sigma^2_k \sim \mathcal{IG}(a = 1, b = 10)
-  $$
-  
-#### Close together
-  
-  $$
-  \mu_k \sim \mathcal{N}(\mu_0, \Sigma_0 = diag(30))\\
-  \mu_0 = \frac{1}{n}\sum_{i=1}^{n}y_i\\
-  \sigma^2_k \sim \mathcal{IG}(a = 1, b = 10)
-  $$
-  
-
-### UVV
-  
-#### Well separated:
-  
-  $$
-  \mu_k \sim \mathcal{N}(\mu_0 = (0,0), \Sigma_0 = diag(100))\\
-  \mu_0 = \frac{1}{n}\sum_{i=1}^{n}y_i\\
-  \Sigma_k \sim \mathcal{invWish}(\nu = 5, \Lambda_0 = diag(15))
-  $$
-  
-#### Close together:
-  
-  $$
-  \mu_k \sim \mathcal{N}(\mu_0 = (0,0), \Sigma_0 = diag(30))\\
-  \mu_0 = \frac{1}{n}\sum_{i=1}^{n}y_i\\
-  \Sigma_k \sim \mathcal{invWish}(\nu = 5, \Lambda_0 = diag(15))
-  $$
-
-\newpage
-
-## Planned changes
-
-For future simulations, changing code so that there is now a `standardize = TRUE` argument to all model-
-fitting functions. This should make putting priors on variance components more 
-straightforward across different scenarios
-
-## Computation Time (minutes)
+## Summary of Results
 
 ```{r, message=FALSE}
 
@@ -129,7 +87,8 @@ summary_table %>%
   dplyr::summarize(Count = n()) %>%
   tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = Count) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
-  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2)
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
+  knitr::kable(caption = "Number of data sets completed")
 
 # time
 summary_table %>% 
@@ -139,13 +98,8 @@ summary_table %>%
   tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = Time) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
-  knitr::kable()
-```
+  knitr::kable(caption = "Average computation time")
 
-### Adj Rand Index
-
-```{r, message=FALSE}
-# ARI
 summary_table %>% 
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
@@ -153,23 +107,8 @@ summary_table %>%
   tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = mean_ARI) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
-  knitr::kable()
+  knitr::kable(caption = "Adjusted RAND Index")
 
-# comparison
-# DEE close no SM
-dee_with_sm = readRDS("/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryWorkshop/MODSUM_conjDEE_3close_n30_withSM_sim_results_2024_05_16/sum_1.rds")
-
-
-# DEE close with SM
-dee_no_sm = readRDS("/projects/jklus/JKSTproj/BlueHive_Sim_Results/Summary_ENAR/MODSUM_conjDEE_3close_n30_noSM_sim_results_ENAR/sum_1.rds")
-
-mod1 = readRDS("/projects/jklus/JKSTproj/BlueHive_Sim_Results/Summary_ENAR/MODSUM_conjDEE_3wellsep_n30_noSM_sim_results_ENAR/sum_1.rds")
-```
-
-### KL divergence
-
-```{r, message=FALSE}
-# KL
 summary_table %>% 
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
@@ -177,5 +116,52 @@ summary_table %>%
   tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = KL) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
-  knitr::kable()
+  knitr::kable(caption = "KL Divergence")
 ```
+
+## Make LaTeX tables for thesis draft
+
+```{r}
+
+table1 = summary_table %>%
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(Count = n()) %>%
+  tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = Count) %>%
+  # keep first 2 columns with model info, sort remaining cols with results by n
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2)
+
+xtable::xtable(table1)
+
+# time
+table2 = summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(Time = round(mean(Time),2)) %>%
+  tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = Time) %>%
+  # keep first 2 columns with model info, sort remaining cols with results by n
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) 
+
+xtable::xtable(table2)
+
+table3 = summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(mean_ARI = round(mean(ARI),2)) %>%
+  tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = mean_ARI) %>%
+  # keep first 2 columns with model info, sort remaining cols with results by n
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) 
+
+xtable::xtable(table3)
+
+table4 = summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(KL = round(mean(KL),2)) %>%
+  tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = KL) %>%
+  # keep first 2 columns with model info, sort remaining cols with results by n
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2)
+
+xtable::xtable(table4)
+```
+

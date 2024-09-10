@@ -33,7 +33,7 @@ update_phi_DEV <- function(curr_label, group_assign, count_assign, y,
 
   mu_cov = diag(sigma2/(1/r + count_assign), p)
   
-  mu_mean = (sum_y_i + mu0/r)/(1/r + count_assign)
+  mu_mean = (sum_y_i + mu0/r)/(1/r + count_assign)''
   
   mu = t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
                           mean = mu_mean, 
@@ -349,7 +349,7 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
         
         # draw params from prior - random launch state for merge proposal
         merge_means[[1]] = mvtnorm::rmvnorm(n = 1, mean = mu0, sigma = Sigma0)
-        merge_vars[[1]] = diag(rgamma(n = 1, shape = a, rate = b), p)
+        merge_vars[[1]] = diag(rgamma(n = 1, shape = a, rate = b), p)  
         # merge_vars[[1]] = LaplacesDemon::rinvwishart(nu = nu, S = lambda0)
         
       } else{

@@ -136,7 +136,7 @@ saveRDS(object = mod2, file = "../MCMC_Runs/thyroid_UVV_modfit.rds")
 ### DEV without split/merge
 
 ```{r}
-data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/RealData"
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/Archive/RealData"
 # read in results and summarize models fit
 mod1 = readRDS(paste0(data_path, "/thyroid_modfit_conjDEV_noSM.rds"))
 mod1_sum = dpmm_summary(output = mod1,

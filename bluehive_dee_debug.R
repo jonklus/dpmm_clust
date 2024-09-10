@@ -302,240 +302,200 @@ saveRDS(object = mod_sum,
 
 
 
-### doing post sum fxn step by step to debug
-
-######################## DEFINE NEW FUNCTIONS ##################################
-
-
-print_phi_sum = TRUE
-print_k_sum = TRUE
-make_traceplot = FALSE
-burn_in = 2000
-t_hold = 250
-num_dims = p
-calc_perf = TRUE
-mu_true = output$truth$mu_true
-var_true = output$truth$var_true
-assign_true = output$truth$assign_true
-equal_var = TRUE
-off_diag = FALSE
-
-  # output is the list of results from the DPMM simulation study function
-  # dataset is a numeric argument to summarize a specific result in the output, the desired index
-  # sum_all is a logical argument to provide a summary of all data sets --- NOT CURRENTLY IMPLEMENTED
-  # print_k_sum is a logical, if TRUE print summary of no groups found 
-  # print_phi_sum is a logical, if TRUE print summary of estimated model parameters
-  # burn_in is # of burn in iterations to discard
-  # t_hold is the threshold # of iterations for a given k in order to report results
-  # num_dims is the dimensionality of the problem (i.e. a bivariate normal is dim 2)
-  # calc_perf is a logical - whether to calculate performance metrics (currently KLD and ARI)
-  # mu_true and var_true are list arguments with the true values of the model parameters
-  # from a simulation study used to calculate the KL divergence 
-  # equal_var is a logical argument for whether the equal variance assumption was made
-  # in the model. The function will then expect a scalar variance instead of a var-covar matrix 
-  
-  start = Sys.time()
-  
-  # show basic summary
-  k_freqtab = table(output$k)
-  k_relfreqtab = round((table(output$k)/sum(table(output$k)))*100,1)
-  
-  if(print_k_sum == TRUE){
-    cat("\n Raw summary: \n")
-    
-    cat("\n Frequency of MCMC iterations finding k groups:")
-    print(k_freqtab)
-    
-    cat("\n Percentage of MCMC iterations finding k groups:")
-    print(k_relfreqtab)
-    
-    cat("\n *Note that above frequency summaries of MCMC iterations were made before burn-in or thresholds were applied. 
-          All inference on phi will be made after accounting for burn-in and thresholding. \n")
-  }
-  
-  # filter by number of iterations for each k and address label switching
-  prob_list_by_k = get_probs_by_k(probs = output$group_probs, 
-                                  n_groups = output$k, 
-                                  burn_in = burn_in, 
-                                  iter_threshold = t_hold)
-  
-  group_assign_list_by_k = get_assign_by_k(assign = output$group_assign, 
-                                           n_groups = output$k, 
-                                           burn_in = burn_in, 
-                                           iter_threshold = t_hold)
-  
-  # correct label switching 
-  stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
-                                        prob_list_by_k = prob_list_by_k$prob_list)
-  
-  # summary table by k after burn-in
-  if(print_k_sum == TRUE){
-    cat("\n Summary aftern burn-in and thresholding: \n")
-    
-    num_groups = unlist(sapply(X = 1:length(group_assign_list_by_k),
-                        FUN = function(x){
-                          k = x # list entry
-                          sapply(X = 1:nrow(group_assign_list_by_k[[x]]), 
-                                 FUN = function(x){
-                                   length(unique(group_assign_list_by_k[[k]][x,]))
-                                 })
-                        }))
-    
-    
-    adj_k_freqtab = table(num_groups)
-    adj_k_relfreqtab = round((table(num_groups)/sum(table(num_groups)))*100,1)
-    
-    cat("\n Frequency of MCMC iterations finding k groups after burn-in:")
-    print(adj_k_freqtab)
-    
-    cat("\n Percentage of MCMC iterations finding k groups after burn-in:")
-    print(adj_k_relfreqtab)
-    
-  }
-  
-  # summarize means & variances
-  mean_list_by_k_stephens = list_params_by_k(draws = output$means, 
-                                             k_vec = output$k,
-                                             # burn_in = burn_in, 
-                                             # iter_threshold = thold,
-                                             iter_list = prob_list_by_k$iter_list,
-                                             relabel = TRUE,
-                                             permutation = stephens_result, 
-                                             param_type = "Mean")
-  
-  if(off_diag == FALSE){
-    
-    var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
-                                              iter_list = prob_list_by_k$iter_list,
-                                              k_vec = output$k,
-                                              relabel = TRUE, equal_var = equal_var,
-                                              permutation = stephens_result,
-                                              param_type = "Var")
-    
-    draws = output$vars
-    iter_list = prob_list_by_k$iter_list
-    k_vec = output$k
-    relabel = TRUE
-    equal_var = equal_var
-    permutation = stephens_result
-    param_type = "Var"
-    keep_iters = unlist(iter_list)
-    # break down var part
-    # drop burn-in AND any singleton iterations before proceeding
-    temp_param_list = draws[keep_iters]
-    k_vec = k_vec[keep_iters]
-    param_symbol = "sigma"
-    if(equal_var == TRUE){
-      num_params = rep(1, length(temp_param_list))
-    } else{
-      # num_params = k_vec[keep_iters]
-      num_params = sapply(X = 1:length(temp_param_list),
-                          FUN = function(x){
-                            length(temp_param_list[[x]])
-                          })
-    }
-    
-    # get var diagonal components into similar format as means
-    param_list = vector(mode = "list", length = length(num_params))
-    for(i in 1:length(num_params)){
-      
-      param_list[[i]] = sapply(X = 1:num_params[i], 
-                               FUN = function(x){ # if a scalar -- diag will cause weird results
-                                 if(is.null(dim(temp_param_list[[i]][[x]])) == TRUE){
-                                   temp_param_list[[i]][[x]]
-                                 } else{ # if a matrix
-                                   diag(temp_param_list[[i]][[x]])
-                                 }
-                               })
-      # print(param_list[[i]])
-      
-    }
-    
-    unique_k = sort(unique(k_vec))
-
-    
-  } else{
-    
-    var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
-                                              iter_list = prob_list_by_k$iter_list,
-                                              k_vec = output$k,
-                                              relabel = TRUE, equal_var = equal_var,
-                                              permutation = stephens_result,
-                                              param_type = "Covar")
-  }
-  
-  
-  # compute KL divergence
-  group_assign_list_by_k_corr = correct_group_assign(
-    group_assign_list_by_k = group_assign_list_by_k, 
-    stephens_result = stephens_result)
-  
-  if(calc_perf == TRUE){
-    
-    # KL divergence
-    kl_res = calc_KL_diverg(y = output$data,
-                            mu_est = mean_list_by_k_stephens,
-                            Sigma_est = var_list_by_k_stephens,
-                            group_assign = group_assign_list_by_k_corr,
-                            true_assign = assign_true,
-                            mu_true = mu_true,
-                            Sigma_true = var_true,
-                            equal_var_assump = equal_var,
-                            off_diag = off_diag)
-    
-    # py is truth, px is estimate
-    kl_div = kl_res$sum.KLD.py.px # how far is estimate px from truth py
-    
-    # Adjusted RAND index
-    ARI = lapply(X = 1:length(group_assign_list_by_k), 
-                 FUN = function(x){
-                   k = x 
-                   sapply(X = 1:nrow(group_assign_list_by_k[[k]]), 
-                          FUN = function(x){
-                            mclust::adjustedRandIndex(
-                              x = assign_true, 
-                              y = group_assign_list_by_k[[k]][x,])
-                          })
-                 })
-    
-    
-  }
-  
-  mean_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
-  var_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
-  # total_iter = sapply(X = 1:length(mean_list_by_k_stephens), 
-  #                     FUN = function(x){
-  #                       
-  #                     })
-  for(k in 1:length(mean_list_by_k_stephens)){
-    
-    # make mean summary table
-    mean_summary[[k]] = make_postsum(mcmc_df = mean_list_by_k_stephens[[k]], digits = 2)
-    
-    # make variance summary table
-    var_summary[[k]] = make_postsum(mcmc_df = var_list_by_k_stephens[[k]], digits = 2)
-    
-    k_i = max(as.numeric(stringr::str_extract_all(
-      string = stringr::str_extract_all(string = row.names(mean_summary[[k]]), 
-                                        pattern = "_[:digit:]_"), pattern = "[:digit:]")))
-    if(print_phi_sum == TRUE){
-      # give summary of counts after thresholding
-      cat("\n k =", k_i, " n_iter =", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
-      
-      cat("\n Mean Summary: \n")
-      print(mean_summary[[k]])
-      cat("\n (Co)variance Summary: \n")
-      print(var_summary[[k]])
-    }
-    
-    if(make_traceplot == TRUE){
-      for(dim_i in 1:num_dims){
-        make_traceplot(param_list_by_k = mean_list_by_k_stephens, 
-                       k = k_i, 
-                       component_no = dim_i,
-                       p= num_dims,
-                       # title_note = cat("K=", k_i),
-                       param_type = "Mean")
-      }
-    }
-  }
+# ### doing post sum fxn step by step to debug
+# 
+# ######################## DEFINE NEW FUNCTIONS ##################################
+# 
+# 
+# print_phi_sum = TRUE
+# print_k_sum = TRUE
+# make_traceplot = FALSE
+# burn_in = 2000
+# t_hold = 250
+# num_dims = p
+# calc_perf = TRUE
+# mu_true = output$truth$mu_true
+# var_true = output$truth$var_true
+# assign_true = output$truth$assign_true
+# equal_var = TRUE
+# off_diag = FALSE
+# 
+#   # output is the list of results from the DPMM simulation study function
+#   # dataset is a numeric argument to summarize a specific result in the output, the desired index
+#   # sum_all is a logical argument to provide a summary of all data sets --- NOT CURRENTLY IMPLEMENTED
+#   # print_k_sum is a logical, if TRUE print summary of no groups found 
+#   # print_phi_sum is a logical, if TRUE print summary of estimated model parameters
+#   # burn_in is # of burn in iterations to discard
+#   # t_hold is the threshold # of iterations for a given k in order to report results
+#   # num_dims is the dimensionality of the problem (i.e. a bivariate normal is dim 2)
+#   # calc_perf is a logical - whether to calculate performance metrics (currently KLD and ARI)
+#   # mu_true and var_true are list arguments with the true values of the model parameters
+#   # from a simulation study used to calculate the KL divergence 
+#   # equal_var is a logical argument for whether the equal variance assumption was made
+#   # in the model. The function will then expect a scalar variance instead of a var-covar matrix 
+#   
+#   start = Sys.time()
+#   
+#   # show basic summary
+#   k_freqtab = table(output$k)
+#   k_relfreqtab = round((table(output$k)/sum(table(output$k)))*100,1)
+#   
+#   if(print_k_sum == TRUE){
+#     cat("\n Raw summary: \n")
+#     
+#     cat("\n Frequency of MCMC iterations finding k groups:")
+#     print(k_freqtab)
+#     
+#     cat("\n Percentage of MCMC iterations finding k groups:")
+#     print(k_relfreqtab)
+#     
+#     cat("\n *Note that above frequency summaries of MCMC iterations were made before burn-in or thresholds were applied. 
+#           All inference on phi will be made after accounting for burn-in and thresholding. \n")
+#   }
+#   
+#   # filter by number of iterations for each k and address label switching
+#   prob_list_by_k = get_probs_by_k(probs = output$group_probs, 
+#                                   n_groups = output$k, 
+#                                   burn_in = burn_in, 
+#                                   iter_threshold = t_hold)
+#   
+#   group_assign_list_by_k = get_assign_by_k(assign = output$group_assign, 
+#                                            n_groups = output$k, 
+#                                            burn_in = burn_in, 
+#                                            iter_threshold = t_hold)
+#   
+#   # correct label switching 
+#   stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
+#                                         prob_list_by_k = prob_list_by_k$prob_list)
+#   
+#   # summary table by k after burn-in
+#   if(print_k_sum == TRUE){
+#     cat("\n Summary aftern burn-in and thresholding: \n")
+#     
+#     num_groups = unlist(sapply(X = 1:length(group_assign_list_by_k),
+#                         FUN = function(x){
+#                           k = x # list entry
+#                           sapply(X = 1:nrow(group_assign_list_by_k[[x]]), 
+#                                  FUN = function(x){
+#                                    length(unique(group_assign_list_by_k[[k]][x,]))
+#                                  })
+#                         }))
+#     
+#     
+#     adj_k_freqtab = table(num_groups)
+#     adj_k_relfreqtab = round((table(num_groups)/sum(table(num_groups)))*100,1)
+#     
+#     cat("\n Frequency of MCMC iterations finding k groups after burn-in:")
+#     print(adj_k_freqtab)
+#     
+#     cat("\n Percentage of MCMC iterations finding k groups after burn-in:")
+#     print(adj_k_relfreqtab)
+#     
+#   }
+#   
+#   # summarize means & variances
+#   mean_list_by_k_stephens = list_params_by_k(draws = output$means, 
+#                                              k_vec = output$k,
+#                                              # burn_in = burn_in, 
+#                                              # iter_threshold = thold,
+#                                              iter_list = prob_list_by_k$iter_list,
+#                                              relabel = TRUE,
+#                                              permutation = stephens_result, 
+#                                              param_type = "Mean")
+#   
+#   if(off_diag == FALSE){
+#     
+#     var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
+#                                               iter_list = prob_list_by_k$iter_list,
+#                                               k_vec = output$k,
+#                                               relabel = TRUE, equal_var = equal_var,
+#                                               permutation = stephens_result,
+#                                               param_type = "Var")
+# 
+#     
+#     
+#   } else{
+#     
+#     var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
+#                                               iter_list = prob_list_by_k$iter_list,
+#                                               k_vec = output$k,
+#                                               relabel = TRUE, equal_var = equal_var,
+#                                               permutation = stephens_result,
+#                                               param_type = "Covar")
+#   }
+#   
+#   
+#   # compute KL divergence
+#   group_assign_list_by_k_corr = correct_group_assign(
+#     group_assign_list_by_k = group_assign_list_by_k, 
+#     stephens_result = stephens_result)
+#   
+#   if(calc_perf == TRUE){
+#     
+#     # KL divergence
+#     kl_res = calc_KL_diverg(y = output$data,
+#                             mu_est = mean_list_by_k_stephens,
+#                             Sigma_est = var_list_by_k_stephens,
+#                             group_assign = group_assign_list_by_k_corr,
+#                             true_assign = assign_true,
+#                             mu_true = mu_true,
+#                             Sigma_true = var_true,
+#                             equal_var_assump = equal_var,
+#                             off_diag = off_diag)
+#     
+#     # py is truth, px is estimate
+#     kl_div = kl_res$sum.KLD.py.px # how far is estimate px from truth py
+#     
+#     # Adjusted RAND index
+#     ARI = lapply(X = 1:length(group_assign_list_by_k), 
+#                  FUN = function(x){
+#                    k = x 
+#                    sapply(X = 1:nrow(group_assign_list_by_k[[k]]), 
+#                           FUN = function(x){
+#                             mclust::adjustedRandIndex(
+#                               x = assign_true, 
+#                               y = group_assign_list_by_k[[k]][x,])
+#                           })
+#                  })
+#     
+#     
+#   }
+#   
+#   mean_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
+#   var_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
+#   # total_iter = sapply(X = 1:length(mean_list_by_k_stephens), 
+#   #                     FUN = function(x){
+#   #                       
+#   #                     })
+#   for(k in 1:length(mean_list_by_k_stephens)){
+#     
+#     # make mean summary table
+#     mean_summary[[k]] = make_postsum(mcmc_df = mean_list_by_k_stephens[[k]], digits = 2)
+#     
+#     # make variance summary table
+#     var_summary[[k]] = make_postsum(mcmc_df = var_list_by_k_stephens[[k]], digits = 2)
+#     
+#     k_i = max(as.numeric(stringr::str_extract_all(
+#       string = stringr::str_extract_all(string = row.names(mean_summary[[k]]), 
+#                                         pattern = "_[:digit:]_"), pattern = "[:digit:]")))
+#     if(print_phi_sum == TRUE){
+#       # give summary of counts after thresholding
+#       cat("\n k =", k_i, " n_iter =", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
+#       
+#       cat("\n Mean Summary: \n")
+#       print(mean_summary[[k]])
+#       cat("\n (Co)variance Summary: \n")
+#       print(var_summary[[k]])
+#     }
+#     
+#     if(make_traceplot == TRUE){
+#       for(dim_i in 1:num_dims){
+#         make_traceplot(param_list_by_k = mean_list_by_k_stephens, 
+#                        k = k_i, 
+#                        component_no = dim_i,
+#                        p= num_dims,
+#                        # title_note = cat("K=", k_i),
+#                        param_type = "Mean")
+#       }
+#     }
+#   }
