@@ -443,7 +443,7 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
             
             # not subtracted 1 for kth observation here -- do within function
             split_counts = table(split_temp_group_assign[scan,])
-            merge_counts = table(split_temp_group_assign[scan,])
+            merge_counts = table(merge_temp_group_assign[scan,])
             
             #current_obs_index = which(temp_group_assign[scan,] == obs)
             #split_group_lab_index1 = which(temp_group_assign[scan,] == split_lab[1])
