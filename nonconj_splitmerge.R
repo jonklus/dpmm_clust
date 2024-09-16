@@ -295,7 +295,9 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
   # bookkeeping - group labels
   subset_index = which(split_temp_group_assign[1,] %in% c(lab1, lab2)) 
   existing_group_index = which(label_assign == lab1) 
-
+  original_param_index = which(curr_labels == lab1)
+  original_mu = means[[original_param_index]]
+  original_sigma = vars[[original_param_index]]
   
   # cat("split_labs:", split_lab)
   # cat("\n")
@@ -564,8 +566,8 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
     prob2 = log(alpha) + (log(prob2_num) - log(prob2_denom))
     
     ## likelihood ratio
-    subset_index_grp1 = which(temp_group_assign[sm_iter+1,] %in% split_lab[1]) 
-    subset_index_grp2 = which(temp_group_assign[sm_iter+1,] %in% split_lab[2]) 
+    subset_index_grp1 = which(split_temp_group_assign[sm_iter+1,] %in% split_lab[1]) 
+    subset_index_grp2 = which(split_temp_group_assign[sm_iter+1,] %in% split_lab[2]) 
     
     ### component 1 - numerator I (group 1 - split proposal)
     prob3_num1 = 0
@@ -590,8 +592,8 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
     prob3_denom = 0
     for(obs_ind in 1:length(subset_index)){
       val = ll_components_DEV(obs_ind = subset_index[obs_ind], y = y, 
-                              mu = merge_means[[sm_iter+1]][[1]], 
-                              Sigma = merge_vars[[sm_iter+1]][[1]])
+                              mu = original_mu, 
+                              Sigma = original_sigma)
       prob3_denom = prob3_denom + log(val)
     }
     
@@ -620,6 +622,8 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
       
       # if new group created by split, update mean and variance
       ## add new means and variances from finall Gibbs scan to relevant vectors/lists
+      
+      ### TEST THIS PIECE, NOT SURE IF CORRECT!
       length_Sigma = length(Sigma)
       Sigma[[which_split_labs[1]]] = merge_vars[[sm_iter+1]][[1]]
       Sigma[[length_Sigma+1]] = merge_vars[[sm_iter+1]][[2]]
@@ -688,6 +692,7 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
         # initialize current restricted Gibbs scan iteration with previous result
         split_temp_group_assign[scan,] = split_temp_group_assign[(scan-1),] 
         merge_temp_group_assign[scan,] = merge_temp_group_assign[(scan-1),] 
+        
         split_means[[scan]] = split_means[[scan-1]]
         split_vars[[scan]] = split_vars[[scan-1]] 
         
