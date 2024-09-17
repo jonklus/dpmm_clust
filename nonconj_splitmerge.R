@@ -27,19 +27,17 @@ update_phi_DEV <- function(curr_label, group_assign, count_assign, y,
   sigma0 = diag(Sigma0)[1]
   
   # draw group mean
-  
-  ## unravel list of p*1 observations, put in matrix, find sum
-  sum_y_i = rowSums(matrix(unlist(y[group_assign == curr_label]), nrow = p))
 
-  mu_cov = diag(sigma2/(1/r + count_assign), p)
+  mu_cov = 1/(count_assign/sigma2 + 1/sigma0)
   
-  mu_mean = (sum_y_i + mu0/r)/(1/r + count_assign)''
+  mu_mean = (sum_y_i/sigma2 + mu0/sigma0)*mu_cov
   
-  mu = t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
-                          mean = mu_mean, 
-                          sigma = mu_cov))
+  mu_list = t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
+                              mean = mu_mean, 
+                              sigma = diag(mu_cov,p)))
   
-
+  
+  
   # draw group variance
   loss_y_i = rowSums((matrix(unlist(y[group_assign == curr_label]), nrow = p) - mu)^2)
 
@@ -52,8 +50,8 @@ update_phi_DEV <- function(curr_label, group_assign, count_assign, y,
   #                                rate = loss_y_i[,x]/2 + b))
   #                })
   Sigma = diag(1/rgamma(n = 1, 
-                        shape = (p*(count_assign+1) + 2*a)/2,
-                        rate = sum(loss_y_i)/2 + loss_mu_k/(2*r) + b), p)
+                        shape = (p*count_assign + 2*a)/2,
+                        rate = sum(loss_y_i)/2 + b), p)
   
   return(list(mu = mu, Sigma = Sigma))
   
@@ -477,6 +475,22 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
       } # iterate through all observations in the two split groups under consideration
       
       # update phi -- should this be done after each scan or after each observation?
+      
+      # update counts after scan
+      split_count_assign = as.numeric(table(split_temp_group_assign[scan,]))
+      split_label_assign = as.numeric(names(table(split_temp_group_assign[scan,])))
+      # split_singletons = split_label_assign[which(split_count_assign == 1)]
+      
+      merge_count_assign = as.numeric(table(merge_temp_group_assign[scan,]))
+      merge_label_assign = as.numeric(names(table(merge_temp_group_assign[scan,])))
+      # merge_singletons = merge_label_assign[which(merge_count_assign == 1)]
+      # should never be a merge singleton --- need at least 2 anchor observations
+      
+      split_counts = table(split_temp_group_assign[scan,])
+      merge_counts = table(split_temp_group_assign[scan,])
+      
+      split_group_count_index = which(as.numeric(names(split_counts)) %in% split_lab)
+      
       split_phi = lapply(X = split_lab, 
                           FUN = function(x){
                             update_phi_DEV(curr_label = x, 
@@ -506,21 +520,21 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
     
     
     # calculate & evaluate acceptance prob
-    
+  
     # update counts after scans
-    split_count_assign = as.numeric(table(split_temp_group_assign[sm_iter+1,]))
-    split_label_assign = as.numeric(names(table(split_temp_group_assign[sm_iter+1,])))
-    # split_singletons = split_label_assign[which(split_count_assign == 1)]
-    
-    merge_count_assign = as.numeric(table(merge_temp_group_assign[sm_iter+1,]))
-    merge_label_assign = as.numeric(names(table(merge_temp_group_assign[sm_iter+1,])))
-    # merge_singletons = merge_label_assign[which(merge_count_assign == 1)]
-    # should never be a merge singleton --- need at least 2 anchor observations
-    
-    split_counts = table(split_temp_group_assign[sm_iter+1,])
-    merge_counts = table(split_temp_group_assign[sm_iter+1,])
-    
-    split_group_count_index = which(as.numeric(names(split_counts)) %in% split_lab)
+    # split_count_assign = as.numeric(table(split_temp_group_assign[sm_iter+1,]))
+    # split_label_assign = as.numeric(names(table(split_temp_group_assign[sm_iter+1,])))
+    # # split_singletons = split_label_assign[which(split_count_assign == 1)]
+    # 
+    # merge_count_assign = as.numeric(table(merge_temp_group_assign[sm_iter+1,]))
+    # merge_label_assign = as.numeric(names(table(merge_temp_group_assign[sm_iter+1,])))
+    # # merge_singletons = merge_label_assign[which(merge_count_assign == 1)]
+    # # should never be a merge singleton --- need at least 2 anchor observations
+    # 
+    # split_counts = table(split_temp_group_assign[sm_iter+1,])
+    # merge_counts = table(split_temp_group_assign[sm_iter+1,])
+    # 
+    # split_group_count_index = which(as.numeric(names(split_counts)) %in% split_lab)
     
     ## proposal probability
     
