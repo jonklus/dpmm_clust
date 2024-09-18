@@ -27,7 +27,8 @@ update_phi_DEV <- function(curr_label, group_assign, count_assign, y,
   sigma0 = diag(Sigma0)[1]
   
   # draw group mean
-
+  sum_y_i = rowSums(matrix(unlist(y[group_assign == curr_label]), nrow = p))
+  
   mu_cov = 1/(count_assign/sigma2 + 1/sigma0)
   
   mu_mean = (sum_y_i/sigma2 + mu0/sigma0)*mu_cov
@@ -39,7 +40,7 @@ update_phi_DEV <- function(curr_label, group_assign, count_assign, y,
   
   
   # draw group variance
-  loss_y_i = rowSums((matrix(unlist(y[group_assign == curr_label]), nrow = p) - mu)^2)
+  loss_y_i = rowSums((matrix(unlist(y[group_assign == curr_label]), nrow = p) - c(mu))^2)
 
   loss_mu_k = t(mu0 - matrix(mu, nrow = p))%*%(mu0 - matrix(mu, nrow = p))
 
@@ -334,9 +335,9 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
         # draw params from prior - random launch state for split proposal
         split_means[[1]] = lapply(X = 1:2, 
                                   FUN = function(x){
-                                    mvtnorm::rmvnorm(n = 1, 
+                                    t(mvtnorm::rmvnorm(n = 1, 
                                                      mean = mu0,
-                                                     sigma = Sigma0)
+                                                     sigma = Sigma0))
                                   })
         
         split_vars[[1]] = lapply(X = 1:2, 
@@ -348,7 +349,7 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
                                   })
         
         # draw params from prior - random launch state for merge proposal
-        merge_means[[1]] = mvtnorm::rmvnorm(n = 1, mean = mu0, sigma = Sigma0)
+        merge_means[[1]] = t(mvtnorm::rmvnorm(n = 1, mean = mu0, sigma = Sigma0))
         merge_vars[[1]] = diag(rgamma(n = 1, shape = a, rate = b), p)  
         # merge_vars[[1]] = LaplacesDemon::rinvwishart(nu = nu, S = lambda0)
         
@@ -474,7 +475,7 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
         
       } # iterate through all observations in the two split groups under consideration
       
-      # update phi -- should this be done after each scan or after each observation?
+      # update phi -- after each scan
       
       # update counts after scan
       split_count_assign = as.numeric(table(split_temp_group_assign[scan,]))
@@ -487,15 +488,17 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
       # should never be a merge singleton --- need at least 2 anchor observations
       
       split_counts = table(split_temp_group_assign[scan,])
-      merge_counts = table(split_temp_group_assign[scan,])
+      merge_counts = table(merge_temp_group_assign[scan,])
       
       split_group_count_index = which(as.numeric(names(split_counts)) %in% split_lab)
+      merge_group_count_index = which(as.numeric(names(merge_counts)) %in% merge_lab)
       
-      split_phi = lapply(X = split_lab, 
+      split_phi = lapply(X = 1:2, #split_lab, 
                           FUN = function(x){
-                            update_phi_DEV(curr_label = x, 
+                            update_phi_DEV(curr_label = split_lab[x], 
                                            group_assign = split_temp_group_assign[scan,], 
-                                           count_assign = split_count_assign, y = y, 
+                                           count_assign = split_count_assign[split_group_count_index][x], 
+                                           y = y, 
                                            mu = split_means[[scan]][[x]], 
                                            mu0 = mu0, 
                                            Sigma = split_vars[[scan]][[x]], 
@@ -504,7 +507,8 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
       
       merge_phi = update_phi_DEV(curr_label = merge_lab, 
                                  group_assign = merge_temp_group_assign[scan,], 
-                                 count_assign = merge_count_assign, y = y, 
+                                 count_assign = merge_count_assign[merge_group_count_index][x], 
+                                 y = y, 
                                  mu = merge_means[[scan]], 
                                  mu0 = mu0, 
                                  Sigma = merge_vars[[scan]], 
