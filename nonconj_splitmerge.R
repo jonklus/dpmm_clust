@@ -412,7 +412,7 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
 
             # update group assignment probabilities 
             
-            split_assign_prob = nonconj_component_prob(
+            split_assign_prob = nonconj_component_prob_c(
                 obs = obs, split_labs = split_lab,
                 group_assign = split_temp_group_assign[scan,], 
                 y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
@@ -452,7 +452,7 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
             
             # current observation under consideration cannot be included here
             
-            split_assign_prob = nonconj_component_prob(
+            split_assign_prob = nonconj_component_prob_c(
               obs = obs, split_labs = split_lab,
               group_assign = split_temp_group_assign[scan,], 
               y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
@@ -765,7 +765,7 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
             
             # update group assignment probabilities 
             
-            split_assign_prob = nonconj_component_prob(
+            split_assign_prob = nonconj_component_prob_c(
               obs = obs, split_labs = split_lab,
               group_assign = split_temp_group_assign[scan,], 
               y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
@@ -805,7 +805,7 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
             
             # current observation under consideration cannot be included here
             
-            split_assign_prob = nonconj_component_prob(
+            split_assign_prob = nonconj_component_prob_c(
               obs = obs, split_labs = split_lab,
               group_assign = split_temp_group_assign[scan,], 
               y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
