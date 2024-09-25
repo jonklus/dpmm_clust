@@ -78,7 +78,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
     
     # summary table by k after burn-in
     if(print_k_sum == TRUE){
-      cat("\n Summary aftern burn-in and thresholding: \n")
+      cat("\n Summary after burn-in and thresholding: \n")
       
       num_groups = unlist(sapply(X = 1:length(group_assign_list_by_k),
                                  FUN = function(x){
@@ -103,44 +103,88 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
     
     
     # correct label switching 
-    stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
-                                          prob_list_by_k = prob_list_by_k$prob_list)
     
-    # summarize means & variances
-    mean_list_by_k_stephens = list_params_by_k(draws = output$means, 
-                                               k_vec = output$k,
-                                               # burn_in = burn_in, 
-                                               # iter_threshold = thold,
-                                               iter_list = prob_list_by_k$iter_list,
-                                               relabel = TRUE,
-                                               permutation = stephens_result, 
-                                               param_type = "Mean")
+    # what if only 1 group is found --- need to be sure this won't fail
+    if((length(group_assign_list_by_k) == 1) & (unique(as.numeric(names(adj_k_freqtab))) == 1)){
+      # if only K=1, skip stephens steps (but keeping same variable names out of convencience
+      # for later steps)
     
-    if(off_diag == FALSE){
-      
-      var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
-                                                iter_list = prob_list_by_k$iter_list,
-                                                k_vec = output$k,
-                                                relabel = TRUE, equal_var = equal_var,
-                                                permutation = stephens_result,
-                                                param_type = "Var")
-      
+        
+        # summarize means & variances
+        mean_list_by_k_stephens = list_params_by_k(draws = output$means, 
+                                                   k_vec = output$k,
+                                                   # burn_in = burn_in, 
+                                                   # iter_threshold = thold,
+                                                   iter_list = prob_list_by_k$iter_list,
+                                                   relabel = FALSE, 
+                                                   param_type = "Mean")
+        
+        if(off_diag == FALSE){
+          
+          var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
+                                                    iter_list = prob_list_by_k$iter_list,
+                                                    k_vec = output$k,
+                                                    relabel = FALSE, equal_var = equal_var,
+                                                    param_type = "Var")
+          
+          
+        } else{
+          
+          var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
+                                                    iter_list = prob_list_by_k$iter_list,
+                                                    k_vec = output$k,
+                                                    relabel = FALSE, equal_var = equal_var,
+                                                    param_type = "Covar")
+        }
+        
+        
+ 
+        group_assign_list_by_k_corr = group_assign_list_by_k # no need to change
       
     } else{
       
-        var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
-                                              iter_list = prob_list_by_k$iter_list,
-                                              k_vec = output$k,
-                                              relabel = TRUE, equal_var = equal_var,
-                                              permutation = stephens_result,
-                                              param_type = "Covar")
+        stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
+                                              prob_list_by_k = prob_list_by_k$prob_list)
+        
+        # summarize means & variances
+        mean_list_by_k_stephens = list_params_by_k(draws = output$means, 
+                                                   k_vec = output$k,
+                                                   # burn_in = burn_in, 
+                                                   # iter_threshold = thold,
+                                                   iter_list = prob_list_by_k$iter_list,
+                                                   relabel = TRUE,
+                                                   permutation = stephens_result, 
+                                                   param_type = "Mean")
+        
+        if(off_diag == FALSE){
+          
+          var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
+                                                    iter_list = prob_list_by_k$iter_list,
+                                                    k_vec = output$k,
+                                                    relabel = TRUE, equal_var = equal_var,
+                                                    permutation = stephens_result,
+                                                    param_type = "Var")
+          
+          
+        } else{
+          
+          var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
+                                                    iter_list = prob_list_by_k$iter_list,
+                                                    k_vec = output$k,
+                                                    relabel = TRUE, equal_var = equal_var,
+                                                    permutation = stephens_result,
+                                                    param_type = "Covar")
         }
-
+        
+        
+        group_assign_list_by_k_corr = correct_group_assign(
+          group_assign_list_by_k = group_assign_list_by_k, 
+          stephens_result = stephens_result)
+      
+    }
     
-    # compute KL divergence
-    group_assign_list_by_k_corr = correct_group_assign(
-      group_assign_list_by_k = group_assign_list_by_k, 
-      stephens_result = stephens_result)
+    
+    
     
     if(calc_perf == TRUE){
       
