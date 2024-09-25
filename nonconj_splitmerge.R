@@ -687,9 +687,9 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
         # draw params from prior - random launch state for split proposal
         split_means[[1]] = lapply(X = 1:2, 
                                   FUN = function(x){
-                                    mvtnorm::rmvnorm(n = 1, 
+                                    t(mvtnorm::rmvnorm(n = 1, 
                                                      mean = mu0,
-                                                     sigma = Sigma0)
+                                                     sigma = Sigma0))
                                   })
         
         split_vars[[1]] = lapply(X = 1:2, 
@@ -701,7 +701,7 @@ if((split_merge == TRUE) & (s %% sm_iter == 0)){
                                  })
         
         # draw params from prior - random launch state for merge proposal
-        merge_means[[1]] = mvtnorm::rmvnorm(n = 1, mean = mu0, sigma = Sigma0)
+        merge_means[[1]] = t(mvtnorm::rmvnorm(n = 1, mean = mu0, sigma = Sigma0))
         merge_vars[[1]] = diag(rgamma(n = 1, shape = a, rate = b), p)
         # merge_vars[[1]] = LaplacesDemon::rinvwishart(nu = nu, S = lambda0)
         

@@ -38,7 +38,7 @@ file_ext = list.dirs(data_path)
 
 # for each extension, make a new element of a data table with simulation attributes
 summary_table = data.frame(Model = NA, Scenario = NA, SM = NA, Tag = NA, n_obs = NA, dataset_no = NA,
-                           ARI = NA, KL = NA, Time = NA) # should add , SumTime = NA for mod summary compute time
+                           ARI = NA, KL = NA, Time = NA, MAP_K = NA) # should add , SumTime = NA for mod summary compute time
 
 for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
                                       # skip second one, Archive directory
@@ -47,7 +47,7 @@ for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
   if(length(file_list) > 0){
     
     temp_summary_table = data.frame(Model = NA, Scenario = NA, SM = NA, Tag = NA, n_obs = NA, dataset_no = NA,
-                                    ARI = NA, KL = NA, Time = NA) # should add , SumTime = NA for mod summary compute time
+                                    ARI = NA, KL = NA, Time = NA, MAP_K = NA) # should add , SumTime = NA for mod summary compute time
     # parse out attributes and save
     short_file_ext = stringr::str_split(string = file_ext[ext_index], pattern = "/MODSUM")[[1]][2]
     parsed_dirname = unlist(stringr::str_extract_all(string = file_ext[ext_index], pattern = "_[:alnum:]+"))
@@ -62,11 +62,16 @@ for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
     sum_bydataset = t(sapply(X = 1:length(file_list), 
                              FUN = function(x){
                                mod_sum = readRDS(paste0(file_ext[ext_index], "/", file_list[x]))
-                               c(mod_sum$mean_ARI, mod_sum$kl_div, as.numeric(mod_sum$fit_runtime))
+                               c(mod_sum$mean_ARI, 
+                                 mod_sum$kl_div, 
+                                 as.numeric(mod_sum$fit_runtime),
+                                 as.numeric(names(mod_sum$k_freqtab)[which.max(as.numeric(mod_sum$k_freqtab))])
+                                 )
                              }))
     temp_summary_table[, "ARI"] = sum_bydataset[,1]
     temp_summary_table[, "KL"] = sum_bydataset[,2]
     temp_summary_table[, "Time"] = sum_bydataset[,3]
+    temp_summary_table[, "MAP_K"] = sum_bydataset[,4]
     summary_table = rbind(summary_table, temp_summary_table)
     
   }
@@ -85,7 +90,7 @@ summary_table %>%
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
   dplyr::summarize(Count = n()) %>%
-  tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = Count) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = Count) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
   knitr::kable(caption = "Number of data sets completed")
@@ -95,7 +100,7 @@ summary_table %>%
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
   dplyr::summarize(Time = round(mean(Time),2)) %>%
-  tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = Time) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = Time) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
   knitr::kable(caption = "Average computation time")
@@ -104,7 +109,7 @@ summary_table %>%
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
   dplyr::summarize(mean_ARI = round(mean(ARI),2)) %>%
-  tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = mean_ARI) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = mean_ARI) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
   knitr::kable(caption = "Adjusted RAND Index")
@@ -113,11 +118,40 @@ summary_table %>%
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
   dplyr::summarize(KL = round(mean(KL),2)) %>%
-  tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = KL) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = KL) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
   knitr::kable(caption = "KL Divergence")
 ```
+
+## What was the MAP estimate for K in each simulation?
+
+```{r}
+# median
+summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(MAP = median(MAP_K)) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = MAP) %>%
+  # keep first 2 columns with model info, sort remaining cols with results by n
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
+  knitr::kable(caption = "Median MAP value for K across 100 simulated data sets.")
+
+# mean
+summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(MAP = round(mean(MAP_K),2)) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = MAP) %>%
+  # keep first 2 columns with model info, sort remaining cols with results by n
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
+  knitr::kable(caption = "Mean MAP value for K across 100 simulated data sets.")
+
+# min
+
+# max
+```
+
 
 ## Make LaTeX tables for thesis draft
 
@@ -127,7 +161,7 @@ table1 = summary_table %>%
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
   dplyr::summarize(Count = n()) %>%
-  tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = Count) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = Count) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2)
 
@@ -138,7 +172,7 @@ table2 = summary_table %>%
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
   dplyr::summarize(Time = round(mean(Time),2)) %>%
-  tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = Time) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = Time) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) 
 
@@ -148,7 +182,7 @@ table3 = summary_table %>%
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
   dplyr::summarize(mean_ARI = round(mean(ARI),2)) %>%
-  tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = mean_ARI) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = mean_ARI) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) 
 
@@ -158,10 +192,19 @@ table4 = summary_table %>%
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
   dplyr::summarize(KL = round(mean(KL),2)) %>%
-  tidyr::pivot_wider(names_from = c(n_obs, Scenario), values_from = KL) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = KL) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2)
 
 xtable::xtable(table4)
+
+table5 = summary_table %>% 
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(MAP = median(MAP_K)) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = MAP) %>%
+  # keep first 2 columns with model info, sort remaining cols with results by n
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2)
+
+xtable::xtable(table5, digits = 1)
 ```
 

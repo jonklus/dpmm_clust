@@ -85,8 +85,12 @@ summary_table = summary_table[-1,] %>% # get rid of first row of NAs
 
 ```{r, message=FALSE}
 
+# model_select = c("conjDEV", "conjDEE", "nonconjDEV")
+model_select = c("conjUVV", "nonconjUVV")
+scenario_select = "3close"
+
 summary_table %>%
-  dplyr::filter(Scenario == "3close") %>% # (Model %in% c("conjDEV", "conjDEE", "nonconjDEV")) %>%
+  dplyr::filter(Scenario == scenario_select, Model %in% model_select) %>% 
   dplyr::group_by(Model, Scenario, PriorTag) %>%
   dplyr::summarize(Count = n()) %>%
   tidyr::pivot_wider(names_from = c(PriorTag), values_from = Count) %>%
@@ -96,28 +100,28 @@ summary_table %>%
 
 # time
 summary_table %>% 
-  # dplyr::filter(Tag == "ENAR") %>%
-  dplyr::group_by(Model, Scenario, Prior1, Prior2) %>%
+  dplyr::filter(Scenario == scenario_select, Model %in% model_select) %>% 
+  dplyr::group_by(Model, Scenario, PriorTag) %>%
   dplyr::summarize(Time = round(mean(Time),2)) %>%
-  tidyr::pivot_wider(names_from = c(Scenario), values_from = Time) %>%
+  tidyr::pivot_wider(names_from = PriorTag, values_from = Time) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   # dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
   knitr::kable(caption = "Average computation time")
 
 summary_table %>% 
-  # dplyr::filter(Tag == "ENAR") %>%
-  dplyr::group_by(Model, Scenario, Prior1, Prior2) %>%
+  dplyr::filter(Scenario == scenario_select, Model %in% model_select) %>% 
+  dplyr::group_by(Model, Scenario, PriorTag) %>%
   dplyr::summarize(mean_ARI = round(mean(ARI),2)) %>%
-  tidyr::pivot_wider(names_from = c(Scenario), values_from = mean_ARI) %>%
+  tidyr::pivot_wider(names_from = c(PriorTag), values_from = mean_ARI) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   # dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
   knitr::kable(caption = "Adjusted RAND Index")
 
 summary_table %>% 
-  # dplyr::filter(Tag == "ENAR") %>%
-  dplyr::group_by(Model, Prior1, Prior2, Scenario) %>%
+  dplyr::filter(Scenario == scenario_select, Model %in% model_select) %>% 
+  dplyr::group_by(Model, Scenario, PriorTag) %>%
   dplyr::summarize(KL = round(mean(KL),2)) %>%
-  tidyr::pivot_wider(names_from = c(Scenario), values_from = KL) %>%
+  tidyr::pivot_wider(names_from = c(PriorTag), values_from = KL) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   # dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
   knitr::kable(caption = "KL Divergence")
