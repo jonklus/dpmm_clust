@@ -111,6 +111,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
     
         
         # summarize means & variances
+      cat("\n off_diag =", off_diag)
         mean_list_by_k_stephens = list_params_by_k(draws = output$means, 
                                                    k_vec = output$k,
                                                    # burn_in = burn_in, 
@@ -147,6 +148,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
                                               prob_list_by_k = prob_list_by_k$prob_list)
         
         # summarize means & variances
+    
         mean_list_by_k_stephens = list_params_by_k(draws = output$means, 
                                                    k_vec = output$k,
                                                    # burn_in = burn_in, 

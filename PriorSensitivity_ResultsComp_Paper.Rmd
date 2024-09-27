@@ -39,7 +39,7 @@ file_ext = list.dirs(data_path)
 # for each extension, make a new element of a data table with simulation attributes
 summary_table = data.frame(Model = NA, Scenario = NA, SM = NA, Prior1 = NA, Prior2 = NA, 
                            Tag = NA, n_obs = NA, dataset_no = NA,
-                           ARI = NA, KL = NA, Time = NA) # should add , SumTime = NA for mod summary compute time
+                           ARI = NA, KL = NA, Time = NA, MAP_K = NA) 
 
 for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
                                       # skip second one, Archive directory
@@ -49,7 +49,8 @@ for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
     
     temp_summary_table = data.frame(Model = NA, Scenario = NA, SM = NA, Prior1 = NA, Prior2 = NA, 
                                     Tag = NA, n_obs = NA, dataset_no = NA,
-                                    ARI = NA, KL = NA, Time = NA) # should add , SumTime = NA for mod summary compute time
+                                    ARI = NA, KL = NA, Time = NA, MAP_K = NA) 
+    
     # parse out attributes and save
     short_file_ext = stringr::str_split(string = file_ext[ext_index], pattern = "/MODSUM")[[1]][2]
     parsed_dirname = unlist(stringr::str_extract_all(string = short_file_ext, pattern = "_[:alnum:]+\\.*[:alnum:]+"))
@@ -66,11 +67,16 @@ for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
     sum_bydataset = t(sapply(X = 1:length(file_list), 
                              FUN = function(x){
                                mod_sum = readRDS(paste0(file_ext[ext_index], "/", file_list[x]))
-                               c(mod_sum$mean_ARI, mod_sum$kl_div, as.numeric(mod_sum$fit_runtime))
+                               c(mod_sum$mean_ARI, 
+                                 mod_sum$kl_div, 
+                                 as.numeric(mod_sum$fit_runtime),
+                                 as.numeric(names(mod_sum$k_freqtab)[which.max(as.numeric(mod_sum$k_freqtab))]))
                              }))
+                      
     temp_summary_table[, "ARI"] = sum_bydataset[,1]
     temp_summary_table[, "KL"] = sum_bydataset[,2]
     temp_summary_table[, "Time"] = sum_bydataset[,3]
+    temp_summary_table[, "MAP_K"] = sum_bydataset[,4]
     summary_table = rbind(summary_table, temp_summary_table)
     
   }
@@ -125,6 +131,16 @@ summary_table %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   # dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
   knitr::kable(caption = "KL Divergence")
+
+# median
+summary_table %>% 
+  dplyr::filter(Scenario == scenario_select, Model %in% model_select) %>% 
+  dplyr::group_by(Model, Scenario, PriorTag) %>%
+  dplyr::summarize(MAP = median(MAP_K)) %>%
+  tidyr::pivot_wider(names_from = c(PriorTag), values_from = MAP) %>%
+  # keep first 2 columns with model info, sort remaining cols with results by n
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
+  knitr::kable(caption = "Median MAP value for K across 100 simulated data sets.")
 ```
 
 

@@ -461,7 +461,7 @@ relabel_groups <- function(curr_label_mat, permutations, means){
 # }
 
 
-list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_threshold = 0, 
+list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, # burn_in = 50, iter_threshold = 0, 
                              relabel = FALSE, permutation = NULL, param_type, equal_var = FALSE){
   ## Function takes a list of length no. MCMC iterations and outputs a list of 
   ## data frames where each list element contains the draws for iterations
@@ -662,7 +662,7 @@ list_params_by_k <- function(draws, iter_list, k_vec, # burn_in = 50, iter_thres
         names(param_list_by_k[[i]]) = gtools::mixedsort(col_header_names)
         
         if(off_diag == TRUE){
-          
+          stop("This function not yet available. Please contact your manager for assistance. ")
         }
         
       }
