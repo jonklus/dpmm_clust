@@ -29,7 +29,7 @@ library(scatterplot3d)
 # data_path = "//GENE.bst.rochester.edu/Projects/JKSTproj/BlueHive_Sim_Results/"
 
 # running on server
-data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/PriorSensitivity"
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryProposalPriorSens"
 
 # dev_withSM = readRDS(paste0(data_path, "/MODSUM_conjDEV_3close_n30_withSM_sim_results_ENAR/sum_1.rds"))
 
@@ -91,56 +91,66 @@ summary_table = summary_table[-1,] %>% # get rid of first row of NAs
 
 ```{r, message=FALSE}
 
-# model_select = c("conjDEV", "conjDEE", "nonconjDEV")
-model_select = c("conjUVV", "nonconjUVV")
-scenario_select = "3close"
+model_select = c("conjDEV", "conjDEE", "nonconjDEV")
+# model_select = c("conjUVV", "nonconjUVV")
+scenario_select = c("3wellsep","3close","5grp3d")[3]
 
-summary_table %>%
+table1 = summary_table %>%
   dplyr::filter(Scenario == scenario_select, Model %in% model_select) %>% 
   dplyr::group_by(Model, Scenario, PriorTag) %>%
   dplyr::summarize(Count = n()) %>%
-  tidyr::pivot_wider(names_from = c(PriorTag), values_from = Count) %>%
+  tidyr::pivot_wider(names_from = c(PriorTag), values_from = Count) #%>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   # dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
-  knitr::kable(caption = "Number of data sets completed")
+  # knitr::kable(caption = "Number of data sets completed")
+
+xtable::xtable(table1)
 
 # time
-summary_table %>% 
+table2= summary_table %>% 
   dplyr::filter(Scenario == scenario_select, Model %in% model_select) %>% 
   dplyr::group_by(Model, Scenario, PriorTag) %>%
   dplyr::summarize(Time = round(mean(Time),2)) %>%
-  tidyr::pivot_wider(names_from = PriorTag, values_from = Time) %>%
+  tidyr::pivot_wider(names_from = PriorTag, values_from = Time) #%>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   # dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
-  knitr::kable(caption = "Average computation time")
+  # knitr::kable(caption = "Average computation time")
 
-summary_table %>% 
+xtable::xtable(table2)
+
+table3 = summary_table %>% 
   dplyr::filter(Scenario == scenario_select, Model %in% model_select) %>% 
   dplyr::group_by(Model, Scenario, PriorTag) %>%
   dplyr::summarize(mean_ARI = round(mean(ARI),2)) %>%
-  tidyr::pivot_wider(names_from = c(PriorTag), values_from = mean_ARI) %>%
+  tidyr::pivot_wider(names_from = c(PriorTag), values_from = mean_ARI) #%>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   # dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
-  knitr::kable(caption = "Adjusted RAND Index")
+  # knitr::kable(caption = "Adjusted RAND Index")
 
-summary_table %>% 
+xtable::xtable(table3)
+
+table4 = summary_table %>% 
   dplyr::filter(Scenario == scenario_select, Model %in% model_select) %>% 
   dplyr::group_by(Model, Scenario, PriorTag) %>%
   dplyr::summarize(KL = round(mean(KL),2)) %>%
-  tidyr::pivot_wider(names_from = c(PriorTag), values_from = KL) %>%
+  tidyr::pivot_wider(names_from = c(PriorTag), values_from = KL) #%>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   # dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
-  knitr::kable(caption = "KL Divergence")
+  # knitr::kable(caption = "KL Divergence")
+
+xtable::xtable(table4)
 
 # median
-summary_table %>% 
+table5 = summary_table %>% 
   dplyr::filter(Scenario == scenario_select, Model %in% model_select) %>% 
   dplyr::group_by(Model, Scenario, PriorTag) %>%
   dplyr::summarize(MAP = median(MAP_K)) %>%
   tidyr::pivot_wider(names_from = c(PriorTag), values_from = MAP) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
-  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
-  knitr::kable(caption = "Median MAP value for K across 100 simulated data sets.")
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) #%>%
+  #knitr::kable(caption = "Median MAP value for K across 100 simulated data sets.")
+
+xtable::xtable(table5)
 ```
 
 

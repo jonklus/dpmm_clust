@@ -645,8 +645,8 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, # burn_i
                                                  byrow = TRUE))
         # name columns i.e. mu23 is param for group 2, 3rd component 
         # (i.e. from a length 3 mean vector)
-        col_header_names = c("sigma")
-        names(param_list_by_k[[i]]) = col_header_names
+        col_header_names = c("sigma_1_1")
+        names(param_list_by_k[[i]]) =  col_header_names
         
       } else{
         
@@ -657,7 +657,7 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, # burn_i
         # (i.e. from a length 3 mean vector)
         col_header_names = unlist(lapply(X = 1:npar, 
                                          FUN = function(x){
-                                           paste0(param_symbol, 1:unique_k[i], x)
+                                           paste0(param_symbol, "_", 1:unique_k[i], "_", x)
                                          }))
         names(param_list_by_k[[i]]) = gtools::mixedsort(col_header_names)
         
@@ -1305,13 +1305,13 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
                                          x = colnames(mu_est[[k]]))
                                        # cat("\n mean_ind ", mean_ind)
                                        p = length(mean_ind)
-                                       cat("\n p=", p, "\n")
+                                       #cat("\n p=", p, "\n")
                                        var_ind = grep(
                                          pattern = paste0("sigma_", group_assign[[k]][iter,x]),
                                          x = colnames(Sigma_est[[k]]))
-                                       cat("\n var_ind=", var_ind, "\n")
+                                       #cat("\n var_ind=", var_ind, "\n")
                                        cov_ind = var_ind[(p+1):length(var_ind)]
-                                       cat("\n cov_ind=", cov_ind, "\n")
+                                       #cat("\n cov_ind=", cov_ind, "\n")
                                        est_var_k = diag( 
                                          # first diag variance part
                                          Sigma_est[[k]][iter, var_ind[1:p]]
@@ -1359,8 +1359,9 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
                                        var_ind = grep(
                                          pattern = paste0("sigma_", group_assign[[k]][iter,x]),
                                          x = colnames(Sigma_est[[k]]))
-                                       # cat("\n mu_est")
-                                       # print(as.numeric(mu_est[[k]][iter,mean_ind]))
+                                       #cat("\n", dim(y[[x]][,1]))
+                                       #cat("\n mu_est ", length(as.numeric(mu_est[[k]][iter,mean_ind])))
+                                       #print(as.numeric(mu_est[[k]][iter,mean_ind]))
                                        # cat("\n Sigma_est")
                                        # print(Sigma_est[[k]][iter,var_ind])
                                        mvtnorm::dmvnorm(x = y[[x]][,1], 

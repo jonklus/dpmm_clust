@@ -31,62 +31,73 @@ library(scatterplot3d)
 data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryProposal"
 ```
 
-## Load a single file to investigate
-
 ### with SM
 
 ```{r}
 # n=30
 sim_dir = "MODSUM_conjDEE_3close_n30_withSM_sim_results_2024_07_28"  # found MAP(K)=16, truth is 3
 result_wd = paste0(data_path, "/", sim_dir)
-result_file = list.files(file_ext)
-output = readRDS(paste0(result_wd, "/", result_file[10]))
-output$settings
-dim(output$group_assign)
-iter_k = sapply(X = 1:nrow(output$group_assign), 
-                FUN = function(x){
-                  length(unique(output$group_assign[x,]))
-                })
-plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
-     main = "Traceplot for # groups K")
+result_file = list.files(result_wd)
+for(i in 1:10){
+  output = readRDS(paste0(result_wd, "/", result_file[i]))
+  # output$settings
+  # dim(output$group_assign)
+  iter_k = sapply(X = 1:nrow(output$group_assign), 
+                  FUN = function(x){
+                    length(unique(output$group_assign[x,]))
+                  })
+  plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
+       main = paste0("Traceplot of K, ", "Dataset ", i))
+}
+
 ```
 
 ```{r}
 # n=100
 sim_dir = "MODSUM_conjDEE_3close_n100_withSM_sim_results_2024_07_28"  # found MAP(K)=16, truth is 3
 result_wd = paste0(data_path, "/", sim_dir)
-result_file = list.files(file_ext)
-output = readRDS(paste0(result_wd, "/", result_file[5]))
-output$settings
-dim(output$group_assign)
-iter_k = sapply(X = 1:nrow(output$group_assign), 
-                FUN = function(x){
-                  length(unique(output$group_assign[x,]))
-                })
-plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
-     main = "Traceplot for # groups K")
+result_file = list.files(result_wd)
+for(i in 1:10){
+  output = readRDS(paste0(result_wd, "/", result_file[i]))
+  output$settings
+  dim(output$group_assign)
+  iter_k = sapply(X = 1:nrow(output$group_assign), 
+                  FUN = function(x){
+                    length(unique(output$group_assign[x,]))
+                  })
+  plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
+         main = paste0("Traceplot of K, ", "Dataset ", i))
+}
+
 ```
 
 ```{r}
 # n=300
 sim_dir = "MODSUM_conjDEE_3close_n300_withSM_sim_results_2024_07_14"  # found MAP(K)=16, truth is 3
 result_wd = paste0(data_path, "/", sim_dir)
-result_file = list.files(file_ext)
-output = readRDS(paste0(result_wd, "/", result_file[5]))
-output$settings
-dim(output$group_assign)
-iter_k = sapply(X = 1:nrow(output$group_assign), 
-                FUN = function(x){
-                  length(unique(output$group_assign[x,]))
-                })
-plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
-     main = "Traceplot for # groups K")
+result_file = list.files(result_wd)
+
+for(i in 1:10){
+  
+  output = readRDS(paste0(result_wd, "/", result_file[i]))
+  output$settings
+  dim(output$group_assign)
+  iter_k = sapply(X = 1:nrow(output$group_assign), 
+                  FUN = function(x){
+                    length(unique(output$group_assign[x,]))
+                  })
+  plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
+         main = paste0("Traceplot of K, ", "Dataset ", i))
+  
+}
+
 ```
 
 
-### without SM
 
-```{r}
+
+```{r, include=FALSE, eval=FALSE}
+### without SM
 # n=30
 sim_dir = "MODSUM_conjDEE_3close_n30_noSM_sim_results_2024_07_11"  # found MAP(K)=16, truth is 3
 result_wd = paste0(data_path, "/", sim_dir)
@@ -99,10 +110,10 @@ iter_k = sapply(X = 1:nrow(output$group_assign),
                   length(unique(output$group_assign[x,]))
                 })
 plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
-     main = "Traceplot for # groups K")
+       main = paste0("Traceplot of K, ", "Dataset ", i))
 ```
 
-```{r}
+```{r, include=FALSE, eval=FALSE}
 # n=100
 sim_dir = "MODSUM_conjDEE_3close_n100_noSM_sim_results_2024_07_11"  # found MAP(K)=16, truth is 3
 result_wd = paste0(data_path, "/", sim_dir)
@@ -115,10 +126,10 @@ iter_k = sapply(X = 1:nrow(output$group_assign),
                   length(unique(output$group_assign[x,]))
                 })
 plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
-     main = "Traceplot for # groups K")
+       main = paste0("Traceplot of K, ", "Dataset ", i))
 ```
 
-```{r}
+```{r, include=FALSE, eval=FALSE}
 # n=300
 sim_dir = "MODSUM_conjDEE_3close_n300_noSM_sim_results_2024_07_11"  # found MAP(K)=16, truth is 3
 result_wd = paste0(data_path, "/", sim_dir)
@@ -131,12 +142,5 @@ iter_k = sapply(X = 1:nrow(output$group_assign),
                   length(unique(output$group_assign[x,]))
                 })
 plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
-     main = "Traceplot for # groups K")
+       main = paste0("Traceplot of K, ", "Dataset ", i))
 ```
-
-## Systematically pull info from all M=100 sim results
-
-```{r}
-
-```
-

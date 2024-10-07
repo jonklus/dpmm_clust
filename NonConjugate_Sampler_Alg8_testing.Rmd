@@ -91,13 +91,25 @@ yreps = lapply(X = 1:nreps,
 ##### without split-merge step
 
 ```{r}
+x = 5 # first simulated data set 
+n_iter = 1000
+y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
+output = MVN_CRP_nonconj_DEV(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1, 
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        sigma0 = 500,
+        a = 1, b = 500, sigma_hyperprior = FALSE,
+        k_init = 1, diag_weights = FALSE,
+        verbose = TRUE, print_iter = 1000, split_merge = FALSE,
+        truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
+        )
 
 # summarize model
 mod_sum = dpmm_summary(output = output,
                print_phi_sum = TRUE,
                print_k_sum = TRUE,
                make_traceplot = FALSE,
-               burn_in = 2000, t_hold = 250,
+               burn_in = 0, t_hold = 200,
                num_dims = 2,
                calc_perf = TRUE,
                mu_true = output$truth$mu_true,
@@ -112,16 +124,40 @@ mod_sum = dpmm_summary(output = output,
 prob_list_by_k = get_probs_by_k(probs = output$group_probs, 
                                 n_groups = output$k, 
                                 burn_in = 0, 
-                                iter_threshold = 100)
+                                iter_threshold = 200)
 
 group_assign_list_by_k = get_assign_by_k(assign = output$group_assign, 
                                          n_groups = output$k, 
                                          burn_in = 0, 
-                                         iter_threshold = 100)
+                                         iter_threshold = 200)
 
-stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
-                                        prob_list_by_k = prob_list_by_k$prob_list)
+mean_list_by_k = list_params_by_k(draws = output$means, 
+                                          iter_list = prob_list_by_k$iter_list,
+                                          k_vec = output$k,
+                                          relabel = FALSE, 
+                                          permutation = stephens_result,
+                                  param_type = "Mean")
 
+var_list_by_k = list_params_by_k(draws = output$vars, 
+                                          iter_list = prob_list_by_k$iter_list,
+                                          k_vec = output$k,
+                                          relabel = FALSE, equal_var = FALSE,
+                                          param_type = "Var")
+
+# stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
+#                                         prob_list_by_k = prob_list_by_k$prob_list)
+
+kl_res = calc_KL_diverg(y = output$data,
+                        mu_est = mean_list_by_k,
+                        Sigma_est = var_list_by_k,
+                        group_assign = group_assign_list_by_k,
+                        true_assign = output$truth$assign_true,
+                        mu_true = output$truth$mu_true,
+                        Sigma_true = lapply(X = 1:length(output$truth$mu_true),
+                                 FUN = function(x){output$truth$var_true}),
+                        equal_var_assump = FALSE,
+                        off_diag = FALSE)
+               
 mod_sum = dpmm_summary(output = output,
                print_phi_sum = TRUE,
                print_k_sum = TRUE,
