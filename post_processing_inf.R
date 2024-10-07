@@ -226,7 +226,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
     #                       
     #                     })
     for(k in 1:length(mean_list_by_k_stephens)){
-      
+
       # make mean summary table
       mean_summary[[k]] = make_postsum(mcmc_df = mean_list_by_k_stephens[[k]], digits = 2)
       
@@ -236,15 +236,18 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
       k_i = max(as.numeric(stringr::str_extract_all(
         string = stringr::str_extract_all(string = row.names(mean_summary[[k]]), 
                                           pattern = "_[:digit:]_"), pattern = "[:digit:]")))
+      cat("\n print_phi_sum = ", print_phi_sum, "\n")
       if(print_phi_sum == TRUE){
         # give summary of counts after thresholding
-        cat("\n k =", k_i, " n_iter =", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
-        
+        cat("\n K =", k_i, " n_iter =", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
+        cat("k=", k, "\n")
         cat("\n Mean Summary: \n")
         print(mean_summary[[k]])
         cat("\n (Co)variance Summary: \n")
         print(var_summary[[k]])
       }
+      
+      print(mean_summary)
       
       if(make_traceplot == TRUE){
         for(dim_i in 1:num_dims){
