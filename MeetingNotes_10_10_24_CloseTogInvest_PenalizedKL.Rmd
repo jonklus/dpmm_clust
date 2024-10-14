@@ -1,0 +1,202 @@
+---
+title: "10/10/2024 Meeting"
+author: "Jonathan Klus"
+date: "2024-10-10"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, message=FALSE, warning=FALSE}
+# homemade functions
+# source("./Multivariate_DPMM_unknownvar_DEV.R")
+# source("./Multivariate_DPMM_unknownvar_DEE.R")
+#source("./Multivariate_DPMM_unknownvar_UVV.R")
+source("./posterior_helper_fxns.R")
+source("./post_processing_inf.R")
+
+# load R libraries
+library(ggplot2)
+library(dplyr)
+library(stringr)
+library(scatterplot3d)
+library(genMCMCDiag)
+
+######################## DEFINE HELPER FUNCTIONS################################
+# running locally
+# data_path = "//GENE.bst.rochester.edu/Projects/JKSTproj/BlueHive_Sim_Results/"
+
+# running on server
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryProposal"
+```
+
+# Close together scenario 
+
+## n=300 with SM
+
+```{r}
+# n=100
+sim_dir = "MODSUM_conjDEE_3close_n300_withSM_sim_results_2024_07_14"  # found MAP(K)=16, truth is 3
+result_wd = paste0(data_path, "/", sim_dir)
+result_file = list.files(result_wd)
+output_summary = data.frame(sim_id = NA, KL = NA, ARI = NA, MAP_K = NA)
+for(i in 1:length(result_file)){
+  output = readRDS(paste0(result_wd, "/", result_file[i]))
+  # output$settings
+  # dim(output$group_assign)
+  # iter_k = sapply(X = 1:nrow(output$group_assign), 
+  #                 FUN = function(x){
+  #                   length(unique(output$group_assign[x,]))
+  #                 })
+  # plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
+  #        main = paste0("Traceplot of K, ", "Dataset ", i))
+  
+  # record sim attributes to plot later
+  output_summary[i,"sim_id"] = i
+  output_summary[i,"KLD"] = output$kl_div
+  output_summary[i,"ARI"] = output$mean_ARI
+  output_summary[i,"MAP_K"] = as.numeric(names(output$k_freqtab)[which.max(as.numeric(output$k_freqtab))])
+  
+  # do Luke diagnostics
+  # adj_matrix = get_adjmat_groupassign(group_assign = output$group_assign)
+  # genMCMCDiag::genDiagnostic(mhDraws = adj_matrix,
+  #                            diagnostics = "gelmanRubin",
+  #                            method = "lanfear",
+  #                            distance = hammingDist)
+}
+
+par(mfrow=c(2,2))
+hist(output_summary$KLD, main = "KLD", xlab = "KLD")
+hist(output_summary$ARI, main = "ARI", xlab = "ARI")
+hist(output_summary$MAP_K, main = "MAP(K)", xlab = "MAP(K)")
+hist(unlist(output$var_list_by_k_stephens), main = "sigma2", xlab = "sigma2")
+
+output$var_summary
+```
+
+## n=300 without SM
+
+```{r}
+# n=100
+sim_dir = "MODSUM_conjDEE_3close_n300_noSM_sim_results_2024_07_11"  # found MAP(K)=16, truth is 3
+result_wd = paste0(data_path, "/", sim_dir)
+result_file = list.files(result_wd)
+output_summary = data.frame(sim_id = NA, KL = NA, ARI = NA, MAP_K = NA)
+for(i in 1:length(result_file)){
+  output = readRDS(paste0(result_wd, "/", result_file[i]))
+  # output$settings
+  # dim(output$group_assign)
+  # iter_k = sapply(X = 1:nrow(output$group_assign), 
+  #                 FUN = function(x){
+  #                   length(unique(output$group_assign[x,]))
+  #                 })
+  # plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
+  #        main = paste0("Traceplot of K, ", "Dataset ", i))
+  
+  # record sim attributes to plot later
+  output_summary[i,"sim_id"] = i
+  output_summary[i,"KLD"] = output$kl_div
+  output_summary[i,"ARI"] = output$mean_ARI
+  output_summary[i,"MAP_K"] = as.numeric(names(output$k_freqtab)[which.max(as.numeric(output$k_freqtab))])
+  
+  # do Luke diagnostics
+  # adj_matrix = get_adjmat_groupassign(group_assign = output$group_assign)
+  # genMCMCDiag::genDiagnostic(mhDraws = adj_matrix,
+  #                            diagnostics = "gelmanRubin",
+  #                            method = "lanfear", 
+  #                            distance = hammingDist)
+}
+
+par(mfrow=c(2,2))
+hist(output_summary$KLD, main = "KLD", xlab = "KLD")
+hist(output_summary$ARI, main = "ARI", xlab = "ARI")
+hist(output_summary$MAP_K, main = "MAP(K)", xlab = "MAP(K)")
+hist(unlist(output$var_list_by_k_stephens), main = "sigma2", xlab = "sigma2")
+
+output$var_summary
+```
+
+# KL divergence and overfitting
+
+Let $p(x)$ and $q(x)$ represent the density of $p$ and $q$ evaluated at $x$, where
+$x \in \mathbb{R}^p$, and $p$ is an integer greater than zero. 
+
+Then the Kullback–Leibler divergence (KLD) for a continuous density is defined as follows:
+
+$$
+D_{KL}(p||q) = \int_{-\infty}^{\infty} p(x) log\left(\frac{p(x)}{q(x)}\right) dx
+$$
+
+The KLD is defined on $\mathbb{R}^+$, the set of non-negative real numbers. When
+$p$ and $q$ are the same for all $x \in \mathcal{X}$, the the ratio in the $log$ evaluates
+to $1$, $log(1)=0$, and KLD = 0. 
+
+When computing the KLD outside of a theoretical setting, we do not directly evaluate this 
+integral since we are unable to observe all values of $x \in \mathbb{R}^p$. Instead, we 
+compute a discrete approximation to the KLD by the true and estimated density at each of the observed data points $x \in \mathcal{X}$. Therefore our actual implementation of the KLD looks like its definition for a discrete density, which is:
+
+$$
+D_{KL}(p||q) = \sum_{x \in \mathcal{X}} p(x) log\left(\frac{p(x)}{q(x)}\right) 
+$$
+
+There are a few possible issues associated with this implementation:
+
+1. For problems with more data, our grid of points $x$ will be larger and our estimate of the KLD will likely be better.
+
+2. Let $K$ denote the number of mixture components. In the realm of Bayesian 
+nonparametric inference, we may approximate reference distribution $p$ using a 
+potentially infinite number of densities $q_1,\dots,q_K$. 
+
+The second issue is of particular interest to our work. Even if the reality of the 
+situation is that the reference distribution $p$ is a mixture of three
+multivariate normal densities, we may closely estimate the true density $p$ using 
+a large number of  multivariate normal densities. This constitutes overfitting, 
+and is not penalized in any way by the KLD. 
+
+We wish to reward the simplest model that approximates the reference distribution
+accurately. This goal motivates the idea of penalizing the KL divergence in some 
+way, but the question is how to do so. 
+
+We could penalize:
+
+1. The number of mixture components $K$ that make up $q$.
+2. The total number of parameters in $q$, which would address not just the number
+of mixture components but the complexity of the covariance matrix, for example.
+
+What should this penalty term look like? Since larger values of the KLD indicate
+poor agreement between the estimated and reference densities, we want a penalty that 
+will add positive value to the calculated KLD to adjust for model complexity.
+
+1. $K$
+2. $log(K)$
+
+```{r}
+par(mfrow=c(1,2))
+plot(x = 1:30, y = (1:30), main = "Size of Penalty K", 
+     xlab = "K", ylab =  "penalty", type = "l")
+plot(x = 1:30, y = log(1:30), main = "Size of Penalty log(K)", 
+     xlab = "K", ylab =  "penalty", type = "l")
+```
+
+How do we choose a penalty that is of the appropriate magnitude?
+
+How do we avoid biasing the divergence against mixtures that truly have a large
+number of components?
+
+Both of the examples plotted above seem a bit too simplistic to be effective across a wide
+range of modeling scenarios. It may be beneficial to use a penalty structure more similar
+to the AIC $2k - 2log(L)$, where $k$ is the total number of parameters estimated and 
+$L$ is the estimated likelihood. Or the BIC, $klog(n)-2log(L)$.
+
+```{r}
+par(mfrow=c(1,2))
+plot(x = 1:30, y = 2*log(1:30), main = "Size of Penalty log(K)", 
+     xlab = "K", ylab =  "penalty", type = "l")
+plot(x = 1:30, y = (1:30)*log(30), main = "Size of Penalty K*log(n), n=30", 
+     xlab = "K", ylab =  "penalty", type = "l")
+```
+
+Should we think about this as starting from the unadjusted KLD and adjust up to account
+for model complexity, or start from the penalty and see if the KLD can overcome it to get closer to 0?

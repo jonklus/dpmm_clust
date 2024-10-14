@@ -240,14 +240,14 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
       if(print_phi_sum == TRUE){
         # give summary of counts after thresholding
         cat("\n K =", k_i, " n_iter =", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
-        cat("k=", k, "\n")
+        # cat("k=", k, "\n")
         cat("\n Mean Summary: \n")
         print(mean_summary[[k]])
         cat("\n (Co)variance Summary: \n")
         print(var_summary[[k]])
       }
       
-      print(mean_summary)
+      #print(mean_summary)
       
       if(make_traceplot == TRUE){
         for(dim_i in 1:num_dims){

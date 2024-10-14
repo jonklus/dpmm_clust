@@ -65,9 +65,10 @@ for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
                                c(mod_sum$mean_ARI, 
                                  mod_sum$kl_div, 
                                  as.numeric(mod_sum$fit_runtime),
-                                 as.numeric(names(mod_sum$k_freqtab)[which.max(as.numeric(mod_sum$k_freqtab))])
+                                as.numeric(names(mod_sum$k_freqtab)[which.max(as.numeric(mod_sum$k_freqtab))])
                                  )
                              }))
+    
     temp_summary_table[, "ARI"] = sum_bydataset[,1]
     temp_summary_table[, "KL"] = sum_bydataset[,2]
     temp_summary_table[, "Time"] = sum_bydataset[,3]

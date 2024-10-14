@@ -1493,3 +1493,22 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
 #                                   matrix(c(5,0.25,0.25,5), ncol=2, byrow=TRUE)),
 #                 equal_var_assump = FALSE, 
 #                 off_diag = TRUE)
+
+
+# function to generate list of adjacency matrices from group_assign at each iteration
+# helpful when you only have output of dpmm_summary and not full model output but want
+# to do diagnostics using genMCMCdiag
+
+get_adjmat_groupassign = function(group_assign){
+  
+  adjmat_list = lapply(X = 1:(nrow(group_assign)-1), 
+                       FUN = function(x){
+                         matrix(as.numeric(outer(
+                           X = group_assign[x,], 
+                           Y = group_assign[x+1,], 
+                           FUN = "==")), nrow = ncol(group_assign))
+                       })
+  
+  return(adjmat_list)
+  
+}

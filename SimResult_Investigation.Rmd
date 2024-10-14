@@ -22,6 +22,7 @@ library(ggplot2)
 library(dplyr)
 library(stringr)
 library(scatterplot3d)
+library(genMCMCDiag)
 
 ######################## DEFINE HELPER FUNCTIONS################################
 # running locally
@@ -57,16 +58,23 @@ for(i in 1:10){
 sim_dir = "MODSUM_conjDEE_3close_n100_withSM_sim_results_2024_07_28"  # found MAP(K)=16, truth is 3
 result_wd = paste0(data_path, "/", sim_dir)
 result_file = list.files(result_wd)
-for(i in 1:10){
+for(i in 1:length(result_file)){
   output = readRDS(paste0(result_wd, "/", result_file[i]))
-  output$settings
-  dim(output$group_assign)
-  iter_k = sapply(X = 1:nrow(output$group_assign), 
-                  FUN = function(x){
-                    length(unique(output$group_assign[x,]))
-                  })
-  plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
-         main = paste0("Traceplot of K, ", "Dataset ", i))
+  # output$settings
+  # dim(output$group_assign)
+  # iter_k = sapply(X = 1:nrow(output$group_assign), 
+  #                 FUN = function(x){
+  #                   length(unique(output$group_assign[x,]))
+  #                 })
+  # plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
+  #        main = paste0("Traceplot of K, ", "Dataset ", i))
+  
+  # do Luke diagnostics
+  adj_matrix = get_adjmat_groupassign(group_assign = output$group_assign)
+  genMCMCDiag::genDiagnostic(mhDraws = adj_matrix,
+                             diagnostics = "gelmanRubin",
+                             method = "lanfear", 
+                             distance = hammingDist)
 }
 
 ```
