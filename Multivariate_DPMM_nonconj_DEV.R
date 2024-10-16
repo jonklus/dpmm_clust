@@ -128,9 +128,13 @@ update_phi_DEV <- function(curr_label, group_assign, count_assign, y,
   sigma2 = diag(Sigma)[1]
   sigma0 = diag(Sigma0)[1]
     
+  
 
-
-
+  # cat("\n p=", p)
+  # cat("\n curr_label=", curr_label)
+  # print(unlist(y[group_assign == curr_label]))
+  # print(matrix(unlist(y[group_assign == curr_label]), nrow = p))
+  
   # draw group mean
   sum_y_i = rowSums(matrix(unlist(y[group_assign == curr_label]), nrow = p))
   
@@ -728,8 +732,12 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
             # initialize current restricted Gibbs scan iteration with previous result
             split_temp_group_assign[scan,] = split_temp_group_assign[(scan-1),] 
             merge_temp_group_assign[scan,] = merge_temp_group_assign[(scan-1),] 
+            
             split_means[[scan]] = split_means[[scan-1]]
             split_vars[[scan]] = split_vars[[scan-1]] 
+            
+            merge_means[[scan]] = merge_means[[scan-1]]
+            merge_vars[[scan]] = merge_vars[[scan-1]] 
             
             # moved this up, was previously nested below, which means this step would
             # be *repeated* for each observation, thus washing out any split/merge that
@@ -913,14 +921,20 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         ## proposal probability
         
         # compute P_GS(phi) from launch state to final scan for both split and merge proposals
-        split_phi_prob = nonconj_phi_prob_DEV(group_assign = split_temp_group_assign[sm_iter+1,], 
-                                              count_assign = split_count_assign, y = y, 
-                                              mu = split_means[[scan]], 
-                                              mu0 = mu0, 
-                                              Sigma = split_vars[[scan]], 
-                                              Sigma0 = Sigma0, a = a, b = b)
+        split_phi_prob = lapply(X = 1:2, 
+                                FUN = function(x){
+                                  nonconj_phi_prob_DEV(
+                                    curr_label = split_lab[x],
+                                    group_assign = split_temp_group_assign[sm_iter+1,], 
+                                    count_assign = split_count_assign, y = y, 
+                                    mu = split_means[[scan]][[x]], 
+                                    mu0 = mu0, 
+                                    Sigma = split_vars[[scan]][[x]], 
+                                    Sigma0 = Sigma0, a = a, b = b)
+                                })
         
-        merge_phi_prob = nonconj_phi_prob_DEV(group_assign = merge_temp_group_assign[sm_iter+1,], 
+        merge_phi_prob = nonconj_phi_prob_DEV(curr_label = merge_lab, 
+                                              group_assign = merge_temp_group_assign[sm_iter+1,], 
                                               count_assign = merge_count_assign, y = y, 
                                               mu = merge_means[[scan]], 
                                               mu0 = mu0, 
@@ -928,10 +942,11 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                               Sigma0 = Sigma0, a = a, b = b)
         
         prob1_c_num = Reduce(f = "+", x = log(split_sm_prob[sm_iter+1,subset_index]))
-        prob1_phi_num = Reduce(f = "+", x = log(split_phi_prob[sm_iter+1,subset_index]))
+        prob1_phi_num = Reduce(f = "+", x = log(split_phi_prob)) # only calculated at end
+        # so no need to index
         
         prob1_c_denom = Reduce(f = "+", x = log(merge_sm_prob[sm_iter+1,subset_index]))
-        prob1_phi_denom = Reduce(f = "+", x = log(merge_phi_prob[sm_iter+1,subset_index]))
+        prob1_phi_denom = log(merge_phi_prob)
         
         prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
         
@@ -1083,6 +1098,9 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
             
             split_means[[scan]] = split_means[[scan-1]]
             split_vars[[scan]] = split_vars[[scan-1]] 
+
+            merge_means[[scan]] = merge_means[[scan-1]]
+            merge_vars[[scan]] = merge_vars[[scan-1]] 
             
             # moved this up, was previously nested below, which means this step would
             # be *repeated* for each observation, thus washing out any split/merge that
@@ -1266,14 +1284,20 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         ## proposal probability
         
         # compute P_GS(phi) from launch state to final scan for both split and merge proposals
-        split_phi_prob = nonconj_phi_prob_DEV(group_assign = split_temp_group_assign[sm_iter+1,], 
-                                              count_assign = split_count_assign, y = y, 
-                                              mu = split_means[[scan]], 
-                                              mu0 = mu0, 
-                                              Sigma = split_vars[[scan]], 
-                                              Sigma0 = Sigma0, a = a, b = b)
+        split_phi_prob = lapply(X = 1:2, 
+                                FUN = function(x){
+                                  nonconj_phi_prob_DEV(
+                                    curr_label = split_lab[x],
+                                    group_assign = split_temp_group_assign[sm_iter+1,], 
+                                    count_assign = split_count_assign, y = y, 
+                                    mu = split_means[[scan]][[x]], 
+                                    mu0 = mu0, 
+                                    Sigma = split_vars[[scan]][[x]], 
+                                    Sigma0 = Sigma0, a = a, b = b)
+                                })
         
-        merge_phi_prob = nonconj_phi_prob_DEV(group_assign = merge_temp_group_assign[sm_iter+1,], 
+        merge_phi_prob = nonconj_phi_prob_DEV(curr_label = merge_lab, 
+                                              group_assign = merge_temp_group_assign[sm_iter+1,], 
                                               count_assign = merge_count_assign, y = y, 
                                               mu = merge_means[[scan]], 
                                               mu0 = mu0, 
@@ -1281,10 +1305,10 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                               Sigma0 = Sigma0, a = a, b = b)
         
         prob1_c_num = Reduce(f = "+", x = log(merge_sm_prob[sm_iter+1,subset_index]))
-        prob1_phi_num = Reduce(f = "+", x = log(merge_phi_prob[sm_iter+1,subset_index]))
+        prob1_phi_num = log(merge_phi_prob)
         
         prob1_c_denom = Reduce(f = "+", x = log(split_sm_prob[sm_iter+1,subset_index]))
-        prob1_phi_denom = Reduce(f = "+", x = log(split_phi_prob[sm_iter+1,subset_index]))
+        prob1_phi_denom = Reduce(f = "+", x = log(split_phi_prob))
         
         prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
         
