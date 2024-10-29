@@ -28,7 +28,7 @@ library(mclust)
 
 dpmm_summary <- function(output, print_phi_sum = FALSE,
                          print_k_sum = TRUE, make_traceplot = TRUE,
-                         burn_in = 1000, t_hold = 0, num_dims = 2, 
+                         burn_in = 1000, t_hold = 0, num_dims = 2, #dont_drop = TRUE,
                          calc_perf = FALSE, mu_true = NULL, var_true = NULL, 
                          assign_true = NULL, equal_var = FALSE, off_diag = FALSE
                          ){
@@ -105,13 +105,13 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
     # correct label switching 
     
     # what if only 1 group is found --- need to be sure this won't fail
-    if((length(group_assign_list_by_k) == 1) & (unique(as.numeric(names(adj_k_freqtab))) == 1)){
+    if((length(group_assign_list_by_k) == 1) & (length(unique(as.numeric(names(adj_k_freqtab)))) == 1)){
       # if only K=1, skip stephens steps (but keeping same variable names out of convencience
       # for later steps)
     
         
         # summarize means & variances
-      cat("\n off_diag =", off_diag)
+        # cat("\n off_diag =", off_diag)
         mean_list_by_k_stephens = list_params_by_k(draws = output$means, 
                                                    k_vec = output$k,
                                                    # burn_in = burn_in, 
@@ -124,7 +124,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
           
           var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
                                                     iter_list = prob_list_by_k$iter_list,
-                                                    k_vec = output$k,
+                                                    k_vec = output$k, dont_drop = TRUE,
                                                     relabel = FALSE, equal_var = equal_var,
                                                     param_type = "Var")
           
@@ -133,7 +133,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
           
           var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
                                                     iter_list = prob_list_by_k$iter_list,
-                                                    k_vec = output$k,
+                                                    k_vec = output$k, 
                                                     relabel = FALSE, equal_var = equal_var,
                                                     param_type = "Covar")
         }
@@ -162,7 +162,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
           
           var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
                                                     iter_list = prob_list_by_k$iter_list,
-                                                    k_vec = output$k,
+                                                    k_vec = output$k, dont_drop = TRUE,
                                                     relabel = TRUE, equal_var = equal_var,
                                                     permutation = stephens_result,
                                                     param_type = "Var")
@@ -172,7 +172,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
           
           var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
                                                     iter_list = prob_list_by_k$iter_list,
-                                                    k_vec = output$k,
+                                                    k_vec = output$k, 
                                                     relabel = TRUE, equal_var = equal_var,
                                                     permutation = stephens_result,
                                                     param_type = "Covar")
@@ -231,20 +231,31 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
       mean_summary[[k]] = make_postsum(mcmc_df = mean_list_by_k_stephens[[k]], digits = 2)
       
       # make variance summary table
-      var_summary[[k]] = make_postsum(mcmc_df = var_list_by_k_stephens[[k]], digits = 2)
+      if(equal_var == FALSE){
+        
+        var_summary[[k]] = make_postsum(mcmc_df = var_list_by_k_stephens[[k]], digits = 2)
+        
+      }
       
       k_i = max(as.numeric(stringr::str_extract_all(
         string = stringr::str_extract_all(string = row.names(mean_summary[[k]]), 
                                           pattern = "_[:digit:]_"), pattern = "[:digit:]")))
       cat("\n print_phi_sum = ", print_phi_sum, "\n")
       if(print_phi_sum == TRUE){
+        
         # give summary of counts after thresholding
         cat("\n K =", k_i, " n_iter =", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
         # cat("k=", k, "\n")
         cat("\n Mean Summary: \n")
         print(mean_summary[[k]])
-        cat("\n (Co)variance Summary: \n")
-        print(var_summary[[k]])
+        
+        if(equal_var == FALSE){
+          
+          cat("\n (Co)variance Summary: \n")
+          print(var_summary[[k]])
+          
+        }
+
       }
       
       #print(mean_summary)
@@ -258,6 +269,18 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
                          # title_note = cat("K=", k_i),
                          param_type = "Mean")
         }
+      }
+    }
+    
+    if(equal_var == TRUE){
+      
+      var_summary[[1]] = make_postsum(mcmc_df = var_list_by_k_stephens[[1]], digits = 2)
+      
+      if(print_phi_sum == TRUE){
+        
+        cat("\n (Co)variance Summary - pooled estimate: \n")
+        print(var_summary[[1]])
+        
       }
     }
     
@@ -301,7 +324,9 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
     }
 
     end = Sys.time()
-    cat("\n Summary function runtime is", difftime(end, start, units = "m"), "mins \n")
+    cat("\n Summary function runtime is", 
+        round(difftime(end, start, units = "m"), digits = 1), 
+        "mins \n")
     
   # return summary of all results
     if(calc_perf == TRUE){

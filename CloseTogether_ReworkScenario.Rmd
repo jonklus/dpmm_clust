@@ -1,0 +1,636 @@
+---
+title: "DEE Close Together Example"
+author: "Jonathan Klus"
+date: "2024-10-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# load necessary functions
+source("./Multivariate_DPMM_unknownvar_DEE.R")
+# source("./Multivariate_DPMM_nonconj_DEV.R")
+# source("./Multivariate_DPMM_nonconj_UVV.R")
+source("./posterior_helper_fxns.R")
+source("./post_processing_inf.R")
+
+# load R libraries
+library(ggplot2)
+library(mclust)
+library(LaplacesDemon)
+library(mvtnorm)
+library(stringr)
+library(gridExtra)
+library(dplyr)
+library(knitr) # kable
+library(kableExtra) # use for complex tables http://haozhu233.github.io/kableExtra/awesome_table_in_pdf.pdf
+library(xtable)
+library(scatterplot3d)
+```
+
+# Close together simulation setting 
+
+## Original close together example
+
+Mixture of 3 multivariate normal densities all with diagonal variance structure
+and $\sigma^2 = 10$. The true means are $(0,-5)$, , $(10,0)$, and $(0,8)$. Here
+we simulate $\sum_{j}n_j = 100$.
+
+```{r}
+################## simulate data ##############################################
+
+set.seed(516)
+nreps = 10
+seeds = sample(x = 1:10^4, size = nreps, replace = FALSE)
+
+w = c(.35, .25, .4)
+means = list(
+  #c(10, 10),
+  c(0, -5),
+  c(0, 8),
+  c(10,0)
+)
+
+var = diag(5, length(means[[1]])) # variances known, diagonal, and equal
+
+yreps = lapply(X = 1:nreps, 
+           FUN = function(x){
+             set.seed(seeds[x])
+             assign = sample(x = 1:length(means), size = 100, replace = TRUE, prob = w)
+             y = lapply(X = assign,
+                        FUN = function(x){
+                        t(mvtnorm::rmvnorm(n = 1, mean = means[[x]], sigma = var))
+                          })
+             return(list(y = y, assign = assign))
+           })
+
+# # make a grid of plots
+pltlist = list()
+datalist = list()
+for(rep in 1:nreps){
+
+  y_matrix = matrix(data = unlist(yreps[[rep]]$y), ncol = 2, byrow = TRUE)
+  assign = yreps[[rep]]$assign
+
+  data = data.frame(
+    assign = assign,
+    y1 = y_matrix[,1],
+    y2 = y_matrix[,2]
+  )
+  
+  datalist[[rep]] = data
+
+  p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
+    geom_point(color = assign, size = 0.75) +
+    #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+    # geom_text(size = 3, color = assign) +
+    theme_classic()
+
+  pltlist[[rep]] = p
+}
+
+do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignments")
+# 
+# drop params used to generate data, except for var which is assumed known
+mu_true = means
+var_true = var
+# yreps # 2nd element is assign
+rm(w, means)
+```
+### Fit DEE model
+
+```{r}
+n_iter = 500
+x=1
+
+# run line by line
+S = n_iter
+seed = seeds[x]
+y = yreps[[x]]$y
+alpha = 1
+r = 10
+d = 1
+f = 1
+g = 1
+h = 50
+sigma_hyperprior = FALSE
+fix_r = FALSE
+mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))), 0), ncol = 1)
+a = 1
+b = 25
+k_init = 1
+diag_weights = FALSE
+verbose = TRUE
+split_merge = TRUE
+sm_iter = 5
+
+# run in fxn
+sim_results_DEE_with_sm = MVN_CRP_sampler_DEE(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+        alpha = 1, r = 10, d = 1, f = 1 , g = 1, h = 50,
+        sigma_hyperprior = FALSE, fix_r = FALSE,
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        a = 1, b = 25,
+        k_init = 1, diag_weights = FALSE,
+        verbose = TRUE, split_merge = TRUE, sm_iter = 5
+        )
+
+mod_sum = dpmm_summary(output = sim_results_DEE_with_sm, 
+       print_k_sum = TRUE, 
+       # print_phi_sum = TRUE,
+       make_traceplot = FALSE,
+       burn_in = 0, t_hold = 100, 
+       num_dims = 2, equal_var = TRUE,
+       calc_perf = TRUE, mu_true = mu_true, 
+       var_true = var_true, assign_true = yreps[[x]]$assign)
+
+plot(mod_sum$var_list_by_k_stephens[[1]]$sigma_1_1, type = "l", 
+     xlab = "iter", ylab = "sigma2")
+```
+
+
+## NEW: close together example
+
+Mixture of 3 multivariate normal densities all with diagonal variance structure
+and $\sigma^2 = 10$. The true means are $(-1,-5)$, , $(11,2)$, and $(0,10)$. Here
+we simulate $\sum_{j}n_j = 100$.
+
+```{r}
+################## simulate data ##############################################
+
+set.seed(516)
+nreps = 9
+seeds = sample(x = 1:10^4, size = nreps, replace = FALSE)
+
+w = c(.35, .25, .4)
+means = list(
+  #c(10, 10),
+  c(-1, -5),
+  c(0, 10),
+  c(11,2)
+)
+
+var = diag(4, length(means[[1]])) # variances known, diagonal, and equal
+
+yreps = lapply(X = 1:nreps, 
+           FUN = function(x){
+             set.seed(seeds[x])
+             assign = sample(x = 1:length(means), size = 100, replace = TRUE, prob = w)
+             y = lapply(X = assign,
+                        FUN = function(x){
+                        t(mvtnorm::rmvnorm(n = 1, mean = means[[x]], sigma = var))
+                          })
+             return(list(y = y, assign = assign))
+           })
+
+# # make a grid of plots
+pltlist = list()
+datalist = list()
+for(rep in 1:nreps){
+
+  y_matrix = matrix(data = unlist(yreps[[rep]]$y), ncol = 2, byrow = TRUE)
+  assign = yreps[[rep]]$assign
+
+  data = data.frame(
+    assign = assign,
+    y1 = y_matrix[,1],
+    y2 = y_matrix[,2]
+  )
+  
+  datalist[[rep]] = data
+
+  p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
+    geom_point(color = assign, size = 0.75) +
+    #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+    # geom_text(size = 3, color = assign) +
+    theme_classic()
+
+  pltlist[[rep]] = p
+}
+
+do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignments")
+# 
+# # drop params used to generate data, except for var which is assumed known
+# rm(w, means)
+```
+
+## NEW: DEV data-generating process
+
+Mixture of 3 multivariate normal densities all with diagonal variance structure
+and that varies by group, $\sigma^2_k = \{2,4,6\}$. The true means are $(-1,-5)$, , $(11,2)$, and $(0,10)$. Here
+we simulate $\sum_{j}n_j = 100$.
+
+```{r}
+################## simulate data ##############################################
+
+set.seed(516)
+nreps = 9
+seeds = sample(x = 1:10^4, size = nreps, replace = FALSE)
+
+w = c(.35, .25, .4)
+means = list(
+  #c(10, 10),
+  c(-1, -5),
+  c(0, 10),
+  c(11,2)
+)
+
+var = list(
+  diag(2, length(means[[1]])),
+  diag(4, length(means[[1]])),
+  diag(6, length(means[[1]]))
+)
+
+yreps = lapply(X = 1:nreps, 
+           FUN = function(x){
+             set.seed(seeds[x])
+             assign = sample(x = 1:length(means), size = 100, replace = TRUE, prob = w)
+             y = lapply(X = assign,
+                        FUN = function(x){
+                        t(mvtnorm::rmvnorm(n = 1, mean = means[[x]], sigma = var[[x]]))
+                          })
+             return(list(y = y, assign = assign))
+           })
+
+# # make a grid of plots
+pltlist = list()
+datalist = list()
+for(rep in 1:nreps){
+
+  y_matrix = matrix(data = unlist(yreps[[rep]]$y), ncol = 2, byrow = TRUE)
+  assign = yreps[[rep]]$assign
+
+  data = data.frame(
+    assign = assign,
+    y1 = y_matrix[,1],
+    y2 = y_matrix[,2]
+  )
+  
+  datalist[[rep]] = data
+
+  p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
+    geom_point(color = assign, size = 0.75) +
+    #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+    # geom_text(size = 3, color = assign) +
+    theme_classic()
+
+  pltlist[[rep]] = p
+}
+
+do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignments")
+# 
+# # drop params used to generate data, except for var which is assumed known
+# rm(w, means)
+```
+
+# Simulation results
+
+## Preliminary results: NEW close together scenario
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+source("./posterior_helper_fxns.R")
+source("./post_processing_inf.R")
+
+# load R libraries
+
+
+######################## DEFINE HELPER FUNCTIONS################################
+# running locally
+# data_path = "//GENE.bst.rochester.edu/Projects/JKSTproj/BlueHive_Sim_Results/"
+
+# running on server
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryCloseTogTest"
+
+# dev_withSM = readRDS(paste0(data_path, "/MODSUM_conjDEV_3close_n30_withSM_sim_results_ENAR/sum_1.rds"))
+
+# list file extensions
+file_ext = list.dirs(data_path)
+
+# for each extension, make a new element of a data table with simulation attributes
+summary_table = data.frame(Model = NA, Scenario = NA, SM = NA, Tag = NA, n_obs = NA, dataset_no = NA,
+                           ARI = NA, KL = NA, Time = NA, MAP_K = NA) # should add , SumTime = NA for mod summary compute time
+
+for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
+                                      # skip second one, Archive directory
+  # list files
+  file_list = list.files(path = file_ext[ext_index])
+  if(length(file_list) > 0){
+    
+    temp_summary_table = data.frame(Model = NA, Scenario = NA, SM = NA, Tag = NA, n_obs = NA, dataset_no = NA,
+                                    ARI = NA, KL = NA, Time = NA, MAP_K = NA) # should add , SumTime = NA for mod summary compute time
+    # parse out attributes and save
+    short_file_ext = stringr::str_split(string = file_ext[ext_index], pattern = "/MODSUM")[[1]][2]
+    parsed_dirname = unlist(stringr::str_extract_all(string = file_ext[ext_index], pattern = "_[:alnum:]+"))
+    temp_summary_table[1:length(file_list), "Model"] = stringr::str_remove(string = parsed_dirname[3], pattern = "_")
+    temp_summary_table[1:length(file_list), "Scenario"] = stringr::str_remove(string = parsed_dirname[4], pattern = "_")
+    temp_summary_table[1:length(file_list), "n_obs"] = stringr::str_remove(string = parsed_dirname[5], pattern = "_n")
+    temp_summary_table[1:length(file_list), "SM"] = stringr::str_remove(string = parsed_dirname[6], pattern = "_")
+    # temp_summary_table[1:length(file_list), "Tag"] = stringr::str_remove(string = parsed_dirname[length(parsed_dirname)], pattern = "_")
+    temp_summary_table[, "dataset_no"] = as.numeric(stringr::str_remove_all(string = file_list, pattern = "sum_|.rds"))
+    
+    # loop through all files in directory
+    sum_bydataset = t(sapply(X = 1:length(file_list), 
+                             FUN = function(x){
+                               mod_sum = readRDS(paste0(file_ext[ext_index], "/", file_list[x]))
+                               c(mod_sum$mean_ARI, 
+                                 mod_sum$kl_div, 
+                                 as.numeric(mod_sum$fit_runtime),
+                                as.numeric(names(mod_sum$k_freqtab)[which.max(as.numeric(mod_sum$k_freqtab))])
+                                 )
+                             }))
+    
+    temp_summary_table[, "ARI"] = sum_bydataset[,1]
+    temp_summary_table[, "KL"] = sum_bydataset[,2]
+    temp_summary_table[, "Time"] = sum_bydataset[,3]
+    temp_summary_table[, "MAP_K"] = sum_bydataset[,4]
+    summary_table = rbind(summary_table, temp_summary_table)
+    
+  }
+  
+}
+
+summary_table = summary_table[-1,] # get rid of first row of NAs 
+  #vdplyr::filter(Scenario == "5grp3d")
+
+summary_table %>%
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(Count = n()) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = Count) %>%
+  # keep first 2 columns with model info, sort remaining cols with results by n
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
+  knitr::kable(caption = "Number of data sets completed")
+
+# time
+summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(Time = round(mean(Time),2)) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = Time) %>%
+  # keep first 2 columns with model info, sort remaining cols with results by n
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
+  knitr::kable(caption = "Average computation time")
+
+summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(mean_ARI = round(mean(ARI),2)) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = mean_ARI) %>%
+  # keep first 2 columns with model info, sort remaining cols with results by n
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
+  knitr::kable(caption = "Adjusted RAND Index")
+
+summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(KL = round(mean(KL),2)) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = KL) %>%
+  # keep first 2 columns with model info, sort remaining cols with results by n
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
+  knitr::kable(caption = "KL Divergence")
+
+summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(MAP_K = median(MAP_K)) %>%
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = MAP_K) %>%
+  # keep first 2 columns with model info, sort remaining cols with results by n
+  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
+  knitr::kable(caption = "MAP(K)")
+```
+
+## Traceplots: NEW close together scenario (no SM)
+
+
+### n = 30
+
+```{r}
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryCloseTogTest"
+sim_dir = "MODSUM_conjDEE_3close_n30_noSM_sim_results_2024_10_16" 
+result_wd = paste0(data_path, "/", sim_dir)
+result_file = list.files(result_wd)
+diagnostic_sum = data.frame(KLD = NA, ARI = NA, MAP_K = NA)
+for(i in 1:length(result_file)){
+  output = readRDS(paste0(result_wd, "/", result_file[i]))
+  # output$settings
+  # dim(output$group_assign)
+  diagnostic_sum[i,"ARI"] = output$mean_ARI
+  diagnostic_sum[i,"KLD"] = output$kl_div
+  diagnostic_sum[i,"MAP_K"] = as.numeric(names(output$k_freqtab)[which.max(as.numeric(output$k_freqtab))])
+  
+  if(i <= 10){
+    
+      iter_k = sapply(X = 1:nrow(output$group_assign), 
+                  FUN = function(x){
+                    length(unique(output$group_assign[x,]))
+                  })
+      plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
+            main = paste0("Traceplot of K, ", "Dataset ", i))
+    
+  }
+
+}
+
+par(mfrow=c(2,3))
+hist(x = diagnostic_sum$KLD, main = "KLD", xlab = "KLD")
+hist(x = diagnostic_sum$ARI, main = "ARI", xlab = "ARI")
+hist(x = diagnostic_sum$MAP_K, main = "MAP_K", xlab = "MAP_K")
+plot(x = diagnostic_sum$KLD, y = diagnostic_sum$ARI, xlab = "KLD", ylab = "ARI", main = "KLD vs. ARI")
+plot(x = diagnostic_sum$MAP_K, y = diagnostic_sum$ARI, xlab = "MAP_K", ylab = "ARI", main = "MAP_K vs. ARI")
+plot(x = diagnostic_sum$MAP_K, y = diagnostic_sum$KLD, xlab = "MAP_K", ylab = "KLD", main = "MAP_K vs. KLD")
+```
+
+### n = 100
+
+```{r}
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryCloseTogTest"
+sim_dir = "MODSUM_conjDEE_3close_n100_noSM_sim_results_2024_10_16"  
+result_wd = paste0(data_path, "/", sim_dir)
+result_file = list.files(result_wd)
+diagnostic_sum = data.frame(KLD = NA, ARI = NA, MAP_K = NA)
+for(i in 1:length(result_file)){
+  output = readRDS(paste0(result_wd, "/", result_file[i]))
+  # output$settings
+  # dim(output$group_assign)
+  diagnostic_sum[i,"ARI"] = output$mean_ARI
+  diagnostic_sum[i,"KLD"] = output$kl_div
+  diagnostic_sum[i,"MAP_K"] = as.numeric(names(output$k_freqtab)[which.max(as.numeric(output$k_freqtab))])
+  
+  if(i <= 10){
+    
+      iter_k = sapply(X = 1:nrow(output$group_assign), 
+                  FUN = function(x){
+                    length(unique(output$group_assign[x,]))
+                  })
+      plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
+            main = paste0("Traceplot of K, ", "Dataset ", i))
+    
+  }
+
+}
+
+par(mfrow=c(2,3))
+hist(x = diagnostic_sum$KLD, main = "KLD", xlab = "KLD")
+hist(x = diagnostic_sum$ARI, main = "ARI", xlab = "ARI")
+hist(x = diagnostic_sum$MAP_K, main = "MAP_K", xlab = "MAP_K")
+plot(x = diagnostic_sum$KLD, y = diagnostic_sum$ARI, xlab = "KLD", ylab = "ARI", main = "KLD vs. ARI")
+plot(x = diagnostic_sum$MAP_K, y = diagnostic_sum$ARI, xlab = "MAP_K", ylab = "ARI", main = "MAP_K vs. ARI")
+plot(x = diagnostic_sum$MAP_K, y = diagnostic_sum$KLD, xlab = "MAP_K", ylab = "KLD", main = "MAP_K vs. KLD")
+```
+
+### n = 300
+
+```{r}
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryCloseTogTest"
+sim_dir = "MODSUM_conjDEE_3close_n300_noSM_sim_results_2024_10_16"  
+result_wd = paste0(data_path, "/", sim_dir)
+result_file = list.files(result_wd)
+diagnostic_sum = data.frame(KLD = NA, ARI = NA, MAP_K = NA)
+for(i in 1:length(result_file)){
+  output = readRDS(paste0(result_wd, "/", result_file[i]))
+  # output$settings
+  # dim(output$group_assign)
+  diagnostic_sum[i,"ARI"] = output$mean_ARI
+  diagnostic_sum[i,"KLD"] = output$kl_div
+  diagnostic_sum[i,"MAP_K"] = as.numeric(names(output$k_freqtab)[which.max(as.numeric(output$k_freqtab))])
+  
+  if(i <= 10){
+    
+      iter_k = sapply(X = 1:nrow(output$group_assign), 
+                  FUN = function(x){
+                    length(unique(output$group_assign[x,]))
+                  })
+      plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
+            main = paste0("Traceplot of K, ", "Dataset ", i))
+    
+  }
+
+}
+
+par(mfrow=c(2,3))
+hist(x = diagnostic_sum$KLD, main = "KLD", xlab = "KLD")
+hist(x = diagnostic_sum$ARI, main = "ARI", xlab = "ARI")
+hist(x = diagnostic_sum$MAP_K, main = "MAP_K", xlab = "MAP_K")
+plot(x = diagnostic_sum$KLD, y = diagnostic_sum$ARI, xlab = "KLD", ylab = "ARI", main = "KLD vs. ARI")
+plot(x = diagnostic_sum$MAP_K, y = diagnostic_sum$ARI, xlab = "MAP_K", ylab = "ARI", main = "MAP_K vs. ARI")
+plot(x = diagnostic_sum$MAP_K, y = diagnostic_sum$KLD, xlab = "MAP_K", ylab = "KLD", main = "MAP_K vs. KLD")
+```
+
+## Traceplots for well-separated case
+
+# n = 30
+
+```{r}
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryUpdated"
+sim_dir = "MODSUM_conjDEE_3wellsep_n30_noSM_sim_results_2024_10_17"  
+result_wd = paste0(data_path, "/", sim_dir)
+result_file = list.files(result_wd)
+diagnostic_sum = data.frame(KLD = NA, ARI = NA, MAP_K = NA)
+for(i in 1:length(result_file)){
+  output = readRDS(paste0(result_wd, "/", result_file[i]))
+  # output$settings
+  # dim(output$group_assign)
+  diagnostic_sum[i,"ARI"] = output$mean_ARI
+  diagnostic_sum[i,"KLD"] = output$kl_div
+  diagnostic_sum[i,"MAP_K"] = as.numeric(names(output$k_freqtab)[which.max(as.numeric(output$k_freqtab))])
+  
+  if(i <= 10){
+    
+      iter_k = sapply(X = 1:nrow(output$group_assign), 
+                  FUN = function(x){
+                    length(unique(output$group_assign[x,]))
+                  })
+      plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
+            main = paste0("Traceplot of K, ", "Dataset ", i))
+    
+  }
+
+}
+
+par(mfrow=c(2,3))
+hist(x = diagnostic_sum$KLD, main = "KLD", xlab = "KLD")
+hist(x = diagnostic_sum$ARI, main = "ARI", xlab = "ARI")
+hist(x = diagnostic_sum$MAP_K, main = "MAP_K", xlab = "MAP_K")
+plot(x = diagnostic_sum$KLD, y = diagnostic_sum$ARI, xlab = "KLD", ylab = "ARI", main = "KLD vs. ARI")
+plot(x = diagnostic_sum$MAP_K, y = diagnostic_sum$ARI, xlab = "MAP_K", ylab = "ARI", main = "MAP_K vs. ARI")
+plot(x = diagnostic_sum$MAP_K, y = diagnostic_sum$KLD, xlab = "MAP_K", ylab = "KLD", main = "MAP_K vs. KLD")
+```
+
+
+# n = 100
+
+```{r}
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryUpdated"
+sim_dir = "MODSUM_conjDEE_3wellsep_n100_noSM_sim_results_2024_10_17"  
+result_wd = paste0(data_path, "/", sim_dir)
+result_file = list.files(result_wd)
+diagnostic_sum = data.frame(KLD = NA, ARI = NA, MAP_K = NA)
+for(i in 1:length(result_file)){
+  output = readRDS(paste0(result_wd, "/", result_file[i]))
+  # output$settings
+  # dim(output$group_assign)
+  diagnostic_sum[i,"ARI"] = output$mean_ARI
+  diagnostic_sum[i,"KLD"] = output$kl_div
+  diagnostic_sum[i,"MAP_K"] = as.numeric(names(output$k_freqtab)[which.max(as.numeric(output$k_freqtab))])
+  
+  if(i <= 10){
+    
+      iter_k = sapply(X = 1:nrow(output$group_assign), 
+                  FUN = function(x){
+                    length(unique(output$group_assign[x,]))
+                  })
+      plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
+            main = paste0("Traceplot of K, ", "Dataset ", i))
+    
+  }
+
+}
+
+par(mfrow=c(2,3))
+hist(x = diagnostic_sum$KLD, main = "KLD", xlab = "KLD")
+hist(x = diagnostic_sum$ARI, main = "ARI", xlab = "ARI")
+hist(x = diagnostic_sum$MAP_K, main = "MAP_K", xlab = "MAP_K")
+plot(x = diagnostic_sum$KLD, y = diagnostic_sum$ARI, xlab = "KLD", ylab = "ARI", main = "KLD vs. ARI")
+plot(x = diagnostic_sum$MAP_K, y = diagnostic_sum$ARI, xlab = "MAP_K", ylab = "ARI", main = "MAP_K vs. ARI")
+plot(x = diagnostic_sum$MAP_K, y = diagnostic_sum$KLD, xlab = "MAP_K", ylab = "KLD", main = "MAP_K vs. KLD")
+```
+
+
+# n = 300
+
+```{r}
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryUpdated"
+sim_dir = "MODSUM_conjDEE_3wellsep_n300_noSM_sim_results_2024_10_17"  
+result_wd = paste0(data_path, "/", sim_dir)
+result_file = list.files(result_wd)
+diagnostic_sum = data.frame(KLD = NA, ARI = NA, MAP_K = NA)
+for(i in 1:length(result_file)){
+  output = readRDS(paste0(result_wd, "/", result_file[i]))
+  # output$settings
+  # dim(output$group_assign)
+  diagnostic_sum[i,"ARI"] = output$mean_ARI
+  diagnostic_sum[i,"KLD"] = output$kl_div
+  diagnostic_sum[i,"MAP_K"] = as.numeric(names(output$k_freqtab)[which.max(as.numeric(output$k_freqtab))])
+  
+  if(i <= 10){
+    
+      iter_k = sapply(X = 1:nrow(output$group_assign), 
+                  FUN = function(x){
+                    length(unique(output$group_assign[x,]))
+                  })
+      plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
+            main = paste0("Traceplot of K, ", "Dataset ", i))
+    
+  }
+
+}
+
+par(mfrow=c(2,3))
+hist(x = diagnostic_sum$KLD, main = "KLD", xlab = "KLD")
+hist(x = diagnostic_sum$ARI, main = "ARI", xlab = "ARI")
+hist(x = diagnostic_sum$MAP_K, main = "MAP_K", xlab = "MAP_K")
+plot(x = diagnostic_sum$KLD, y = diagnostic_sum$ARI, xlab = "KLD", ylab = "ARI", main = "KLD vs. ARI")
+plot(x = diagnostic_sum$MAP_K, y = diagnostic_sum$ARI, xlab = "MAP_K", ylab = "ARI", main = "MAP_K vs. ARI")
+plot(x = diagnostic_sum$MAP_K, y = diagnostic_sum$KLD, xlab = "MAP_K", ylab = "KLD", main = "MAP_K vs. KLD")
+```

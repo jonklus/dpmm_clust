@@ -461,7 +461,7 @@ relabel_groups <- function(curr_label_mat, permutations, means){
 # }
 
 
-list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, # burn_in = 50, iter_threshold = 0, 
+list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_drop = FALSE, # burn_in = 50, iter_threshold = 0, 
                              relabel = FALSE, permutation = NULL, param_type, equal_var = FALSE){
   ## Function takes a list of length no. MCMC iterations and outputs a list of 
   ## data frames where each list element contains the draws for iterations
@@ -528,12 +528,20 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, # burn_i
   } else if(param_type == "Var"){
     
     # drop burn-in AND any singleton iterations before proceeding
-    temp_param_list = draws[keep_iters]
-    k_vec = k_vec[keep_iters]
-    param_symbol = "sigma"
-    if(equal_var == TRUE){
+
+    if(equal_var == TRUE & dont_drop == TRUE){
+      temp_param_list = draws # don't drop iters
+      param_symbol = "sigma"
+      num_params = rep(1, length(temp_param_list))
+    } else if(equal_var == TRUE){
+      temp_param_list = draws[keep_iters]
+      k_vec = k_vec[keep_iters]
+      param_symbol = "sigma"
       num_params = rep(1, length(temp_param_list))
     } else{
+      temp_param_list = draws[keep_iters]
+      k_vec = k_vec[keep_iters]
+      param_symbol = "sigma"
       # num_params = k_vec[keep_iters]
       num_params = sapply(X = 1:length(temp_param_list),
                           FUN = function(x){
@@ -607,7 +615,16 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, # burn_i
   }
   
 
-    unique_k = sort(unique(k_vec))
+    if(equal_var == TRUE & param_type == "Var"){
+      
+      unique_k = 1
+      
+    } else{
+      
+      unique_k = sort(unique(k_vec))
+      
+    }
+    
  
  
   # cat("\n unique_k:", unique_k)
@@ -629,18 +646,32 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, # burn_i
   
   
   # print(npar)
-  # need to create separate object for each # of groups k 
-  param_list_by_k = vector(mode = "list", length = length(unique_k))
+  # need to create separate object for each # of groups k
+    if(equal_var == TRUE & param_type == "Var"){
+      
+      param_list_by_k = vector(mode = "list", length = 1) # not actually going to 
+      # sort by k since variance param is pooled
+      
+    } else{
+      
+      param_list_by_k = vector(mode = "list", length = length(unique_k))
+      
+    }
+  
   
   # if label switching solution is given, also reorder params to address this
   if(relabel == FALSE){
     
 
     for(i in 1:length(unique_k)){
+      
       k_index = which(k_vec == unique_k[i]) # indices of all iters with k params
-      if(equal_var == TRUE){
+      
+      if(equal_var == TRUE & param_type == "Var"){
+        
         # pooled variance, single param
-        param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
+        # don't sort or do anything by k_list
+        param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list), 
                                                  ncol = 1,
                                                  byrow = TRUE))
         # name columns i.e. mu23 is param for group 2, 3rd component 
@@ -774,9 +805,9 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, # burn_i
       # reformat params now that order has been corrected
       if(npar == 1){
         
-        if(equal_var == TRUE){
+        if(equal_var == TRUE & param_type == "Var"){
           
-          param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
+          param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list), 
                                                    ncol = 1, 
                                                    byrow = TRUE))
           
@@ -1435,7 +1466,8 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
                                      mvtnorm::dmvnorm(x = y[[x]][,1], 
                                                       mean = as.numeric(mu_est[[k]][iter,mean_ind]), 
                                                       # equal var assumption so Sigma_set should only have 1 column
-                                                      sigma = diag(as.numeric(Sigma_est[[k]][iter,1]), 
+                                                      # and there should be only 1 list element after most recent update
+                                                      sigma = diag(as.numeric(Sigma_est[[1]][iter,1]), 
                                                                    length(y[[x]][,1]))
                                                       )
                                    })
@@ -1495,17 +1527,19 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
 #                 off_diag = TRUE)
 
 
-# function to generate list of adjacency matrices from group_assign at each iteration
-# helpful when you only have output of dpmm_summary and not full model output but want
-# to do diagnostics using genMCMCdiag
+
 
 get_adjmat_groupassign = function(group_assign){
   
-  adjmat_list = lapply(X = 1:(nrow(group_assign)-1), 
+  # function to generate list of adjacency matrices from group_assign at each iteration
+  # helpful when you only have output of dpmm_summary and not full model output but want
+  # to do diagnostics using genMCMCdiag
+  
+  adjmat_list = lapply(X = 1:(nrow(group_assign)), 
                        FUN = function(x){
                          matrix(as.numeric(outer(
                            X = group_assign[x,], 
-                           Y = group_assign[x+1,], 
+                           Y = group_assign[x,], 
                            FUN = "==")), nrow = ncol(group_assign))
                        })
   

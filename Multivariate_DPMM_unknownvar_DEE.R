@@ -662,6 +662,9 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
         
       }
       
+      # cat("\n K=", k, "\n")
+      # cat("\n probs=", pr_c)
+      
       ### draw a group assignment conditional on group membership probs
       group_assign[s,i] = sample(x = c(curr_labels, avail_labels[1]), 
                                  size = 1, prob = pr_c)

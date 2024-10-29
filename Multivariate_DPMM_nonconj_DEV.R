@@ -181,7 +181,7 @@ nonconj_prior_dens_DEV <- function(mu, mu0, Sigma, Sigma0, a, b){
   # sigma0 = diag(Sigma0)[1]
   # p = nrow(mu)
   
-  dens = log(mvtnorm::dmvnorm(x = mu, mean = mu0, sigma = Sigma0)) + 
+  dens = log(mvtnorm::dmvnorm(x = c(mu), mean = c(mu0), sigma = Sigma0)) + 
     log(LaplacesDemon::dinvgamma(x = sigma2, shape = a, scale = b))
   
   return(exp(dens))
@@ -197,13 +197,14 @@ nonconj_phi_prob_DEV <- function(curr_label, group_assign, count_assign, y,
   sigma2 = diag(Sigma)[1]
   sigma0 = diag(Sigma0)[1]
   p = nrow(mu)
-  loss_y_i = rowSums((matrix(unlist(y[group_assign == curr_label]), nrow = p) - mu)^2)
+  loss_y_i = sum(rowSums((matrix(unlist(y[group_assign == curr_label]), nrow = p) - mu[,1])^2))
   loss_mu_k = t(mu0 - matrix(mu, nrow = p))%*%(mu0 - matrix(mu, nrow = p))
   # density of posterior up to a constant...
   dens = (sigma2^(-(p/2+a-1)))*exp(-0.5*(loss_y_i/sigma2 + 
                                            2*b/sigma2 + loss_mu_k/sigma0))
   
   # for the kth component under a UVV assumption
+  # need to fill this in 
   
   return(dens)
 }
@@ -213,7 +214,7 @@ ll_components_DEV <- function(obs_ind, y, mu, Sigma){
   # acceptance probability after n_iter split merge restricted Gibbs scans
   
   val = mvtnorm::dmvnorm(x = y[[obs_ind]][,1], 
-                         mean = mu[,1], 
+                         mean = c(mu), 
                          sigma = Sigma)
   
   return(val)  
@@ -571,7 +572,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         mu_mean_k = (y[[i]]/sigma2_k + mu0/sigma0)*mu_cov_k
         mu_k = matrix(mvtnorm::rmvnorm(n = 1, 
                                        mean = mu_mean_k, 
-                                       sigma = diag(mu_cov_k,p)), 
+                                       sigma = diag(mu_cov_k, p)), 
                       nrow = p) # kth mean
         mu = cbind(mu, mu_k)
         
@@ -606,6 +607,8 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
       print(group_assign[s,])
       cat("\n")
       print(table(group_assign[s,]))
+      cat("\n Curr labels: \n")
+      print(curr_labels)
       cat("\n")
       print(mu)
       cat("\n")
@@ -665,12 +668,12 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
       
       # identify original mean and variance for merge proposal
       original_param_index1 = which(curr_labels == lab1)
-      original_mu1 = means[[original_param_index1]]
-      original_sigma1 = vars[[original_param_index1]]
+      original_mu1 = mu[,original_param_index1]
+      original_sigma1 = sigma2[[original_param_index1]]
       
       original_param_index2 = which(curr_labels == lab2)
-      original_mu2 = means[[original_param_index2]]
-      original_sigma2 = vars[[original_param_index2]]
+      original_mu2 = mu[,original_param_index2]
+      original_sigma2 = sigma2[[original_param_index2]]
       
       # cat("split_labs:", split_lab)
       # cat("\n")
@@ -682,6 +685,8 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
       
       # if SPLIT
       if(move_type == "SPLIT"){
+        
+        cat("\n Curr labels (at top of split): ", curr_labels, "\n")
         
         # need to set random launch states for both split and merge in non conj algo
         # specify random launch state for split
@@ -913,15 +918,16 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         # # merge_singletons = merge_label_assign[which(merge_count_assign == 1)]
         # # should never be a merge singleton --- need at least 2 anchor observations
         # 
-        # split_counts = table(split_temp_group_assign[sm_iter+1,])
-        # merge_counts = table(split_temp_group_assign[sm_iter+1,])
-        # 
-        # split_group_count_index = which(as.numeric(names(split_counts)) %in% split_lab)
+        split_counts = table(split_temp_group_assign[sm_iter+1,])
+        # merge_counts = table(merge_temp_group_assign[sm_iter+1,])
+
+        split_group_count_index = which(as.numeric(names(split_counts)) %in% split_lab)
+        # merge_group_count_index = which(as.numeric(names(merge_counts)) %in% merge_lab)
         
         ## proposal probability
         
         # compute P_GS(phi) from launch state to final scan for both split and merge proposals
-        split_phi_prob = lapply(X = 1:2, 
+        split_phi_prob = sapply(X = 1:2, 
                                 FUN = function(x){
                                   nonconj_phi_prob_DEV(
                                     curr_label = split_lab[x],
@@ -941,27 +947,27 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                               Sigma = merge_vars[[scan]], 
                                               Sigma0 = Sigma0, a = a, b = b)
         
-        prob1_c_num = Reduce(f = "+", x = log(split_sm_prob[sm_iter+1,subset_index]))
+        prob1_c_num = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
         prob1_phi_num = Reduce(f = "+", x = log(split_phi_prob)) # only calculated at end
         # so no need to index
         
-        prob1_c_denom = Reduce(f = "+", x = log(merge_sm_prob[sm_iter+1,subset_index]))
+        prob1_c_denom = Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
         prob1_phi_denom = log(merge_phi_prob)
         
         prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
         
         ## prior ratio
-        prob2_num = factorial(sm_counts[[split_group_count_index[1]]] -1)*
-          factorial(sm_counts[[split_group_count_index[2]]] -1)*
+        prob2_num = factorial(split_counts[[split_group_count_index[1]]] -1)*
+          factorial(split_counts[[split_group_count_index[2]]] -1)*
           nonconj_prior_dens_DEV(mu = split_means[[scan]][[1]], mu0 = mu0, 
                                  Sigma = split_vars[[scan]][[1]], 
                                  Sigma0 = Sigma0, a = a, b = b)*
-          nonconj_prior_dens_DEV(mu = merge_means[[scan]][[2]], mu0 = mu0, 
-                                 Sigma = merge_vars[[scan]][[2]], 
+          nonconj_prior_dens_DEV(mu = split_means[[scan]][[2]], mu0 = mu0, 
+                                 Sigma = split_vars[[scan]][[2]], 
                                  Sigma0 = Sigma0, a = a, b = b)
         
-        prob2_denom = factorial(sm_counts[[split_group_count_index[1]]] + 
-                                  sm_counts[[split_group_count_index[2]]]-1)*
+        prob2_denom = factorial(split_counts[[split_group_count_index[1]]] + 
+                                  split_counts[[split_group_count_index[2]]]-1)*
           nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
                                  Sigma = merge_vars[[scan]], 
                                  Sigma0 = Sigma0, a = a, b = b)
@@ -996,7 +1002,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         for(obs_ind in 1:length(subset_index)){
           val = ll_components_DEV(obs_ind = subset_index[obs_ind], y = y, 
                                   mu = original_mu1, 
-                                  Sigma = original_sigma1)
+                                  Sigma = diag(original_sigma1, p))
           prob3_denom = prob3_denom + log(val)
         }
         
@@ -1024,12 +1030,12 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           num_groups[s,] = k
           
           # if new group created by split, update mean and variance
-          ## add new means and variances from finall Gibbs scan to relevant vectors/lists
+          ## add new means and variances from final Gibbs scan to relevant vectors/lists
           
           ### TEST THIS PIECE, NOT SURE IF CORRECT!
-          length_Sigma = length(Sigma)
-          Sigma[[which_split_labs[1]]] = merge_vars[[sm_iter+1]][[1]]
-          Sigma[[length_Sigma+1]] = merge_vars[[sm_iter+1]][[2]]
+          length_sigma2 = length(sigma2)
+          sigma2[[which_split_labs[1]]] = merge_vars[[sm_iter+1]][[1]]
+          sigma2[[length_sigma2+1]] = merge_vars[[sm_iter+1]][[2]]
           
           mu[,which_split_labs[1]] = merge_means[[sm_iter+1]][[1]]
           mu = cbind(mu, merge_vars[[sm_iter+1]][[2]])
@@ -1045,6 +1051,8 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         
         # if MERGE    
       } else if(move_type == "MERGE"){
+        
+        cat("\n Curr labels (at top of merge): ", curr_labels, "\n")
         
         # need to set random launch states for both split and merge in non conj algo
         # specify random launch state for split
@@ -1248,7 +1256,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           
           merge_phi = update_phi_DEV(curr_label = merge_lab, 
                                      group_assign = merge_temp_group_assign[scan,], 
-                                     count_assign = merge_count_assign[merge_group_count_index][x], 
+                                     count_assign = merge_count_assign[merge_group_count_index], 
                                      y = y, 
                                      mu = merge_means[[scan]], 
                                      mu0 = mu0, 
@@ -1275,16 +1283,19 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         # merge_label_assign = as.numeric(names(table(merge_temp_group_assign[sm_iter+1,])))
         # # merge_singletons = merge_label_assign[which(merge_count_assign == 1)]
         # # should never be a merge singleton --- need at least 2 anchor observations
-        # 
-        # split_counts = table(split_temp_group_assign[sm_iter+1,])
-        # merge_counts = table(split_temp_group_assign[sm_iter+1,])
-        # 
-        # split_group_count_index = which(as.numeric(names(split_counts)) %in% split_lab)
+        
+        split_counts = table(split_temp_group_assign[sm_iter+1,])
+        merge_counts = table(merge_temp_group_assign[sm_iter+1,])
+        
+        split_group_count_index = which(as.numeric(names(split_counts)) %in% split_lab)
+        merge_group_count_index = which(as.numeric(names(merge_counts)) %in% merge_lab)
+        
+        cat("\n Curr labels (at bottom of merge): ", curr_labels, "\n")
         
         ## proposal probability
         
         # compute P_GS(phi) from launch state to final scan for both split and merge proposals
-        split_phi_prob = lapply(X = 1:2, 
+        split_phi_prob = sapply(X = 1:2, 
                                 FUN = function(x){
                                   nonconj_phi_prob_DEV(
                                     curr_label = split_lab[x],
@@ -1304,28 +1315,28 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                               Sigma = merge_vars[[scan]], 
                                               Sigma0 = Sigma0, a = a, b = b)
         
-        prob1_c_num = Reduce(f = "+", x = log(merge_sm_prob[sm_iter+1,subset_index]))
+        prob1_c_num = Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
         prob1_phi_num = log(merge_phi_prob)
         
-        prob1_c_denom = Reduce(f = "+", x = log(split_sm_prob[sm_iter+1,subset_index]))
+        prob1_c_denom = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
         prob1_phi_denom = Reduce(f = "+", x = log(split_phi_prob))
         
         prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
         
         ## prior ratio
-        prob2_num = factorial(sm_counts[[split_group_count_index[1]]] + 
-                                sm_counts[[split_group_count_index[2]]]-1)*
+        prob2_num = factorial(split_counts[[split_group_count_index[1]]] + 
+                                split_counts[[split_group_count_index[2]]]-1)*
           nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
                                  Sigma = merge_vars[[scan]], 
                                  Sigma0 = Sigma0, a = a, b = b)
         
-        prob2_denom = factorial(sm_counts[[split_group_count_index[1]]] -1)*
-          factorial(sm_counts[[split_group_count_index[2]]] -1)*
+        prob2_denom = factorial(split_counts[[split_group_count_index[1]]] -1)*
+          factorial(split_counts[[split_group_count_index[2]]] -1)*
           nonconj_prior_dens_DEV(mu = split_means[[scan]][[1]], mu0 = mu0, 
                                  Sigma = split_vars[[scan]][[1]], 
                                  Sigma0 = Sigma0, a = a, b = b)*
-          nonconj_prior_dens_DEV(mu = merge_means[[scan]][[2]], mu0 = mu0, 
-                                 Sigma = merge_vars[[scan]][[2]], 
+          nonconj_prior_dens_DEV(mu = split_means[[scan]][[2]], mu0 = mu0, 
+                                 Sigma = split_vars[[scan]][[2]], 
                                  Sigma0 = Sigma0, a = a, b = b)
         
         prob2 = log(alpha) + (log(prob2_num) - log(prob2_denom))
@@ -1339,7 +1350,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         for(obs_ind in 1:length(subset_index_grp1)){
           val = ll_components_DEV(obs_ind = subset_index_grp1[obs_ind], y = y, 
                                   mu = original_mu1, 
-                                  Sigma = original_sigma1)
+                                  Sigma = diag(original_sigma1,p))
           prob3_num1 = prob3_num1 + log(val)
         }
         
@@ -1348,7 +1359,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         for(obs_ind in 1:length(subset_index_grp2)){
           val = ll_components_DEV(obs_ind = subset_index_grp2[obs_ind], y = y, 
                                   mu = original_mu2, # change, needs tot be merge mu
-                                  Sigma = original_sigma2)
+                                  Sigma = diag(original_sigma2,p))
           prob3_num2 = prob3_num2 + log(val)
         }
         
@@ -1372,30 +1383,35 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           
           # accept
           accept = 1
-          group_assign[s,] = split_temp_group_assign[sm_iter+1,]
+          group_assign[s,] = merge_temp_group_assign[sm_iter+1,]
           
           # print(table(group_assign[s,]))
           
-          # take new group lab out of reserve
-          curr_labels = c(curr_labels, avail_labels[1])
-          avail_labels = avail_labels[-1]
+          # put old group lab out of reserve
+          cat("\n Curr labels (in accept if statement): ", curr_labels, "\n")
+          
+          curr_label_del = which(curr_labels == split_lab[2])
+          avail_labels = c(curr_labels[curr_label_del], avail_labels)
+          curr_labels = curr_labels[-curr_label_del]
+          
           k = length(curr_labels)
+          
           # update labels, etc
           count_assign = as.numeric(table(group_assign[s,]))
           label_assign = as.numeric(names(table(group_assign[s,])))
-          which_split_labs = which(label_assign %in% split_lab) 
+          which_split_lab = which(label_assign == split_lab[1]) 
           num_groups[s,] = k
           
-          # if new group created by split, update mean and variance
+          # if new group created by merge, update mean and variance
           ## add new means and variances from finall Gibbs scan to relevant vectors/lists
           
           ### TEST THIS PIECE, NOT SURE IF CORRECT!
-          length_Sigma = length(Sigma)
-          Sigma[[which_split_labs[1]]] = merge_vars[[sm_iter+1]][[1]]
-          Sigma[[length_Sigma+1]] = merge_vars[[sm_iter+1]][[2]]
+          length_sigma2 = length(sigma2)
+          sigma2[[which_split_labs[1]]] = merge_vars[[sm_iter+1]]
+          sigma2 = sigma2[-which_split_labs[2]]
           
-          mu[,which_split_labs[1]] = merge_means[[sm_iter+1]][[1]]
-          mu = cbind(mu, merge_vars[[sm_iter+1]][[2]])
+          mu[,which_split_labs[1]] = merge_means[[sm_iter+1]]
+          mu = mu[,-which_split_labs[2]]
           
         } else{
           # reject
