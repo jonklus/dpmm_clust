@@ -195,13 +195,19 @@ sim_diagnostic_sum <- function(data_path, sim_dir, num_traceplots){
                     })
         
         plot(x = 1:length(iter_k), y = iter_k, type = "l", xlab = "iter", ylab = "K",
-              main = paste0("(#", i, ") ", "Traceplot of K"))
+              main = paste0("(#", 
+                           stringr::str_extract(string = result_file[i], 
+                                                pattern = "[:digit:]+"), 
+                            ") ", "Traceplot of K"))
         
         # traceplot of sigma2 (for DEE only)
         sigma2_vec = output$var_list_by_k_stephens[[1]][,1]
         plot(x = 1:length(sigma2_vec), y = log(sigma2_vec), 
-             type = "l", xlab = "iter", ylab = "log(sigma)",
-             main = paste0("(#", i, ") ", "Traceplot of sigma2"))
+             type = "l", xlab = "iter", ylab = "log(sigma2)",
+             main = paste0("(#", 
+                           stringr::str_extract(string = result_file[i], 
+                                                pattern = "[:digit:]+"), 
+                           ") ", "Traceplot of sigma2"))
   
         
         # Luke diagnostics
@@ -214,7 +220,7 @@ sim_diagnostic_sum <- function(data_path, sim_dir, num_traceplots){
                                    distance = hammingDist,
                                    diagnostics = "traceplot")
         p1 = ggplot2::ggplot(mapping = aes(x = d1$transformedDraws[1][[1]]$t,
-                                           y = log(d1$transformedDraws[1][[1]]$val+1))) +
+                                           y = d1$transformedDraws[1][[1]]$val)) +
               ggplot2::geom_line() +
               ggplot2::theme_classic() +
               ggplot2::ylab("Hamming dist") +
@@ -229,7 +235,7 @@ sim_diagnostic_sum <- function(data_path, sim_dir, num_traceplots){
                                    diagnostics = "traceplot", 
                                    reference = diag(x = 1, nrow = nrow(adjmat_list[[1]][[1]])))
         p2 = ggplot2::ggplot(mapping = aes(x = d2$transformedDraws[1][[1]]$t,
-                                           y = log(d2$transformedDraws[1][[1]]$val+1))) +
+                                           y = d2$transformedDraws[1][[1]]$val)) +
               ggplot2::geom_line() +
               ggplot2::theme_classic() +
               ggplot2::ylab("Hamming dist") +
@@ -244,7 +250,7 @@ sim_diagnostic_sum <- function(data_path, sim_dir, num_traceplots){
                                    diagnostics = "traceplot", 
                                    reference = true_ref[[1]])
         p3 = ggplot2::ggplot(mapping = aes(x = d3$transformedDraws[1][[1]]$t,
-                                           y = log(d3$transformedDraws[1][[1]]$val+1))) +
+                                           y = d3$transformedDraws[1][[1]]$val)) +
               ggplot2::geom_line() +
               ggplot2::theme_classic() +
               ggplot2::ylab("Hamming dist") +
@@ -255,7 +261,7 @@ sim_diagnostic_sum <- function(data_path, sim_dir, num_traceplots){
         
         # try doing hamming distance from iteration i to i+1
         hamming_diff = hamming_dist_mcmc(adj_mat_list = adjmat_list[[1]])
-        p4 = ggplot2::ggplot(mapping = aes(x=1:length(hamming_diff), y = log(hamming_diff+1))) +
+        p4 = ggplot2::ggplot(mapping = aes(x=1:length(hamming_diff), y = hamming_diff)) +
           ggplot2::geom_line() +
           ggplot2::theme_classic() +
           ggplot2::ylab("Hamming dist") +

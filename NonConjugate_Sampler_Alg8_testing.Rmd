@@ -92,7 +92,7 @@ yreps = lapply(X = 1:nreps,
 
 ```{r}
 x = 5 # first simulated data set 
-n_iter = 100
+n_iter = 14
 y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
 S = n_iter
 seed = seeds[x]
