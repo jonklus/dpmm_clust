@@ -106,7 +106,7 @@ sigma_hyperprior = FALSE
 k_init = 1
 diag_weights = FALSE
 verbose = TRUE
-print_iter = 1000
+print_iter = 1
 split_merge = TRUE
 sm_iter = 5
 truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign)

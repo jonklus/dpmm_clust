@@ -477,10 +477,11 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
 
 ############################ INDEPENDENT IG PRIORS ############################# 
 
-MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1/2, b = 10, mu0, k_init = 2,
+MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1/2, b = 10, mu0, 
                                 d = 1, f = 1, g = 1, h = 1, sigma_hyperprior = TRUE, fix_r = FALSE,
+                                k_init = 3, init_method = "kmeans",
                                 split_merge = FALSE, sm_iter = 5, truth = NA, standardize_y = FALSE,
-                                diag_weights = FALSE, verbose = TRUE, print_iter = 100){
+                                diag_weights = FALSE, verbose = TRUE, print_iter = 100, print_start = 2000){
   
   # S is number of MCMC iterations
   # y is a list of data of length n
@@ -491,7 +492,8 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   # d, f are the hyperprior parameters on the Gamma dist placed on b, assume a known
   # sigma_hyperprior is a logical argument of whether to use the hyperprior or assume indep.
   # mu0 is the prior mean - must be of dimension p*1
-  # K_init is the initial number of groups
+  # K_init is the initial number of groups, 
+  # init_method is either "kmeans" or "random"
   # diag_weights is an argument to the Laplacian matrix - whether the diagonal should be 1 or not
   # verbose & printmod tells the function if and how often to print a progress summary
   # truth is an optional list argument with the true parameters used to generate simulated data
@@ -505,10 +507,10 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   p = length(y[[1]]) # dimensionality of MVN
   k = k_init # initial number of groups
   
+  y_matrix = matrix(data = unlist(y), ncol = p, byrow = TRUE)
+  
   # center and scale data if standardize == TRUE
   if(standardize_y == TRUE){
-    
-    y_matrix = matrix(data = unlist(y), ncol = p, byrow = TRUE)
     std_y_matrix = scale(y_matrix)
     y = lapply(X = 1:nrow(std_y_matrix), 
                FUN = function(x){matrix(std_y_matrix[x,], ncol=1)})
@@ -518,9 +520,16 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   accept_ind = matrix(data = NA, nrow = S, ncol = n)
   group_assign = matrix(data = NA, nrow = S, ncol = n)
   
-  group_assign[1, ] = sample(x = 1:k, size = length(y), replace = TRUE, prob = rep(1/k, k))
-  # try different group assign initialization
-  # group_assign[1, ] = ifelse(y > mean(y), k, k-1)  doesn't work for MVN, try kmeans?
+  if(init_method == "kmeans"){
+    group_assign[1, ] = kmeans(x = y_matrix, centers = k_init, iter.max = 10)$cluster
+  } else{
+    # random
+    group_assign[1, ] = sample(x = 1:k_init, size = length(y), 
+                               replace = TRUE, prob = rep(1/k_init, k_init))
+    # try different group assign initialization
+    # group_assign[1, ] = ifelse(y > mean(y), k, k-1)  doesn't work for MVN, try kmeans?
+  }
+
   
   means = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
   vars = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
@@ -1311,7 +1320,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                            })
     
     # print progress
-    if((s %% print_iter == 0) & (s >= print_iter) & (verbose == TRUE)){
+    if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
       cat("After Gibbs step:") # just create a new line for separate
       cat("\n")
       cat("mu")
@@ -1327,23 +1336,23 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       cat("b",b)
       cat("\n")
    
-      # if(nrow(mu0) == 2){
-      #   # if this is a 2D problem, can make scatterplot of group assign
-      #   yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
-      #   plot_y = data.frame(
-      #     y1 = yvals[,1],
-      #     y2 = yvals[,2],
-      #     curr_assign = group_assign[s,]
-      #   )
-      #   print(plot_y$curr_assign)
-      #   prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = rownames(plot_y))) +
-      #     #geom_point(color = assign) +
-      #     #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
-      #     geom_text(size = 3, color = plot_y$curr_assign) +
-      #     ggtitle(paste0("Group Assignments at Iteration s=", s, ", k=", k)) + 
-      #     theme_classic()
-      #   print(prog_plot)
-      # }
+      if(nrow(mu0) == 2){
+        # if this is a 2D problem, can make scatterplot of group assign
+        yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
+        plot_y = data.frame(
+          y1 = yvals[,1],
+          y2 = yvals[,2],
+          curr_assign = group_assign[s,]
+        )
+        print(plot_y$curr_assign)
+        prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = plot_y$curr_assign)) +
+          #geom_point(color = assign) +
+          #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+          geom_text(size = 3, color = plot_y$curr_assign) +
+          ggtitle(paste0("Group Assignments at Iteration s=", s, ", k=", k)) +
+          theme_classic()
+        print(prog_plot)
+      }
       
       
     }
