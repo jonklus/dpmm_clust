@@ -1,7 +1,7 @@
 ---
 title: "Diagnostics for DPMM"
 author: "Jonathan Klus"
-date: "2024-10-24"
+date: "2024-10-31"
 output: html_document
 ---
 
@@ -43,7 +43,7 @@ library(genMCMCDiag)
 # data_path = "//GENE.bst.rochester.edu/Projects/JKSTproj/BlueHive_Sim_Results/"
 
 # running on server
-data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryUpdated"
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryKMeansInit"
 
 # dev_withSM = readRDS(paste0(data_path, "/MODSUM_conjDEV_3close_n30_withSM_sim_results_ENAR/sum_1.rds"))
 
@@ -159,11 +159,14 @@ hamming_dist_mcmc <- function(adj_mat_list){
          })
 }
 
-sim_diagnostic_sum <- function(data_path, sim_dir, num_traceplots){
+sim_diagnostic_sum <- function(data_path, sim_dir, runs_to_plot){
   # data_path is directory where all simulation results directories reside
   # sim_dir is directory holding RMD files from a specific simulation run
   # num_traceplots is how many of the simulations traceplots should be generated & printed
+  # runs_to_plot is a numeric array of sim numbers to print sim-level traceplots and diagnostics
   
+  num_traceplots = length(runs_to_plot)
+
   result_wd = paste0(data_path, "/", sim_dir)
   result_file = list.files(result_wd)
   diagnostic_sum = data.frame(KLD = NA, ARI = NA, MAP_K = NA)
@@ -174,7 +177,9 @@ sim_diagnostic_sum <- function(data_path, sim_dir, num_traceplots){
   }
   
   for(i in 1:length(result_file)){
+    
   output = readRDS(paste0(result_wd, "/", result_file[i]))
+  run_no = as.numeric(stringr::str_extract(string = result_file[i], pattern = "[:digit:]+"))
   
   if(i == 1){
     output$settings # print priors, etc
@@ -185,7 +190,7 @@ sim_diagnostic_sum <- function(data_path, sim_dir, num_traceplots){
   diagnostic_sum[i,"KLD"] = output$kl_div
   diagnostic_sum[i,"MAP_K"] = as.numeric(names(output$k_freqtab)[which.max(as.numeric(output$k_freqtab))])
   
-    if(i <= num_traceplots){
+    if(run_no %in% runs_to_plot){
       
         par(mfrow=c(1,2))
         # traceplot of K
@@ -208,6 +213,7 @@ sim_diagnostic_sum <- function(data_path, sim_dir, num_traceplots){
                            stringr::str_extract(string = result_file[i], 
                                                 pattern = "[:digit:]+"), 
                            ") ", "Traceplot of sigma2"))
+        abline(h = output$truth$sigma2, col = "blue")
   
         
         # Luke diagnostics
@@ -302,22 +308,23 @@ sim_diagnostic_sum <- function(data_path, sim_dir, num_traceplots){
   
 }
 
-data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryUpdated"
-sim_dir = "MODSUM_conjDEE_3wellsep_n30_noSM_sim_results_2024_10_24"  
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryKMeansInit"
+sim_dir = "MODSUM_conjDEE_3wellsep_n30_noSM_sim_results_2024_10_31"  
 
 sum1 = sim_diagnostic_sum(data_path = data_path, 
                           sim_dir = sim_dir, 
-                          num_traceplots = 5)
+                          runs_to_plot = c(1,10,100,11,12))
 
 ```
 
 ### n = 100
 
 ```{r}
-sim_dir = "MODSUM_conjDEE_3wellsep_n100_noSM_sim_results_2024_10_24"  
+sim_dir = "MODSUM_conjDEE_3wellsep_n100_noSM_sim_results_2024_10_31"  
+
 sum1 = sim_diagnostic_sum(data_path = data_path, 
                           sim_dir = sim_dir, 
-                          num_traceplots = 5)
+                          runs_to_plot = c(1,10,100,11,12))
 
 # print some examples of K, var, and group assign when spikes or rapid changes
 # occur, and when sampler gets stuck -- you have this info in the summary output
@@ -326,10 +333,12 @@ sum1 = sim_diagnostic_sum(data_path = data_path,
 ### n=30 with split/merge
 
 ```{r}
-sim_dir = "MODSUM_conjDEE_3wellsep_n30_withSM_sim_results_2024_10_23"  
+sim_dir = "MODSUM_conjDEE_3wellsep_n20_withSM_sim_results_2024_10_31"  
+
 sum1 = sim_diagnostic_sum(data_path = data_path, 
                           sim_dir = sim_dir, 
-                          num_traceplots = 5)
+                          runs_to_plot = c(1,10,100,11,12))
+
 
 # print some examples of K, var, and group assign when spikes or rapid changes
 # occur, and when sampler gets stuck -- you have this info in the summary output
@@ -338,10 +347,12 @@ sum1 = sim_diagnostic_sum(data_path = data_path,
 ### n=100 with split/merge
 
 ```{r}
-sim_dir = "MODSUM_conjDEE_3wellsep_n100_withSM_sim_results_2024_10_23"  
+sim_dir = "MODSUM_conjDEE_3wellsep_n100_withSM_sim_results_2024_10_31"  
+
 sum1 = sim_diagnostic_sum(data_path = data_path, 
                           sim_dir = sim_dir, 
-                          num_traceplots = 5)
+                          runs_to_plot = c(1,10,100,11,12))
+
 
 # print some examples of K, var, and group assign when spikes or rapid changes
 # occur, and when sampler gets stuck -- you have this info in the summary output

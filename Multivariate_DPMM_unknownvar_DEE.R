@@ -481,7 +481,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                                 d = 1, f = 1, g = 1, h = 1, sigma_hyperprior = TRUE, fix_r = FALSE,
                                 k_init = 3, init_method = "kmeans",
                                 split_merge = FALSE, sm_iter = 5, truth = NA, standardize_y = FALSE,
-                                diag_weights = FALSE, verbose = TRUE, print_iter = 100, print_start = 2000){
+                                diag_weights = FALSE, verbose = TRUE, print_iter = 1000, print_start = 1000){
   
   # S is number of MCMC iterations
   # y is a list of data of length n
@@ -516,6 +516,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                FUN = function(x){matrix(std_y_matrix[x,], ncol=1)})
   }
   
+  
   # preallocate memory and set initial values
   accept_ind = matrix(data = NA, nrow = S, ncol = n)
   group_assign = matrix(data = NA, nrow = S, ncol = n)
@@ -530,6 +531,23 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
     # group_assign[1, ] = ifelse(y > mean(y), k, k-1)  doesn't work for MVN, try kmeans?
   }
 
+  if(verbose == TRUE){
+    # plot initial group allocation
+    yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
+    plot_y = data.frame(
+      y1 = yvals[,1],
+      y2 = yvals[,2],
+      curr_assign = group_assign[1,]
+    )
+    print(plot_y$curr_assign)
+    prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = plot_y$curr_assign)) +
+      #geom_point(color = assign) +
+      #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+      geom_text(size = 3, color = plot_y$curr_assign) +
+      ggtitle(paste0("Initial Group Assignments", " k_init = ", k)) +
+      theme_classic()
+    print(prog_plot)
+  }
   
   means = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
   vars = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
@@ -565,7 +583,11 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
                         # unravel list of p*1 observations, put in matrix, find mean
                       })
   
-  vars[[1]] = mean(diag(var(matrix(unlist(y), ncol = p))))
+  vars[[1]] = sum(sapply(X = 1:length(y), 
+                     FUN = function(x){
+                       (y[[x]] - rowMeans(matrix(unlist(y[group_assign[1,] == group_assign[1,x]]), nrow = 2)))^2
+                       # unravel list of p*1 observations, put in matrix, find mean
+                     }))/(n*p)
   
   # initial allocation probs
   if(k == 1){
@@ -719,7 +741,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
       
     } ### end iterations from i=1:n
     
-    if((s %% print_iter == 0) & (s >= print_iter) & (verbose == TRUE)){
+    if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
       cat("\n")
       cat("End of CRP step") # just create a new line for separation
       cat("\n")
@@ -1422,7 +1444,8 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
   } else{
     
     settings = list(S = S, seed = seed, alpha = alpha,
-                    a = a, b = b, mu0 = mu0, k_init = k_init, 
+                    a = a, b = b, mu0 = mu0, 
+                    k_init = k_init, init_method = init_method,
                     d = d, f = f, r = r,
                     mod_type = "conjDEE", split_merge = split_merge, sm_iter = sm_iter)
     

@@ -92,7 +92,7 @@ yreps = lapply(X = 1:nreps,
 
 ```{r}
 x = 5 # first simulated data set 
-n_iter = 14
+n_iter = 500
 y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
 S = n_iter
 seed = seeds[x]
@@ -101,7 +101,7 @@ alpha = 1
 mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1)
 sigma0 = 50
 a = 1
-b = 50
+b = 10
 sigma_hyperprior = FALSE
 k_init = 1
 diag_weights = FALSE

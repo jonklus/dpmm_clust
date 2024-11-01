@@ -457,7 +457,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
   avail_labels = c(1:n)[-curr_labels]
   
   # iterate 1:S
-  for(s in 2:(S-1)){
+  for(s in 2:S){
     
     # print progress
     if((s %% print_iter == 0) & (verbose == TRUE)){
@@ -1054,6 +1054,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         # need to set random launch states for both split and merge in non conj algo
         # specify random launch state for split
         split_lab = c(lab1, lab2) # keep original labels for both groups for split 
+        which_split_lab = which(label_assign %in% split_lab) # check before updating
         # launch state in merge proposal
         
         # set launch states for merge
@@ -1397,16 +1398,21 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           # update labels, etc
           count_assign = as.numeric(table(group_assign[s,]))
           label_assign = as.numeric(names(table(group_assign[s,])))
-          which_split_lab = which(label_assign == split_lab[1]) 
           num_groups[s,] = k
           
           # if new group created by merge, update mean and variance
           ## add new means and variances from finall Gibbs scan to relevant vectors/lists
           
           ### TEST THIS PIECE, NOT SURE IF CORRECT!
+          cat("\n sigma2 BEFORE post-merge update: \n")
+          print(sigma2)
+          
           length_sigma2 = length(sigma2)
-          sigma2[[which_split_lab[1]]] = merge_vars[[sm_iter+1]]
+          sigma2[[which_split_lab[1]]] = merge_vars[[sm_iter+1]][1] # scalar in DEV
           sigma2 = sigma2[-which_split_lab[2]]
+          
+          cat("\n sigma2 AFTER post-merge update: \n")
+          print(sigma2)
           
           mu[,which_split_lab[1]] = merge_means[[sm_iter+1]]
           mu = mu[,-which_split_lab[2]]

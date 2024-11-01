@@ -35,11 +35,11 @@ library(scatterplot3d)
 ################## simulate data ##############################################
 
 set.seed(516)
-nreps = 10
+x = 1 # dataset100
 seeds = readRDS("./BHsimseeds.rds")
 
 
-  w = c(0.4, 0.3, 0.3)
+w = c(0.4, 0.3, 0.3)
 
 means = list(
     c(-20, 20),
@@ -50,56 +50,26 @@ means = list(
 
 var = diag(10, length(means[[1]])) # variances known, diagonal, and equal
 
-yreps = lapply(X = 1:nreps, 
-           FUN = function(x){
-             set.seed(seeds[x])
-             assign = sample(x = 1:length(means), size = 100, replace = TRUE, prob = w)
-             y = lapply(X = assign,
-                        FUN = function(x){
-                        t(mvtnorm::rmvnorm(n = 1, mean = means[[x]], sigma = var))
-                          })
-             return(list(y = y, assign = assign))
-           })
 
-# # make a grid of plots
-pltlist = list()
-datalist = list()
-for(rep in 1:nreps){
+set.seed(seeds[x])
+assign = sample(x = 1:length(means), size = 100, replace = TRUE, prob = w)
+y = lapply(X = assign,
+          FUN = function(x){
+          t(mvtnorm::rmvnorm(n = 1, mean = means[[x]], sigma = var))
+            })
 
-  y_matrix = matrix(data = unlist(yreps[[rep]]$y), ncol = 2, byrow = TRUE)
-  assign = yreps[[rep]]$assign
 
-  data = data.frame(
-    assign = assign,
-    y1 = y_matrix[,1],
-    y2 = y_matrix[,2]
-  )
-  
-  datalist[[rep]] = data
-
-  p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
-    geom_point(color = assign, size = 0.75) +
-    #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
-    # geom_text(size = 3, color = assign) +
-    theme_classic()
-
-  pltlist[[rep]] = p
-}
-
-do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignments")
-# 
 # drop params used to generate data, except for var which is assumed known
 mu_true = means
 var_true = var
 # yreps # 2nd element is assign
 rm(w, means)
 ```
+
 ### Fit DEE model
 
 ```{r}
-n_iter = 12000
-x=3
-
+n_iter = 5000
 # set hyperparameters
 # a = 1; b = 50
 # d = 1; f = 1
@@ -110,13 +80,13 @@ x=3
 
 # run in fxn
 sim_results_DEE_with_sm = MVN_CRP_sampler_DEE(
-        S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
+        S = n_iter, seed = seeds[x], y = y,
         alpha = 1, r = 10, d = 1, f = 1 , g = 1, h = 50,
         sigma_hyperprior = FALSE, fix_r = FALSE,
-        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-        a = 1, b = 50,
-        k_init = 1, diag_weights = FALSE,
-        verbose = TRUE, split_merge = FALSE, print_iter = 1, print_start = 2000
+        mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1),
+        a = 5, b = 50,
+        k_init = 3, init_method = "kmeans", diag_weights = FALSE, 
+        verbose = TRUE, split_merge = FALSE, print_iter = 1, print_start = 1000
         )
 
 mod_sum = dpmm_summary(output = sim_results_DEE_with_sm, 
@@ -126,7 +96,7 @@ mod_sum = dpmm_summary(output = sim_results_DEE_with_sm,
        burn_in = 0, t_hold = 100, 
        num_dims = 2, equal_var = TRUE,
        calc_perf = TRUE, mu_true = mu_true, 
-       var_true = var_true, assign_true = yreps[[x]]$assign)
+       var_true = var_true, assign_true = assign)
 
 plot(mod_sum$var_list_by_k_stephens[[1]]$sigma_1_1, type = "l", 
      xlab = "iter", ylab = "sigma2")
