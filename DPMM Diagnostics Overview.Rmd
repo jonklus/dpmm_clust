@@ -43,7 +43,7 @@ library(genMCMCDiag)
 # data_path = "//GENE.bst.rochester.edu/Projects/JKSTproj/BlueHive_Sim_Results/"
 
 # running on server
-data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryKMeansInit"
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryPriorScale"
 
 # dev_withSM = readRDS(paste0(data_path, "/MODSUM_conjDEV_3close_n30_withSM_sim_results_ENAR/sum_1.rds"))
 
@@ -182,7 +182,7 @@ sim_diagnostic_sum <- function(data_path, sim_dir, runs_to_plot){
   run_no = as.numeric(stringr::str_extract(string = result_file[i], pattern = "[:digit:]+"))
   
   if(i == 1){
-    output$settings # print priors, etc
+    print(output$settings) # print priors, etc
   }
   
   # dim(output$group_assign)
@@ -308,13 +308,18 @@ sim_diagnostic_sum <- function(data_path, sim_dir, runs_to_plot){
   
 }
 
-data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryKMeansInit"
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryPriorScale"
 sim_dir = "MODSUM_conjDEE_3wellsep_n30_noSM_sim_results_2024_10_31"  
 
 sum1 = sim_diagnostic_sum(data_path = data_path, 
                           sim_dir = sim_dir, 
                           runs_to_plot = c(1,10,100,11,12))
+```
 
+```{r}
+# investigate variance spikes
+output = readRDS(paste0(data_path,"/",sim_dir,"/sum_1.rds"))
+which(output$var_list_by_k_stephens[[1]]$sigma_1_1 > 50)
 ```
 
 ### n = 100

@@ -69,7 +69,7 @@ rm(w, means)
 ### Fit DEE model
 
 ```{r}
-n_iter = 5000
+n_iter = 10
 # set hyperparameters
 # a = 1; b = 50
 # d = 1; f = 1

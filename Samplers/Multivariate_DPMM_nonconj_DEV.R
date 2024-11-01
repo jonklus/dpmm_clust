@@ -354,7 +354,8 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
 ############################ INDEPENDENT IG PRIORS ############################# 
 
 MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, 
-                                a = 1/2, b = 10, mu0, sigma0, k_init = 2,
+                                a = 1/2, b = 10, mu0, sigma0, 
+                                k_init = 3, init_method = "kmeans",
                                 # d = 1, f = 1, 
                                 sigma_hyperprior = TRUE, standardize_y = FALSE,
                                 split_merge = FALSE, sm_iter = 5, truth = NA,
@@ -397,9 +398,16 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
   accept_ind = matrix(data = NA, nrow = S, ncol = n)
   group_assign = matrix(data = NA, nrow = S, ncol = n)
   
-  group_assign[1, ] = sample(x = 1:k, size = length(y), replace = TRUE, prob = rep(1/k, k))
-  # try different group assign initialization
-  # group_assign[1, ] = ifelse(y > mean(y), k, k-1)  doesn't work for MVN, try kmeans?
+  if(init_method == "kmeans"){
+    group_assign[1, ] = kmeans(x = y_matrix, centers = k_init, iter.max = 10)$cluster
+  } else{
+    # random
+    group_assign[1, ] = sample(x = 1:k_init, size = length(y), 
+                               replace = TRUE, prob = rep(1/k_init, k_init))
+    # try different group assign initialization
+    # group_assign[1, ] = ifelse(y > mean(y), k, k-1)  doesn't work for MVN, try kmeans?
+  }
+  
   
   means = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
   vars = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)

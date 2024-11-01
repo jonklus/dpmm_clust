@@ -477,7 +477,8 @@ split_merge_prob_DEE <- function(obs, split_labs, group_assign, r, a, b, y, mu0)
 
 ############################ INDEPENDENT IG PRIORS ############################# 
 
-MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1/2, b = 10, mu0, 
+MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, 
+                                a = 1, b = 10, mu0, 
                                 d = 1, f = 1, g = 1, h = 1, sigma_hyperprior = TRUE, fix_r = FALSE,
                                 k_init = 3, init_method = "kmeans",
                                 split_merge = FALSE, sm_iter = 5, truth = NA, standardize_y = FALSE,
@@ -531,23 +532,23 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
     # group_assign[1, ] = ifelse(y > mean(y), k, k-1)  doesn't work for MVN, try kmeans?
   }
 
-  if(verbose == TRUE){
-    # plot initial group allocation
-    yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
-    plot_y = data.frame(
-      y1 = yvals[,1],
-      y2 = yvals[,2],
-      curr_assign = group_assign[1,]
-    )
-    print(plot_y$curr_assign)
-    prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = plot_y$curr_assign)) +
-      #geom_point(color = assign) +
-      #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
-      geom_text(size = 3, color = plot_y$curr_assign) +
-      ggtitle(paste0("Initial Group Assignments", " k_init = ", k)) +
-      theme_classic()
-    print(prog_plot)
-  }
+  # if(verbose == TRUE){
+  #   # plot initial group allocation
+  #   yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
+  #   plot_y = data.frame(
+  #     y1 = yvals[,1],
+  #     y2 = yvals[,2],
+  #     curr_assign = group_assign[1,]
+  #   )
+  #   print(plot_y$curr_assign)
+  #   prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = plot_y$curr_assign)) +
+  #     #geom_point(color = assign) +
+  #     #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+  #     geom_text(size = 3, color = plot_y$curr_assign) +
+  #     ggtitle(paste0("Initial Group Assignments:", " k_init = ", k)) +
+  #     theme_classic()
+  #   print(prog_plot)
+  # }
   
   means = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
   vars = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
@@ -1367,7 +1368,7 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1, a = 1
           curr_assign = group_assign[s,]
         )
         print(plot_y$curr_assign)
-        prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = plot_y$curr_assign)) +
+        prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = curr_assign)) +
           #geom_point(color = assign) +
           #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
           geom_text(size = 3, color = plot_y$curr_assign) +
