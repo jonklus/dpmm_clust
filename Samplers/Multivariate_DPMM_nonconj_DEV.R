@@ -447,6 +447,13 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                        # but note that initial off-diag elements may be extreme
                      })
   
+  if(verbose == TRUE){
+    cat("\n Initial means: \n")
+    print(means[[1]])
+    cat("\n Initial vars: \n")
+    print(vars[[1]])
+  }
+  
   # initial allocation probs
   if(k == 1){
     probs[[1]] = matrix(data = 0, nrow = n, ncol = 1) 
@@ -810,13 +817,13 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                 merge_assign_prob = 1
                 
                 # dont sample --- but do record prob of group anchor obs in in!
-                which_split_lab_anchor = which(split_lab == split_temp_group_assign[scan,obs])
+                which_split_labs_anchor = which(split_lab == split_temp_group_assign[scan,obs])
                 # how to do this best for merge????
                 which_merge_lab_anchor = 1  # why is this 1?? need to figure out what this should be 
                 
                 # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
                 # dont need to assign again - already initialized since anchor
-                split_sm_probs[scan,obs] = split_assign_prob[which_split_lab_anchor]
+                split_sm_probs[scan,obs] = split_assign_prob[which_split_labs_anchor]
                 merge_sm_probs[scan,obs] = merge_assign_prob[which_merge_lab_anchor]
                 
               } else{
@@ -1036,14 +1043,12 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           
           # if new group created by split, update mean and variance
           ## add new means and variances from final Gibbs scan to relevant vectors/lists
-          
-          ### TEST THIS PIECE, NOT SURE IF CORRECT!
           length_sigma2 = length(sigma2)
-          sigma2[[which_split_labs[1]]] = merge_vars[[sm_iter+1]][[1]]
-          sigma2[[length_sigma2+1]] = merge_vars[[sm_iter+1]][[2]]
+          sigma2[[which_split_labs[1]]] = split_vars[[sm_iter+1]][[1]]
+          sigma2[[length_sigma2+1]] = split_vars[[sm_iter+1]][[2]]
           
-          mu[,which_split_labs[1]] = merge_means[[sm_iter+1]][[1]]
-          mu = cbind(mu, merge_vars[[sm_iter+1]][[2]])
+          mu[,which_split_labs[1]] = split_means[[sm_iter+1]][[1]]
+          mu = cbind(mu, split_vars[[sm_iter+1]][[2]])
           
         } else{
           # reject
@@ -1062,7 +1067,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         # need to set random launch states for both split and merge in non conj algo
         # specify random launch state for split
         split_lab = c(lab1, lab2) # keep original labels for both groups for split 
-        which_split_lab = which(label_assign %in% split_lab) # check before updating
+        which_split_labs = which(label_assign %in% split_lab) # check before updating
         # launch state in merge proposal
         
         # set launch states for merge
@@ -1178,13 +1183,13 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                 merge_assign_prob = 1
                 
                 # dont sample --- but do record prob of group anchor obs in in!
-                which_split_lab_anchor = which(split_lab == split_temp_group_assign[scan,obs])
+                which_split_labs_anchor = which(split_lab == split_temp_group_assign[scan,obs])
                 # how to do this best for merge????
                 which_merge_lab_anchor = 1  # why is this 1?? need to figure out what this should be 
                 
                 # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
                 # dont need to assign again - already initialized since anchor
-                split_sm_probs[scan,obs] = split_assign_prob[which_split_lab_anchor]
+                split_sm_probs[scan,obs] = split_assign_prob[which_split_labs_anchor]
                 merge_sm_probs[scan,obs] = merge_assign_prob[which_merge_lab_anchor]
                 
               } else{
@@ -1409,21 +1414,13 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           num_groups[s,] = k
           
           # if new group created by merge, update mean and variance
-          ## add new means and variances from finall Gibbs scan to relevant vectors/lists
+          ## add new means and variances from final Gibbs scan to relevant vectors/lists
+            length_sigma2 = length(sigma2)
+          sigma2[[which_split_labs[1]]] = merge_vars[[sm_iter+1]][1] # scalar in DEV
+          sigma2 = sigma2[-which_split_labs[2]]
           
-          ### TEST THIS PIECE, NOT SURE IF CORRECT!
-          cat("\n sigma2 BEFORE post-merge update: \n")
-          print(sigma2)
-          
-          length_sigma2 = length(sigma2)
-          sigma2[[which_split_lab[1]]] = merge_vars[[sm_iter+1]][1] # scalar in DEV
-          sigma2 = sigma2[-which_split_lab[2]]
-          
-          cat("\n sigma2 AFTER post-merge update: \n")
-          print(sigma2)
-          
-          mu[,which_split_lab[1]] = merge_means[[sm_iter+1]]
-          mu = mu[,-which_split_lab[2]]
+          mu[,which_split_labs[1]] = merge_means[[sm_iter+1]]
+          mu = mu[,-which_split_labs[2]]
           
         } else{
           # reject
@@ -1448,6 +1445,23 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
       # cat("prob", accept_prob)
       # cat("\n")
       # print(table(group_assign[s,]))
+      
+      if((s %% print_iter == 0) & (s >= print_iter) & (verbose == TRUE)){
+        cat("\n End of split/merge step, iter: ", s, "\n") # just create a new line for separation
+        cat("\n PROPOSED MOVE: ", move_type, " Accepted = ", accept, "\n")
+        print(paste("Current k = ", k))
+        cat("\n")
+        print(group_assign[s,])
+        cat("\n")
+        print(table(group_assign[s,]))
+        cat("\n Curr labels: \n")
+        print(curr_labels)
+        cat("\n")
+        print(mu)
+        cat("\n")
+        print(sigma2)
+        cat("\n")
+      }
  
     }
     

@@ -338,7 +338,7 @@ sum1 = sim_diagnostic_sum(data_path = data_path,
 ### n=30 with split/merge
 
 ```{r}
-sim_dir = "MODSUM_conjDEE_3wellsep_n20_withSM_sim_results_2024_10_31"  
+sim_dir = "MODSUM_conjDEE_3wellsep_n30_withSM_sim_results_2024_10_31"  
 
 sum1 = sim_diagnostic_sum(data_path = data_path, 
                           sim_dir = sim_dir, 

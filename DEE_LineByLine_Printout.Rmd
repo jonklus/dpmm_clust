@@ -6,14 +6,14 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 # load necessary functions
-source("./Multivariate_DPMM_unknownvar_DEE.R")
+# source("./Multivariate_DPMM_unknownvar_DEE.R")
 # source("./Multivariate_DPMM_nonconj_DEV.R")
 # source("./Multivariate_DPMM_nonconj_UVV.R")
-source("./posterior_helper_fxns.R")
-source("./post_processing_inf.R")
+# source("./posterior_helper_fxns.R")
+# source("./post_processing_inf.R")
 
 # load R libraries
 library(ggplot2)
@@ -29,9 +29,89 @@ library(xtable)
 library(scatterplot3d)
 ```
 
+# Isolating issues in previously run DEE simulation, seed #1
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryPriorScale"
+sim_dir = "MODSUM_conjDEE_3wellsep_n30_noSM_sim_results_2024_10_31"  
+output = readRDS(paste0(data_path,"/",sim_dir,"/sum_1.rds"))
+highvar_iters = which(output$var_list_by_k_stephens[[1]]$sigma_1_1 > 100)
+highvar_iters
+
+# how often are MCMC iterations within a given range?
+mean(output$var_list_by_k_stephens[[1]]$sigma_1_1 <20)
+mean(output$var_list_by_k_stephens[[1]]$sigma_1_1 <15 & output$var_list_by_k_stephens[[1]]$sigma_1_1 > 5)
+
+plot_iter <- function(output, iter){
+  
+  # cat("\n Variance terms from iter: \n")
+  # print(output$var_list_by_k_stephens[[1]]$sigma_1_1[iter])
+  
+  yvals = matrix(data = unlist(output$data), ncol = nrow(output$data[[1]]), byrow = TRUE)
+  plot_y = data.frame(
+    y1 = yvals[,1],
+    y2 = yvals[,2],
+    curr_assign = output$group_assign[iter,]
+  )
+  
+  prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = plot_y$curr_assign)) +
+    geom_text(size = 3, color = plot_y$curr_assign) +
+    ggtitle(paste0("Group Assignments:", " iter = ", iter, " , Var = ",
+                   round(output$var_list_by_k_stephens[[1]]$sigma_1_1[iter],0), 
+                   " ,K = ", length(unique(plot_y$curr_assign)))) +
+    theme_classic()
+  
+  return(prog_plot)
+  
+}
+
+```
+```{r, echo=TRUE}
+cat("\n Variances for surrounding iterations: \n")
+output$var_list_by_k_stephens[[1]]$sigma_1_1[320:340]
+cat("\n")
+plot_iter(output = output, iter = 323)
+plot_iter(output = output, iter = 324)
+plot_iter(output = output, iter = 325)
+plot_iter(output = output, iter = 326)
+plot_iter(output = output, iter = 327)
+```
+
+```{r, echo=TRUE}
+cat("\n Variances for surrounding iterations: \n")
+output$var_list_by_k_stephens[[1]]$sigma_1_1[540:560]
+cat("\n")
+plot_iter(output = output, iter = 545)
+plot_iter(output = output, iter = 546)
+plot_iter(output = output, iter = 547)
+```
+
+```{r, echo=TRUE}
+cat("\n Variances for surrounding iterations: \n")
+output$var_list_by_k_stephens[[1]]$sigma_1_1[4880:4910]
+cat("\n")
+plot_iter(output = output, iter = 4888)
+plot_iter(output = output, iter = 4889)
+plot_iter(output = output, iter = 4890)
+plot_iter(output = output, iter = 4891)
+plot_iter(output = output, iter = 4892)
+plot_iter(output = output, iter = 4893)
+plot_iter(output = output, iter = 4894)
+plot_iter(output = output, iter = 4895)
+```
+
+```{r, echo=TRUE}
+cat("\n Variances for surrounding iterations: \n")
+output$var_list_by_k_stephens[[1]]$sigma_1_1[11150:11170]
+cat("\n")
+plot_iter(output = output, iter = 11156)
+plot_iter(output = output, iter = 11157)
+plot_iter(output = output, iter = 11158)
+```
+
+```{r, include=FALSE, eval=FALSE}
 # Well separated simulation setting 
 
-```{r}
 ################## simulate data ##############################################
 
 set.seed(516)
@@ -66,9 +146,10 @@ var_true = var
 rm(w, means)
 ```
 
-### Fit DEE model
 
-```{r}
+
+```{r, include=FALSE, eval=FALSE}
+### Fit DEE model
 n_iter = 10
 # set hyperparameters
 # a = 1; b = 50
