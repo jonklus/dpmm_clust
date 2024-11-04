@@ -192,8 +192,8 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
       
       # KL divergence
       kl_res = calc_KL_diverg(y = output$data,
-                              mu_est = mean_list_by_k_stephens,
-                              Sigma_est = var_list_by_k_stephens,
+                              mu_est = mean_list_by_k_stephens$param_list_by_k,
+                              Sigma_est = var_list_by_k_stephens$param_list_by_k,
                               group_assign = group_assign_list_by_k_corr,
                               true_assign = assign_true,
                               mu_true = mu_true,
@@ -219,21 +219,23 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
       
     }
     
-    mean_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
-    var_summary = vector(mode = "list", length = length(mean_list_by_k_stephens))
+    mean_summary = vector(mode = "list", length = length(mean_list_by_k_stephens$param_list_by_k))
+    var_summary = vector(mode = "list", length = length(mean_list_by_k_stephens$param_list_by_k))
     # total_iter = sapply(X = 1:length(mean_list_by_k_stephens), 
     #                     FUN = function(x){
     #                       
     #                     })
-    for(k in 1:length(mean_list_by_k_stephens)){
+    for(k in 1:length(mean_list_by_k_stephens$param_list_by_k)){
 
       # make mean summary table
-      mean_summary[[k]] = make_postsum(mcmc_df = mean_list_by_k_stephens[[k]], digits = 2)
+      mean_summary[[k]] = make_postsum(mcmc_df = mean_list_by_k_stephens$param_list_by_k[[k]], 
+                                       digits = 2)
       
       # make variance summary table
       if(equal_var == FALSE){
         
-        var_summary[[k]] = make_postsum(mcmc_df = var_list_by_k_stephens[[k]], digits = 2)
+        var_summary[[k]] = make_postsum(mcmc_df = var_list_by_k_stephens$param_list_by_k[[k]], 
+                                        digits = 2)
         
       }
       
@@ -244,7 +246,9 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
       if(print_phi_sum == TRUE){
         
         # give summary of counts after thresholding
-        cat("\n K =", k_i, " n_iter =", nrow(mean_list_by_k_stephens[[k]]), "after burn-in and thresholding\n")
+        cat("\n K =", k_i, " n_iter =", 
+            nrow(mean_list_by_k_stephens$param_list_by_k[[k]]), 
+            "after burn-in and thresholding\n")
         # cat("k=", k, "\n")
         cat("\n Mean Summary: \n")
         print(mean_summary[[k]])
@@ -262,7 +266,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
       
       if(make_traceplot == TRUE){
         for(dim_i in 1:num_dims){
-          make_traceplot(param_list_by_k = mean_list_by_k_stephens, 
+          make_traceplot(param_list_by_k = mean_list_by_k_stephens$param_list_by_k, 
                          k = k_i, 
                          component_no = dim_i,
                          p= num_dims,
@@ -274,7 +278,8 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
     
     if(equal_var == TRUE){
       
-      var_summary[[1]] = make_postsum(mcmc_df = var_list_by_k_stephens[[1]], digits = 2)
+      var_summary[[1]] = make_postsum(mcmc_df = var_list_by_k_stephens$param_list_by_k[[1]], 
+                                      digits = 2)
       
       if(print_phi_sum == TRUE){
         

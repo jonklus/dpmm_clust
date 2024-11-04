@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 # load necessary functions
-source("./Multivariate_DPMM_nonconj_DEV.R")
+source("./Samplers/Multivariate_DPMM_nonconj_DEV.R")
 # source("./Multivariate_DPMM_nonconj_UVV.R")
 # source("./Multivariate_DPMM_nonconj_DEV.R")
 source("./posterior_helper_fxns.R")
@@ -100,10 +100,11 @@ y = yreps[[x]]$y
 alpha = 1
 mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1)
 sigma0 = 50
-a = 1
-b = 10
+a = 5
+b = 50
 sigma_hyperprior = FALSE
-k_init = 1
+k_init = 3
+init_method = "kmeans"
 diag_weights = FALSE
 verbose = TRUE
 print_iter = 1
@@ -111,6 +112,37 @@ split_merge = TRUE
 sm_iter = 5
 truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign)
 standardize_y = FALSE
+```
+
+##### with split-merge step
+
+```{r}
+x = 1 # first simulated data set 
+n_iter = 12000
+y_matrix = matrix(data = unlist(yreps[[x]]$y), ncol = 2, byrow = TRUE)
+output = MVN_CRP_nonconj_DEV(
+        S = n_iter, seed = seeds[x], y = yreps[[x]]$y, alpha = 1, 
+        mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
+        sigma0 = 50,
+        a = 5, b = 50, sigma_hyperprior = FALSE,
+        k_init = 3, diag_weights = FALSE,
+        verbose = TRUE, print_iter = 1000, split_merge = TRUE,
+        truth = list(mu_true = means, var_true = var, assign_true = yreps[[x]]$assign), 
+        )
+
+# summarize model
+mod_sum = dpmm_summary(output = output,
+               print_phi_sum = TRUE,
+               print_k_sum = TRUE,
+               make_traceplot = FALSE,
+               burn_in = 0, t_hold = 200,
+               num_dims = 2,
+               calc_perf = TRUE,
+               mu_true = output$truth$mu_true,
+               var_true = lapply(X = 1:length(output$truth$mu_true),
+                                 FUN = function(x){output$truth$var_true}),
+               assign_true = output$truth$assign_true,
+               equal_var = FALSE, off_diag = FALSE)
 ```
 
 

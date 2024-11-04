@@ -698,7 +698,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
       # if SPLIT
       if(move_type == "SPLIT"){
         
-        cat("\n Curr labels (at top of split): ", curr_labels, "\n")
+        # cat("\n Curr labels (at top of split): ", curr_labels, "\n")
         
         # need to set random launch states for both split and merge in non conj algo
         # specify random launch state for split
@@ -1044,11 +1044,11 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           # if new group created by split, update mean and variance
           ## add new means and variances from final Gibbs scan to relevant vectors/lists
           length_sigma2 = length(sigma2)
-          sigma2[[which_split_labs[1]]] = split_vars[[sm_iter+1]][[1]]
-          sigma2[[length_sigma2+1]] = split_vars[[sm_iter+1]][[2]]
+          sigma2[[which_split_labs[1]]] = split_vars[[sm_iter+1]][[1]][1] # scalar in DEV case
+          sigma2[[length_sigma2+1]] = split_vars[[sm_iter+1]][[2]][1] # scalar in DEV case
           
           mu[,which_split_labs[1]] = split_means[[sm_iter+1]][[1]]
-          mu = cbind(mu, split_vars[[sm_iter+1]][[2]])
+          mu = cbind(mu, split_means[[sm_iter+1]][[2]])
           
         } else{
           # reject
@@ -1062,7 +1062,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         # if MERGE    
       } else if(move_type == "MERGE"){
         
-        cat("\n Curr labels (at top of merge): ", curr_labels, "\n")
+        #cat("\n Curr labels (at top of merge): ", curr_labels, "\n")
         
         # need to set random launch states for both split and merge in non conj algo
         # specify random launch state for split
@@ -1302,7 +1302,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         split_group_count_index = which(as.numeric(names(split_counts)) %in% split_lab)
         merge_group_count_index = which(as.numeric(names(merge_counts)) %in% merge_lab)
         
-        cat("\n Curr labels (at bottom of merge): ", curr_labels, "\n")
+        #cat("\n Curr labels (at bottom of merge): ", curr_labels, "\n")
         
         ## proposal probability
         
@@ -1400,7 +1400,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           # print(table(group_assign[s,]))
           
           # put old group lab out of reserve
-          cat("\n Curr labels (in accept if statement): ", curr_labels, "\n")
+          # cat("\n Curr labels (in accept if statement): ", curr_labels, "\n")
           
           curr_label_del = which(curr_labels == split_lab[2])
           avail_labels = c(curr_labels[curr_label_del], avail_labels)
@@ -1415,7 +1415,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           
           # if new group created by merge, update mean and variance
           ## add new means and variances from final Gibbs scan to relevant vectors/lists
-            length_sigma2 = length(sigma2)
+          length_sigma2 = length(sigma2)
           sigma2[[which_split_labs[1]]] = merge_vars[[sm_iter+1]][1] # scalar in DEV
           sigma2 = sigma2[-which_split_labs[2]]
           
@@ -1629,11 +1629,6 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
       # transpose so output is a n*k matrix - chop off pr_new -- not needed here
       
     }
-    
-    
-    
-    ### something is happening above --- output is sometimes 1d instead of n*k
-    ### look at this
     
   } ### end MCMC iterations from s=1:S
   
