@@ -1526,7 +1526,8 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1,
   } else{
     
     settings = list(S = S, seed = seed, alpha = alpha,
-                    a = a, b = b, mu0 = mu0, k_init = k_init, 
+                    a = a, b = b, mu0 = mu0, 
+                    k_init = k_init, init_method = init_method,
                     d = d, f = f, r = r,
                     mod_type = "conjDEV", split_merge = split_merge, sm_iter = sm_iter)
     

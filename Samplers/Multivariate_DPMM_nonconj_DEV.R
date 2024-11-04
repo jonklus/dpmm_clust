@@ -1591,7 +1591,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           curr_assign = group_assign[s,]
         )
         print(plot_y$curr_assign)
-        prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = rownames(plot_y))) +
+        prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = curr_assign)) +
           #geom_point(color = assign) +
           #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
           geom_text(size = 3, color = plot_y$curr_assign) +

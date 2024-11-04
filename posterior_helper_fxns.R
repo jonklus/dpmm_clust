@@ -893,7 +893,7 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
   }
   
   
-  return(param_list_by_k)
+  return(list(original_draws = draws, param_list_by_k = param_list_by_k))
 }
 
 ###################### POSTERIOR SUMMARY STATISTICS ############################
