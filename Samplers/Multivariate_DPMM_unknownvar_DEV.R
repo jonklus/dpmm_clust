@@ -508,10 +508,10 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1,
   p = length(y[[1]]) # dimensionality of MVN
   k = k_init # initial number of groups
   
+  y_matrix = matrix(data = unlist(y), ncol = p, byrow = TRUE)
+  
   # center and scale data if standardize == TRUE
   if(standardize_y == TRUE){
-    
-    y_matrix = matrix(data = unlist(y), ncol = p, byrow = TRUE)
     std_y_matrix = scale(y_matrix)
     y = lapply(X = 1:nrow(std_y_matrix), 
                FUN = function(x){matrix(std_y_matrix[x,], ncol=1)})

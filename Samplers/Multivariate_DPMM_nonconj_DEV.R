@@ -980,8 +980,8 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         
         prob2_denom = factorial(split_counts[[split_group_count_index[1]]] + 
                                   split_counts[[split_group_count_index[2]]]-1)*
-          nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
-                                 Sigma = merge_vars[[scan]], 
+          nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
+                                 Sigma = diag(original_sigma1,p), 
                                  Sigma0 = Sigma0, a = a, b = b)
         
         prob2 = log(alpha) + (log(prob2_num) - log(prob2_denom))
@@ -1344,11 +1344,11 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         
         prob2_denom = factorial(split_counts[[split_group_count_index[1]]] -1)*
           factorial(split_counts[[split_group_count_index[2]]] -1)*
-          nonconj_prior_dens_DEV(mu = split_means[[scan]][[1]], mu0 = mu0, 
-                                 Sigma = split_vars[[scan]][[1]], 
+          nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
+                                 Sigma = diag(original_sigma1,p), 
                                  Sigma0 = Sigma0, a = a, b = b)*
-          nonconj_prior_dens_DEV(mu = split_means[[scan]][[2]], mu0 = mu0, 
-                                 Sigma = split_vars[[scan]][[2]], 
+          nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0, 
+                                 Sigma = diag(original_sigma2,p), 
                                  Sigma0 = Sigma0, a = a, b = b)
         
         prob2 = log(alpha) + (log(prob2_num) - log(prob2_denom))
