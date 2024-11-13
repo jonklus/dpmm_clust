@@ -1546,3 +1546,47 @@ get_adjmat_groupassign = function(group_assign){
   return(adjmat_list)
   
 }
+
+mixprop_traceplot <- function(group_assign){
+  # function takes S*n matrix of group assignments as an input, calculates the 
+  # mixing proportions pi_1,pi_K at each iteration S, and plots them
+  # if a group k does not exist at a particular iteration S, then pi_k is set to 0
+  
+  # define maximum number of groups in data
+  max_k_byiter = sapply(X = 1:nrow(group_assign), 
+                     FUN = function(x){
+                       length(unique(group_assign[x,]))
+                     })
+  
+  # preallocate matrix for mixing props...prefill with zeros so any unused
+  # columns will set pi_k equal to implied value of zero since group does not exist
+  # at that iteration
+  mix_prop = matrix(data = 0, nrow = nrow(group_assign), ncol = max(max_k_byiter))
+  
+  # compute mixing proportions, ordering by group size to keep them consistent
+  # (not addressing label switching here)
+  for(i in 1:nrow(group_assign)){
+    mix_prop[i,1:max_k_byiter[i]] = sort(as.numeric(table(group_assign[i,]))/ncol(group_assign), 
+                        decreasing = TRUE)
+  }
+  
+  # format as data frame and put into long format so that ggplot can handle
+  mix_prop = as.data.frame(mix_prop)
+  names(mix_prop) = paste0("pi_", 1:max(max_k_byiter))
+  mix_prop$iter = 1:nrow(mix_prop) # add iteration column for plotting
+  mix_prop = tidyr::pivot_longer(data = mix_prop, 
+                      cols = starts_with("pi_"),
+                      names_to = "Component",
+                      # names_prefix = "pi_",
+                      values_to = "pi")
+  
+  # plot
+  ggplot2::ggplot(data = mix_prop, aes(x = iter, y = pi, color = Component)) +
+    ggplot2::geom_line() +
+    ggplot2::theme_classic() +
+    ggplot2::ggtitle("Traceplot of Mixing Proportions \u03C0")
+}
+
+
+
+as.numeric(table(group_assign[1,]))/ncol(group_assign)

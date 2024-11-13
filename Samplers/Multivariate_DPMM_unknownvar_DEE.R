@@ -654,10 +654,12 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1,
       
       ### if observation i is a singleton, remove its mean from the current state of system
       if(group_assign[s,i] %in% singletons){
-        
+        # cat("\n i=",i,"\n")
+        # cat("\n Singletons identified \n")
         #### only drop observation i if it is a singleton...DO NOT drop other singleton
         #### observations at this point!!!
         singleton_index = which(label_assign == group_assign[s,i]) 
+        # cat("\n singleton_index:", singleton_index, "\n")
         # check if there are singletons identified, otherwise do not touch mu
         
         # save current values for acceptance prob
@@ -668,9 +670,9 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1,
         mu = matrix(mu[,-singleton_index], nrow = p)
         # sigma2 = sigma2[-singleton_index] ## no need to do this for sigma since assume eq var
         
+
         count_assign = count_assign[-singleton_index]
         label_assign = label_assign[-singleton_index]
-        
         avail_labels = c(group_assign[s,i], avail_labels)
         curr_labels = curr_labels[-which(curr_labels %in% group_assign[s,i])]
         k = length(curr_labels) # update k 
@@ -695,7 +697,8 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1,
       }
       
       # cat("\n K=", k, "\n")
-      # cat("\n probs=", pr_c)
+      # cat("\n probs=")
+      # print(pr_c)
       
       ### draw a group assignment conditional on group membership probs
       group_assign[s,i] = sample(x = c(curr_labels, avail_labels[1]), 
