@@ -1,0 +1,116 @@
+---
+title: "DEE Close Together Example"
+author: "Jonathan Klus"
+date: "2024-10-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# load necessary functions
+
+# load R libraries
+library(ggplot2)
+library(mclust)
+library(LaplacesDemon)
+library(mvtnorm)
+library(stringr)
+library(gridExtra)
+library(dplyr)
+library(knitr) # kable
+library(kableExtra) # use for complex tables http://haozhu233.github.io/kableExtra/awesome_table_in_pdf.pdf
+library(xtable)
+library(scatterplot3d)
+```
+
+
+## NEW: close together example
+
+Mixture of 3 multivariate normal densities all with diagonal variance structure
+and $\sigma^2 = 10$. The true means are $(-1,-5)$, , $(11,2)$, and $(0,10)$. Here
+we simulate $\sum_{j}n_j = 100$.
+
+```{r}
+################## simulate data ##############################################
+################## simulate data ##############################################
+
+nreps = 3
+n_total = c(30,100,300)
+
+w = c(.35, .25, .4)
+means = list(
+  #c(10, 10),
+  c(-1, -5),
+  c(0, 10),
+  c(11,2)
+)
+
+var = diag(4, length(means[[1]])) # variances known, diagonal, and equal
+
+yreps = lapply(X = 1:3, 
+           FUN = function(x){
+             set.seed(516)
+             assign = sample(x = 1:length(means), size = n_total[x], replace = TRUE, prob = w)
+             y = lapply(X = assign,
+                        FUN = function(x){
+                        t(mvtnorm::rmvnorm(n = 1, mean = means[[x]], sigma = var))
+                          })
+             return(list(y = y, assign = assign))
+           })
+
+## calculate SS
+
+
+
+## make a grid of plots
+pltlist = list()
+datalist = list()
+sumsq = vector(mode = "numeric", length = 3)
+
+for(rep in 1:nreps){
+
+  y_matrix = matrix(data = unlist(yreps[[rep]]$y), ncol = 2, byrow = TRUE)
+  assign = yreps[[rep]]$assign
+
+  data = data.frame(
+    assign = assign,
+    y1 = y_matrix[,1],
+    y2 = y_matrix[,2]
+  )
+  
+  datalist[[rep]] = data
+  
+  grp_means = data %>%
+    dplyr::group_by(assign) %>%
+    dplyr::summarize(mu1 = mean(y1), mu2 = mean(y2)) %>%
+    as.matrix()
+  
+  sumsq[rep] = sum(sapply(X = 1:length(yreps[[rep]]$y), 
+                      FUN = function(x){
+                        grp_assign = data[x,"assign"]
+                        t(yreps[[rep]]$y[[x]] - c(grp_means[grp_assign,2][[1]],
+                                                  grp_means[grp_assign,3][[1]])) %*%
+                          (yreps[[rep]]$y[[x]] - c(grp_means[grp_assign,2][[1]],
+                                                  grp_means[grp_assign,3][[1]]))
+                      })) 
+
+  p = ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
+    geom_point(color = assign, size = 0.75) +
+    #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+    # geom_text(size = 3, color = assign) +
+    theme_classic()
+
+  pltlist[[rep]] = p
+}
+
+sumsq
+
+sumsq/n_total
+
+do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignments")
+# 
+# # drop params used to generate data, except for var which is assumed known
+# rm(w, means)
+```
+

@@ -1580,7 +1580,7 @@ mixprop_traceplot <- function(group_assign){
                       # names_prefix = "pi_",
                       values_to = "pi")
   
-  # plot
+  # return plot
   ggplot2::ggplot(data = mix_prop, aes(x = iter, y = pi, color = Component)) +
     ggplot2::geom_line() +
     ggplot2::theme_classic() +
@@ -1589,4 +1589,4 @@ mixprop_traceplot <- function(group_assign){
 
 
 
-as.numeric(table(group_assign[1,]))/ncol(group_assign)
+
