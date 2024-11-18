@@ -1,5 +1,5 @@
 ---
-title: "Diagnostics for DPMM"
+title: "Diagnostics for DPMM - Updated Close Together Case"
 author: "Jonathan Klus"
 date: "2024-11-7"
 output: html_document
@@ -12,8 +12,8 @@ knitr::opts_chunk$set(echo = FALSE)
 # source("./Multivariate_DPMM_unknownvar_DEE.R")
 # source("./Multivariate_DPMM_nonconj_DEV.R")
 # source("./Multivariate_DPMM_nonconj_UVV.R")
-source("./posterior_helper_fxns.R")
-source("./post_processing_inf.R")
+source("./Samplers/posterior_helper_fxns.R")
+source("./Samplers/post_processing_inf.R")
 
 # load R libraries
 library(ggplot2)
@@ -65,10 +65,10 @@ for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
     # parse out attributes and save
     short_file_ext = stringr::str_split(string = file_ext[ext_index], pattern = "/MODSUM")[[1]][2]
     parsed_dirname = unlist(stringr::str_extract_all(string = file_ext[ext_index], pattern = "_[:alnum:]+"))
-    temp_summary_table[1:length(file_list), "Model"] = stringr::str_remove(string = parsed_dirname[3], pattern = "_")
-    temp_summary_table[1:length(file_list), "Scenario"] = stringr::str_remove(string = parsed_dirname[4], pattern = "_")
-    temp_summary_table[1:length(file_list), "n_obs"] = stringr::str_remove(string = parsed_dirname[5], pattern = "_n")
-    temp_summary_table[1:length(file_list), "SM"] = stringr::str_remove(string = parsed_dirname[6], pattern = "_")
+    temp_summary_table[1:length(file_list), "Model"] = stringr::str_remove(string = parsed_dirname[1], pattern = "_")
+    temp_summary_table[1:length(file_list), "Scenario"] = stringr::str_remove(string = parsed_dirname[2], pattern = "_")
+    temp_summary_table[1:length(file_list), "n_obs"] = stringr::str_remove(string = parsed_dirname[3], pattern = "_n")
+    temp_summary_table[1:length(file_list), "SM"] = stringr::str_remove(string = parsed_dirname[4], pattern = "_")
     # temp_summary_table[1:length(file_list), "Tag"] = stringr::str_remove(string = parsed_dirname[length(parsed_dirname)], pattern = "_")
     temp_summary_table[, "dataset_no"] = as.numeric(stringr::str_remove_all(string = file_list, pattern = "sum_|.rds"))
     
@@ -96,30 +96,17 @@ for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
 summary_table = summary_table[-1,] # get rid of first row of NAs 
   #vdplyr::filter(Scenario == "5grp3d")
 
-summary_table %>%
-  # dplyr::filter(Tag == "ENAR") %>%
-  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
-  dplyr::summarize(Count = n()) %>%
-  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = Count) %>%
-  # keep first 2 columns with model info, sort remaining cols with results by n
-  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
-  knitr::kable(caption = "Number of data sets completed")
-
-# time
+# ARI and KL are typically skewed, so use the median (min, max) to summarize
+# results across the 100 data sets!
 summary_table %>% 
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
-  dplyr::summarize(Time = round(mean(Time),2)) %>%
-  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = Time) %>%
-  # keep first 2 columns with model info, sort remaining cols with results by n
-  dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
-  knitr::kable(caption = "Average computation time")
-
-summary_table %>% 
-  # dplyr::filter(Tag == "ENAR") %>%
-  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
-  dplyr::summarize(mean_ARI = round(mean(ARI),2)) %>%
+  dplyr::summarize(mean_ARI = paste0(round(median(ARI),2), " (", round(min(ARI),2), ",", round(max(ARI),2), ")")) %>% 
+                   # mean_ARI = round(mean(ARI),2), 
+                   # min_ARI = round(min(ARI),2),
+                   # max_ARI = round(max(ARI),2)) %>%
   tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = mean_ARI) %>%
+  # tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = c(mean_ARI, min_ARI, max_ARI)) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
   knitr::kable(caption = "Adjusted RAND Index")
@@ -127,8 +114,8 @@ summary_table %>%
 summary_table %>% 
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
-  dplyr::summarize(KL = round(mean(KL),2)) %>%
-  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = KL) %>%
+  dplyr::summarize(mean_KL = paste0(round(median(KL),2), " (", round(min(KL),2), ",", round(max(KL),2), ")")) %>% 
+  tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = mean_KL) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
   knitr::kable(caption = "KL Divergence")
@@ -136,16 +123,13 @@ summary_table %>%
 summary_table %>% 
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
-  dplyr::summarize(MAP_K = median(MAP_K)) %>%
+  dplyr::summarize(MAP_K = paste0(round(median(MAP_K),2), " (", round(min(MAP_K),2), ",", round(max(MAP_K),2), ")")) %>% 
   tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = MAP_K) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2) %>%
   knitr::kable(caption = "MAP(K)")
-```
 
-## Traceplots for well-separated case
-
-### n = 30
+## n = 30
 
 ```{r}
 hamming_dist_mcmc <- function(adj_mat_list){
@@ -206,7 +190,7 @@ sim_diagnostic_sum <- function(data_path, sim_dir, runs_to_plot){
                             ") ", "Traceplot of K"))
         
         # traceplot of sigma2 (for DEE only)
-        sigma2_vec = output$var_list_by_k_stephens[[2]][,1]
+        sigma2_vec = unlist(output$var_list_by_k_stephens)
         plot(x = 1:length(sigma2_vec), y = log(sigma2_vec), 
              type = "l", xlab = "iter", ylab = "log(sigma2)",
              main = paste0("(#", 
@@ -222,18 +206,18 @@ sim_diagnostic_sum <- function(data_path, sim_dir, runs_to_plot){
         true_ref = get_adjmat_groupassign(group_assign = matrix(output$truth$assign_true, nrow=1))
 
         # random reference
-        d1 = genMCMCDiag::genDiagnostic(mhDraws = adjmat_list, method = "lanfear", 
-                                   distance = hammingDist,
-                                   diagnostics = "traceplot")
-        p1 = ggplot2::ggplot(mapping = aes(x = d1$transformedDraws[1][[1]]$t,
-                                           y = d1$transformedDraws[1][[1]]$val)) +
-              ggplot2::geom_line() +
-              ggplot2::theme_classic() +
-              ggplot2::ylab("Hamming dist") +
-              ggplot2::xlab("iter") +
-              ggplot2::ggtitle("genMCMCdiag random lanfear ref") 
-              # ggplot2::xlim(0, length(d1$transformedDraws[1][[1]]$t))+
-              # ggplot2::scale_x_continuous(limits = c(0, length(d1$transformedDraws[1][[1]]$t)))
+        # d1 = genMCMCDiag::genDiagnostic(mhDraws = adjmat_list, method = "lanfear", 
+        #                            distance = hammingDist,
+        #                            diagnostics = "traceplot")
+        # p1 = ggplot2::ggplot(mapping = aes(x = d1$transformedDraws[1][[1]]$t,
+        #                                    y = d1$transformedDraws[1][[1]]$val)) +
+        #       ggplot2::geom_line() +
+        #       ggplot2::theme_classic() +
+        #       ggplot2::ylab("Hamming dist") +
+        #       ggplot2::xlab("iter") +
+        #       ggplot2::ggtitle("genMCMCdiag random lanfear ref") 
+        #       # ggplot2::xlim(0, length(d1$transformedDraws[1][[1]]$t))+
+        #       # ggplot2::scale_x_continuous(limits = c(0, length(d1$transformedDraws[1][[1]]$t)))
         
         # identity matrix reference
         d2 = genMCMCDiag::genDiagnostic(mhDraws = adjmat_list, method = "lanfear", 
@@ -276,7 +260,10 @@ sim_diagnostic_sum <- function(data_path, sim_dir, runs_to_plot){
           # ggplot2::xlim(0, length(hamming_diff)) +
           # ggplot2::scale_x_continuous(limits = c(0, length(hamming_diff)))
         
-        print(ggpubr::ggarrange(p1, p2, p3, p4, ncol = 2, nrow = 2))
+        # weights
+        p5 = mixprop_traceplot(output$group_assign)
+        
+        print(ggpubr::ggarrange(p2, p3, p4, p5, ncol = 2, nrow = 2))
 
       
     }
@@ -309,56 +296,25 @@ sim_diagnostic_sum <- function(data_path, sim_dir, runs_to_plot){
 }
 
 data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryManuscript"
-sim_dir = "MODSUM_conjDEE_3wellsep_n30_noSM_sim_results_2024_11_06"  
+sim_dir = "MODSUM_conjDEE_3close_n30_noSM_sim_results_2024_11_14"  
 
 sum1 = sim_diagnostic_sum(data_path = data_path, 
                           sim_dir = sim_dir, 
                           runs_to_plot = 1:5)
+
+output = readRDS(paste0(data_path, "/", sim_dir, "/", "sum_1.rds"))
 ```
 
-```{r}
-# investigate variance spikes
-output = readRDS(paste0(data_path,"/",sim_dir,"/sum_1.rds"))
-which(output$var_list_by_k_stephens[[1]]$sigma_1_1 > 50)
-```
-
-### n = 100
+## n = 100
 
 ```{r}
-sim_dir = "MODSUM_conjDEE_3wellsep_n100_noSM_sim_results_2024_10_31"  
+sim_dir = "MODSUM_conjDEE_3close_n100_noSM_sim_results_2024_11_14"  
 
 sum1 = sim_diagnostic_sum(data_path = data_path, 
                           sim_dir = sim_dir, 
-                          runs_to_plot = c(1,10,100,11,12))
+                          runs_to_plot = 1:5)
 
 # print some examples of K, var, and group assign when spikes or rapid changes
 # occur, and when sampler gets stuck -- you have this info in the summary output
 ```
 
-### n=30 with split/merge
-
-```{r}
-sim_dir = "MODSUM_conjDEE_3wellsep_n30_withSM_sim_results_2024_10_31"  
-
-sum1 = sim_diagnostic_sum(data_path = data_path, 
-                          sim_dir = sim_dir, 
-                          runs_to_plot = c(1,10,100,11,12))
-
-
-# print some examples of K, var, and group assign when spikes or rapid changes
-# occur, and when sampler gets stuck -- you have this info in the summary output
-```
-
-### n=100 with split/merge
-
-```{r}
-sim_dir = "MODSUM_conjDEE_3wellsep_n100_withSM_sim_results_2024_10_31"  
-
-sum1 = sim_diagnostic_sum(data_path = data_path, 
-                          sim_dir = sim_dir, 
-                          runs_to_plot = c(1,10,100,11,12))
-
-
-# print some examples of K, var, and group assign when spikes or rapid changes
-# occur, and when sampler gets stuck -- you have this info in the summary output
-```

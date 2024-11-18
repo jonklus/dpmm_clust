@@ -11,7 +11,7 @@
 ####################### LOAD ANY REQUIRED PACKAGES #############################
 
 # homemade functions
-source("./posterior_helper_fxns.R")
+source("./Samplers/posterior_helper_fxns.R")
 
 # load R libraries
 library(ggplot2)
