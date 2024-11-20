@@ -11,8 +11,8 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 # load necessary functions
 #source("./Samplers/Multivariate_DPMM_unknownvar_DEE.R")
 #source("./Samplers/Multivariate_DPMM_unknownvar_DEV.R")
-# source("./Multivariate_DPMM_nonconj_DEV.R")
-source("./Samplers/Multivariate_DPMM_unknownvar_UVV.R")
+source("./Samplers/Multivariate_DPMM_nonconj_DEV.R")
+# source("./Samplers/Multivariate_DPMM_unknownvar_UVV.R")
 source("./Samplers/posterior_helper_fxns.R")
 source("./Samplers/post_processing_inf.R")
 
@@ -193,4 +193,42 @@ mod_sum_UVV = dpmm_summary(output = sim_results_DEV,
 
 plot(mod_sum$var_list_by_k_stephens[[1]]$sigma_1_1, type = "l", 
      xlab = "iter", ylab = "sigma2")
+```
+
+## Non-conjugate DEV
+
+```{r, include=FALSE, eval=FALSE}
+### Fit DEE model
+n_iter = 1000
+# set hyperparameters
+# a = 1; b = 50
+# d = 1; f = 1
+# g = 1; h = 50
+# sigma0 = 200
+# lambda0 = diag(x = 25, nrow = length(means[[1]])) # needed for UVV
+# nu = length(means[[1]])  # must have nu >= p...Otherwise rinvwish will fail!
+
+# run in fxn
+sim_results_nonconjDEV = MVN_CRP_nonconj_DEV(
+        S = n_iter, seed = seeds[x], y = y, 
+        alpha = 1, a = 1, b = 100, 
+        mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1),
+        sigma0 = 100, 
+        k_init = 1, init_method = "kmeans",
+        # d = 1, f = 1, 
+        sigma_hyperprior = FALSE, standardize_y = FALSE,
+        split_merge = FALSE, sm_iter = 0, truth = NA,
+        diag_weights = FALSE, verbose = TRUE, print_iter = 1, print_start = 0)
+  
+mod_sum_nonconjDEV = dpmm_summary(output = sim_results_nonconjDEV, 
+       print_k_sum = TRUE, 
+       print_phi_sum = TRUE,
+       make_traceplot = FALSE,
+       burn_in = 0, t_hold = 0, 
+       num_dims = 2, equal_var = TRUE,
+       calc_perf = FALSE, mu_true = mu_true, 
+       var_true = var_true, assign_true = assign)
+
+# plot(mod_sum$var_list_by_k_stephens[[1]]$sigma_1_1, type = "l", 
+#      xlab = "iter", ylab = "sigma2")
 ```

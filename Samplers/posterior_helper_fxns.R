@@ -1585,7 +1585,8 @@ mixprop_traceplot <- function(group_assign){
   ggplot2::ggplot(data = mix_prop, aes(x = iter, y = pi, color = Component)) +
     ggplot2::geom_line() +
     ggplot2::theme_classic() +
-    ggplot2::ggtitle("Traceplot of Mixing Proportions \u03C0")
+    ggplot2::ggtitle(paste0("Traceplot of Mixing Proportions \u03C0", ", max(K)=",max(max_k_byiter))) +
+    ggplot2::theme(legend.position = "none")
 }
 
 

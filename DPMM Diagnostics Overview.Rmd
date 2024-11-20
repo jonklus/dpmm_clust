@@ -217,7 +217,12 @@ sim_diagnostic_sum <- function(data_path, sim_dir, runs_to_plot, log_var = TRUE)
 ```
 
 
-# Simulation results
+# Simulation results - overall
+
+These simulations used prior specifications that involved a large prior SS, i.e.
+$\sigma^2 \sim IG(1,100)$. While this prior is quite large given the true variance
+in the data-generating process, $\sigma^2 = 10$, it appears in the well-separated
+case to result in improved clustering performance under the DPMM. 
 
 ```{r, message=FALSE, warning=FALSE, echo=FALSE}
 
@@ -327,6 +332,10 @@ summary_table %>%
 
 ```
 
+
+
+# Selected traceplots - without split/merge
+
 ## n = 30
 
 ```{r}
@@ -336,25 +345,86 @@ sim_dir = "MODSUM_conjDEE_3wellsep_n30_noSM_sim_results_2024_11_17"
 sum1 = sim_diagnostic_sum(data_path = data_path, 
                           sim_dir = sim_dir, 
                           runs_to_plot = 1:5,
-                          log_var = FALSE)
+                          log_var = TRUE)
 
 # output = readRDS(paste0(data_path, "/", sim_dir, "/", "sum_1.rds"))
 # remember list structure for var
 # head(output$var_list_by_k_stephens$param_list_by_k[[1]])
 ```
 
-
 ## n = 100
 
 ```{r}
-sim_dir = "MODSUM_conjDEE_3close_n100_noSM_sim_results_2024_11_17"  
+sim_dir = "MODSUM_conjDEE_3wellsep_n100_noSM_sim_results_2024_11_17"  
 
 sum2 = sim_diagnostic_sum(data_path = data_path, 
                           sim_dir = sim_dir, 
                           runs_to_plot = 1:5,
-                          log_var = FALSE)
+                          log_var = TRUE)
 
 # print some examples of K, var, and group assign when spikes or rapid changes
 # occur, and when sampler gets stuck -- you have this info in the summary output
 ```
+
+## n = 300
+
+```{r}
+sim_dir = "MODSUM_conjDEE_3wellsep_n300_noSM_sim_results_2024_11_17"  
+
+sum3 = sim_diagnostic_sum(data_path = data_path, 
+                          sim_dir = sim_dir, 
+                          runs_to_plot = 1:5,
+                          log_var = TRUE)
+
+# print some examples of K, var, and group assign when spikes or rapid changes
+# occur, and when sampler gets stuck -- you have this info in the summary output
+output = readRDS(paste0(data_path, "/", sim_dir, "/", "sum_5.rds"))
+```
+
+
+# Selected traceplots - with split/merge
+
+## n = 30
+
+```{r}
+sim_dir = "MODSUM_conjDEE_3wellsep_n30_withSM_sim_results_2024_11_17"  
+
+sum1 = sim_diagnostic_sum(data_path = data_path, 
+                          sim_dir = sim_dir, 
+                          runs_to_plot = 1:5,
+                          log_var = TRUE)
+
+# print some examples of K, var, and group assign when spikes or rapid changes
+# occur, and when sampler gets stuck -- you have this info in the summary output
+```
+
+
+## n = 100
+
+```{r}
+sim_dir = "MODSUM_conjDEE_3wellsep_n100_withSM_sim_results_2024_11_17"  
+
+sum2 = sim_diagnostic_sum(data_path = data_path, 
+                          sim_dir = sim_dir, 
+                          runs_to_plot = 1:5,
+                          log_var = TRUE)
+
+# print some examples of K, var, and group assign when spikes or rapid changes
+# occur, and when sampler gets stuck -- you have this info in the summary output
+```
+
+## n = 300
+
+```{r}
+sim_dir = "MODSUM_conjDEE_3wellsep_n300_withSM_sim_results_2024_11_17"  
+
+sum3 = sim_diagnostic_sum(data_path = data_path, 
+                          sim_dir = sim_dir, 
+                          runs_to_plot = 1:5,
+                          log_var = TRUE)
+
+# print some examples of K, var, and group assign when spikes or rapid changes
+# occur, and when sampler gets stuck -- you have this info in the summary output
+```
+
 

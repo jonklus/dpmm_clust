@@ -354,12 +354,13 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
 ############################ INDEPENDENT IG PRIORS ############################# 
 
 MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, 
-                                a = 1/2, b = 10, mu0, sigma0, 
+                                a = 1, b = 10, mu0, sigma0, 
                                 k_init = 3, init_method = "kmeans",
                                 # d = 1, f = 1, 
-                                sigma_hyperprior = TRUE, standardize_y = FALSE,
+                                sigma_hyperprior = FALSE, standardize_y = FALSE,
                                 split_merge = FALSE, sm_iter = 5, truth = NA,
-                                diag_weights = FALSE, verbose = TRUE, print_iter = 100){
+                                diag_weights = FALSE, 
+                                verbose = TRUE, print_iter = 100, print_start = 0){
   
   # S is number of MCMC iterations
   # y is a list of data of length n
@@ -384,11 +385,10 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
   n = length(y)
   p = length(y[[1]]) # dimensionality of MVN
   k = k_init # initial number of groups
+  y_matrix = matrix(data = unlist(y), ncol = p, byrow = TRUE)
   
   # center and scale data if standardize_y == TRUE
   if(standardize_y == TRUE){
-    
-    y_matrix = matrix(data = unlist(y), ncol = p, byrow = TRUE)
     std_y_matrix = scale(y_matrix)
     y = lapply(X = 1:nrow(std_y_matrix), 
                FUN = function(x){matrix(std_y_matrix[x,], ncol=1)})
@@ -475,7 +475,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
   for(s in 2:S){
     
     # print progress
-    if((s %% print_iter == 0) & (verbose == TRUE)){
+    if((s %% print_iter == 0) & (s > print_start) & (verbose == TRUE)){
       
       cat("\n\n")
       cat("*******************************************************************")
@@ -611,7 +611,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
       
     } ### end iterations from i=1:n
     
-    if((s %% print_iter == 0) & (s >= print_iter) & (verbose == TRUE)){
+    if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
       cat("\n End of CRP step, iter: ", s, "\n") # just create a new line for separation
       # print(paste("iter = ", s))
       print(paste("Current k = ", k))
@@ -1446,7 +1446,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
       # cat("\n")
       # print(table(group_assign[s,]))
       
-      if((s %% print_iter == 0) & (s >= print_iter) & (verbose == TRUE)){
+      if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
         cat("\n End of split/merge step, iter: ", s, "\n") # just create a new line for separation
         cat("\n PROPOSED MOVE: ", move_type, " Accepted = ", accept, "\n")
         print(paste("Current k = ", k))
@@ -1568,7 +1568,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                            })
     
     # print progress
-    if((s %% print_iter == 0) & (s >= print_iter) & (verbose == TRUE)){
+    if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
       cat("After Gibbs step:") # just create a new line for separate
       cat("\n")
       cat("mu")
@@ -1640,8 +1640,9 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
   
   if(sigma_hyperprior == TRUE){
     
-    settings = list(S = S, alpha = alpha, a = a, b = b, mu0 = mu0, sigma0 = sigma0,
-                    k_init = k_init, #d = d, f = f, g = g, h = h,
+    settings = list(S = S, alpha = alpha, a = a, b = b, 
+                    mu0 = mu0, sigma0 = sigma0,
+                    k_init = k_init, init_method = init_method,
                     mod_type = "nonconjDEV", 
                     split_merge = split_merge, sm_iter = sm_iter)
     
@@ -1664,9 +1665,11 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
   } else{
     
     settings = list(S = S, seed = seed, alpha = alpha,
-                    a = a, b = b, mu0 = mu0, sigma0 = sigma0, k_init = k_init, 
+                    a = a, b = b, mu0 = mu0, sigma0 = sigma0, 
+                    k_init = k_init, init_method = init_method,
                     #d = d, f = f,
-                    mod_type = "nonconjDEV", split_merge = split_merge, sm_iter = sm_iter)
+                    mod_type = "nonconjDEV", 
+                    split_merge = split_merge, sm_iter = sm_iter)
     
     return_list = list(settings = settings,
                        runtime = difftime(end, start, units = "m"),
