@@ -219,7 +219,7 @@ do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignm
 ### Fit DEE model
 
 ```{r}
-n_iter = 500
+n_iter = 1000
 x=1
 
 # plot data
@@ -232,47 +232,47 @@ ggplot(data = data, aes(x = y1, y = y2)) + #, label = rownames(data))) +
     theme_classic()
 
 # run line by line
-S = n_iter
-seed = seeds[x]
-y = yreps[[x]]$y
-alpha = 1
-r = 10
-d = 1
-f = 1
-g = 1
-h = 50
-sigma_hyperprior = FALSE
-fix_r = FALSE
-mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))), 0), ncol = 1)
-a = 1
-b = 25
-k_init = 1
-diag_weights = FALSE
-verbose = TRUE
-split_merge = TRUE
-sm_iter = 5
+# S = n_iter
+# seed = seeds[x]
+# y = yreps[[x]]$y
+# alpha = 1
+# r = 10
+# d = 1
+# f = 1
+# g = 1
+# h = 50
+# sigma_hyperprior = FALSE
+# fix_r = FALSE
+# mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))), 0), ncol = 1)
+# a = 1
+# b = 25
+# k_init = 1
+# diag_weights = FALSE
+# verbose = TRUE
+# split_merge = TRUE
+# sm_iter = 5
 
 # run in fxn
 sim_results_DEE_with_sm = MVN_CRP_sampler_DEE(
         S = n_iter, seed = seeds[x], y = yreps[[x]]$y,
-        alpha = 1, r = 10, d = 1, f = 1 , g = 1, h = 50,
+        alpha = 1, r = 1, d = 1, f = 1 , g = 1, h = 25,
         sigma_hyperprior = FALSE, fix_r = FALSE,
         mu0 = matrix(round((colMeans(matrix(unlist(yreps[[x]]$y), ncol = 2))),0), ncol = 1),
-        a = 1, b = 25,
+        a = 1, b = 100,
         k_init = 1, diag_weights = FALSE,
-        verbose = TRUE, split_merge = TRUE, sm_iter = 5
+        verbose = TRUE, split_merge = FALSE, print_iter = 1, print_start = 0
         )
 
-mod_sum = dpmm_summary(output = sim_results_DEE_with_sm, 
+mod_sum_DEE = dpmm_summary(output = sim_results_DEE, 
        print_k_sum = TRUE, 
-       # print_phi_sum = TRUE,
+       print_phi_sum = TRUE,
        make_traceplot = FALSE,
-       burn_in = 0, t_hold = 100, 
+       burn_in = 0, t_hold = 0, 
        num_dims = 2, equal_var = TRUE,
-       calc_perf = TRUE, mu_true = mu_true, 
-       var_true = var_true, assign_true = yreps[[x]]$assign)
+       calc_perf = FALSE, mu_true = mu_true, 
+       var_true = var_true, assign_true = assign)
 
-plot(mod_sum$var_list_by_k_stephens[[1]]$sigma_1_1, type = "l", 
+plot(mod_sum_DEE$var_list_by_k_stephens[[1]]$sigma_1_1, type = "l", 
      xlab = "iter", ylab = "sigma2")
 ```
 

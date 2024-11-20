@@ -1285,9 +1285,10 @@ MVN_CRP_sampler_DEE <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1,
     #                                rate = loss_y_i[,x]/2 + b))
     #                })
 
-    sigma2 = 1/rgamma(n = 1, 
+    sigma2 = 1/rgamma(n = 1,
                       shape = ((n+k)*p + 2*a)/2,
                       rate = sum(loss_y_i)/2 + sum(loss_mu_k)/(2*r) + b)
+    
     
     # draw r parameter for variance of means
     if(fix_r == FALSE){

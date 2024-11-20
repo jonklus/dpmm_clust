@@ -693,6 +693,7 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
         names(param_list_by_k[[i]]) = gtools::mixedsort(col_header_names)
         
         if(off_diag == TRUE){
+          
           stop("This function not yet available. Please contact your manager for assistance. ")
         }
         
