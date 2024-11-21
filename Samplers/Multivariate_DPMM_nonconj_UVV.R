@@ -112,7 +112,229 @@ group_prob_calc_UVV <- function(k, n, n_j, alpha, y_i, mu, Sigma, mu0, Sigma0,
   
   
   
+update_phi_UVV <- function(curr_label, group_assign, count_assign, y, 
+                           mu, mu0, Sigma, Sigma0, Lambda0, nu){
+  # function to sample from full conditional posteriors of DEV model
   
+  # group_index is the current split or merge group for which new parameters are 
+  # being drawn
+  
+  # distinguish between split, where mu and Sigma will have two entries, and merge
+  # where they will have just 1???? do we need to do this?
+  
+  p = nrow(mu)
+  
+  
+
+  
+  # cat("\n p=", p)
+  # cat("\n curr_label=", curr_label)
+  # print(unlist(y[group_assign == curr_label]))
+  # print(matrix(unlist(y[group_assign == curr_label]), nrow = p))
+  
+  # draw group mean
+  sum_y_i = rowSums(matrix(unlist(y[group_assign == curr_label]), nrow = p))
+  
+  mu_cov = solve(count_assign*solve(Sigma) + solve(Sigma0))
+  
+  mu_mean = (t(sum_y_i)%*%solve(Sigma) + t(mu0)%*%solve(Sigma0))%*%mu_cov
+  
+  mu = t(mvtnorm::rmvnorm(n = 1, 
+                           mean = mu_mean, 
+                           sigma = mu_cov))
+  
+  
+  
+  # draw group variance
+  group_ind = which(group_assign == curr_label)
+  
+  loss_y_i = Reduce(f = "+", 
+                     x = lapply(X = group_ind, FUN = function(x){
+                       (y[[x]] - mu)%*%t(y[[x]] - mu)}))
+  
+
+  Sigma = LaplacesDemon::rinvwishart(nu = nu + count_assign, 
+                                     S = loss_y_i + Lambda0)
+  
+  return(list(mu = mu, Sigma = Sigma))
+  
+}
+
+nonconj_prior_dens_UVV <- function(mu, mu0, Sigma, Sigma0, nu, Lambda0){
+  
+  # this is the function g(\phi_c) defined in Jain & Neal (2007) - used to 
+  # evaluate group-specific parameters \phi_c under the joint prior density placed
+  # on these parameters
+  
+  # mu and mu0 are p-dimensional arrays
+  # Sigma Sigma0 are p*p dimensional matrices
+  # a and b are scalar hyperparameters for the IG prior
+  
+
+  dens = log(mvtnorm::dmvnorm(x = c(mu), mean = c(mu0), sigma = Sigma0)) + 
+    log(LaplacesDemon::dinvwishart(Sigma = Sigma, nu = nu, S = Lambda0))
+  
+  return(exp(dens))
+}
+
+## LEFT OFF HERE --- RESUME CONVERTING TO UVV 
+nonconj_phi_prob_DEV <- function(curr_label, group_assign, count_assign, y, 
+                                 mu, mu0, Sigma, Sigma0, a, b){
+  # This is P_GS(phi*|phi^L,...) from Jain & Neal 2007 
+  
+  
+  # for the kth component under a DEV assumption
+  sigma2 = diag(Sigma)[1]
+  sigma0 = diag(Sigma0)[1]
+  p = nrow(mu)
+  loss_y_i = sum(rowSums((matrix(unlist(y[group_assign == curr_label]), nrow = p) - mu[,1])^2))
+  loss_mu_k = t(mu0 - matrix(mu, nrow = p))%*%(mu0 - matrix(mu, nrow = p))
+  # density of posterior up to a constant...
+  dens = (sigma2^(-(p/2+a-1)))*exp(-0.5*(loss_y_i/sigma2 + 
+                                           2*b/sigma2 + loss_mu_k/sigma0))
+  
+  # for the kth component under a UVV assumption
+  # need to fill this in 
+  
+  return(dens)
+}
+
+ll_components_DEV <- function(obs_ind, y, mu, Sigma){
+  # function to calculate the components of the likelihood ratio for the MH
+  # acceptance probability after n_iter split merge restricted Gibbs scans
+  
+  val = mvtnorm::dmvnorm(x = y[[obs_ind]][,1], 
+                         mean = c(mu), 
+                         sigma = Sigma)
+  
+  return(val)  
+  
+}
+
+nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma){
+  # This is P_GS(c*|c^L,...) from Jain & Neal 2007 
+  
+  # split_labs is an array of length 2 indicating which entries in counts correspond
+  # to the groups that are part of the split/merge
+  # which_group is a scalar valued 1 or 2 indicating which of the groups we are considering
+  # obs is the index for the observation being considered at this point
+  # group_assign is an array of length n corresponding to group assignments for each obs
+  # counts is an array of the number of obs assigned to each group
+  # y is the data
+  # mu and Sigma are lists of the the current mean and covariance matrix for each 
+  # component 
+  
+  # sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign[-obs] == x)})
+  # need to make up your mind -- drop obs or leave in here??
+  sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign == x)})
+  which_group_k = which(split_labs == group_assign[obs])
+  sm_counts[which_group_k] = sm_counts[which_group_k] - 1
+  
+  if(0 %in% sm_counts){
+    
+    which_one = which(sm_counts == 1)
+    
+    # check length of which_zero
+    if(length(which_one) == 1){
+      # proceed as usual
+      # cat("1 singleton", "\n")
+      if(which_one == 1){
+        
+        num = (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+                                              mean = mu[[2]][,1], 
+                                              sigma = Sigma[[2]]) 
+        
+        denom = num + (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+                                                      mean = mu[[1]][,1], 
+                                                      sigma = Sigma[[1]])
+        
+        # will just be (1,0)... seems extreme
+        ratio = c(1-(num/denom), num/denom)
+        
+      } else{ 
+        # which_one == 2
+        
+        num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+                                              mean = mu[[1]][,1], 
+                                              sigma = Sigma[[1]]) 
+        
+        denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+                                                      mean = mu[[2]][,1], 
+                                                      sigma = Sigma[[2]])
+        
+        # will just be (1,0)... seems extreme
+        ratio = c(num/denom, 1-(num/denom))
+        
+      }
+      
+    } else{
+      # two singletons being considered
+      # cat("2 singleton", "\n")
+      # num = sm_counts[1]*mvtnorm::dmvnorm(x = y[[obs]], 
+      #                                     mean = mu[[1]], 
+      #                                     sigma = Sigma[[1]]) 
+      # 
+      # denom = num + sm_counts[2]*mvtnorm::dmvnorm(x = y[[obs]], 
+      #                                             mean = mu[[2]], 
+      #                                             sigma = Sigma[[2]])
+      
+      ratio = c(0.5, 0.5)
+      
+    }
+    
+    
+    # } else if(0 %in% sm_counts){
+    #   
+    #   which_one = which(sm_counts == 0)
+    #   
+    #   if(which_one == 1){
+    #     
+    #     num = (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]], 
+    #                                           mean = mu[[2]], 
+    #                                           sigma = Sigma[[2]]) 
+    #     
+    #     denom = num + (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]], 
+    #                                                   mean = mu[[1]], 
+    #                                                   sigma = Sigma[[1]])
+    #     
+    #     # will just be (1,0)... seems extreme
+    #     ratio = c(1-(num/denom), num/denom)
+    
+    # } else{ 
+    #   # which_one == 2
+    #   
+    #   num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]], 
+    #                                         mean = mu[[1]], 
+    #                                         sigma = Sigma[[1]]) 
+    #   
+    #   denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]], 
+    #                                                 mean = mu[[2]], 
+    #                                                 sigma = Sigma[[2]])
+    #   
+    #   # will just be (1,0)... seems extreme
+    #   ratio = c(num/denom, 1-(num/denom))
+    #   
+    # }
+    
+  } else{
+    
+    num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+                                          mean = mu[[1]][,1], 
+                                          sigma = Sigma[[1]]) 
+    
+    denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+                                                  mean = mu[[2]][,1], 
+                                                  sigma = Sigma[[2]])
+    
+    ratio = c(num/denom, 1-(num/denom))
+    
+  }
+  
+  
+  
+  return(ratio)
+  
+}
 
   
 
