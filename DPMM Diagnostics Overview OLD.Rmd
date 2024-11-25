@@ -1,5 +1,5 @@
 ---
-title: "Diagnostics for DPMM - Proposal Exam Results"
+title: "Diagnostics for DPMM - IG(5,50) Results"
 author: "Jonathan Klus"
 date: "2024-11-21"
 output: html_document
@@ -219,8 +219,8 @@ sim_diagnostic_sum <- function(data_path, sim_dir, runs_to_plot, log_var = TRUE)
 
 # Simulation results - overall
 
-These simulations used prior specifications that involved a smaller prior SS, i.e.
-$\sigma^2 \sim IG(1,50)$.
+These simulations used prior specifications that involved a smaller prior SS and larger
+scale parameter, i.e. $\sigma^2 \sim IG(5,50)$.
 
 ```{r, message=FALSE, warning=FALSE, echo=FALSE}
 
@@ -232,7 +232,7 @@ $\sigma^2 \sim IG(1,50)$.
 # data_path = "//GENE.bst.rochester.edu/Projects/JKSTproj/BlueHive_Sim_Results/"
 
 # running on server
-data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryProposal"
+data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryPriorScale"
 
 # dev_withSM = readRDS(paste0(data_path, "/MODSUM_conjDEV_3close_n30_withSM_sim_results_ENAR/sum_1.rds"))
 
@@ -285,8 +285,8 @@ for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
 ```
 
 ```{r}
-summary_table = summary_table[-1,] %>% # get rid of first row of NAs 
-  dplyr::filter(Scenario == "3wellsep")
+summary_table = summary_table[-1,] # %>% # get rid of first row of NAs 
+  # dplyr::filter(Scenario == "3wellsep")
 
 # ARI and KL are typically skewed, so use the median (min, max) to summarize
 # results across the 100 data sets!

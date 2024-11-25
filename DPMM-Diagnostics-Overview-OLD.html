@@ -13,7 +13,7 @@
 
 <meta name="date" content="2024-11-21" />
 
-<title>Diagnostics for DPMM - Proposal Exam Results</title>
+<title>Diagnostics for DPMM - IG(5,50) Results</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -356,7 +356,7 @@ pre code {
 
 
 
-<h1 class="title toc-ignore">Diagnostics for DPMM - Proposal Exam
+<h1 class="title toc-ignore">Diagnostics for DPMM - IG(5,50)
 Results</h1>
 <h4 class="author">Jonathan Klus</h4>
 <h4 class="date">2024-11-21</h4>
@@ -367,84 +367,43 @@ Results</h1>
 <div id="simulation-results---overall" class="section level1">
 <h1>Simulation results - overall</h1>
 <p>These simulations used prior specifications that involved a smaller
-prior SS, i.e. <span class="math inline">\(\sigma^2 \sim
-IG(1,50)\)</span>.</p>
+prior SS and larger scale parameter, i.e. <span class="math inline">\(\sigma^2 \sim IG(5,50)\)</span>.</p>
 <pre><code>## `summarise()` has grouped output by &#39;Model&#39;, &#39;Scenario&#39;, &#39;SM&#39;. You can override
 ## using the `.groups` argument.</code></pre>
 <table>
 <caption>Adjusted RAND Index</caption>
-<colgroup>
-<col width="15%" />
-<col width="10%" />
-<col width="24%" />
-<col width="24%" />
-<col width="24%" />
-</colgroup>
 <thead>
 <tr class="header">
 <th align="left">Model</th>
 <th align="left">SM</th>
 <th align="left">3wellsep_30</th>
 <th align="left">3wellsep_100</th>
-<th align="left">3wellsep_300</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td align="left">conjDEE</td>
 <td align="left">noSM</td>
-<td align="left">0.94 (0.91,0.96)</td>
-<td align="left">0.75 (0.71,0.82)</td>
-<td align="left">0.66 (0.57,0.81)</td>
+<td align="left">0.9 (0.85,0.93)</td>
+<td align="left">0.79 (0.73,0.87)</td>
 </tr>
 <tr class="even">
 <td align="left">conjDEE</td>
 <td align="left">withSM</td>
-<td align="left">0.93 (0.91,0.96)</td>
-<td align="left">0.89 (0.86,0.92)</td>
-<td align="left">0.78 (0.66,0.92)</td>
+<td align="left">0.88 (0.84,0.9)</td>
+<td align="left">0.84 (0.78,0.87)</td>
 </tr>
 <tr class="odd">
 <td align="left">conjDEV</td>
 <td align="left">noSM</td>
-<td align="left">0.98 (0.97,0.99)</td>
-<td align="left">0.88 (0.76,1)</td>
-<td align="left">1 (0.88,1)</td>
+<td align="left">0.88 (0.83,0.91)</td>
+<td align="left">0.69 (0.63,0.76)</td>
 </tr>
 <tr class="even">
 <td align="left">conjDEV</td>
 <td align="left">withSM</td>
-<td align="left">0.97 (0.96,0.98)</td>
-<td align="left">0.98 (0.97,0.99)</td>
-<td align="left">0.99 (0.98,1)</td>
-</tr>
-<tr class="odd">
-<td align="left">conjUVV</td>
-<td align="left">noSM</td>
-<td align="left">0.98 (0.96,0.99)</td>
-<td align="left">0.86 (0.78,0.98)</td>
-<td align="left">1 (0.78,1)</td>
-</tr>
-<tr class="even">
-<td align="left">conjUVV</td>
-<td align="left">withSM</td>
-<td align="left">0.88 (0.86,0.89)</td>
-<td align="left">0.89 (0.87,0.91)</td>
-<td align="left">0.98 (0.95,1)</td>
-</tr>
-<tr class="odd">
-<td align="left">nonconjDEV</td>
-<td align="left">noSM</td>
-<td align="left">0.97 (0.94,0.98)</td>
-<td align="left">0.86 (0.78,0.94)</td>
-<td align="left">0.88 (0.69,1)</td>
-</tr>
-<tr class="even">
-<td align="left">nonconjUVV</td>
-<td align="left">noSM</td>
-<td align="left">0.93 (0.89,0.95)</td>
-<td align="left">0.82 (0.71,0.93)</td>
-<td align="left">0.87 (0.7,1)</td>
+<td align="left">0.86 (0.83,0.9)</td>
+<td align="left">0.77 (0.72,0.83)</td>
 </tr>
 </tbody>
 </table>
@@ -452,78 +411,38 @@ IG(1,50)\)</span>.</p>
 ## using the `.groups` argument.</code></pre>
 <table>
 <caption>KL Divergence</caption>
-<colgroup>
-<col width="15%" />
-<col width="10%" />
-<col width="24%" />
-<col width="24%" />
-<col width="24%" />
-</colgroup>
 <thead>
 <tr class="header">
 <th align="left">Model</th>
 <th align="left">SM</th>
 <th align="left">3wellsep_30</th>
 <th align="left">3wellsep_100</th>
-<th align="left">3wellsep_300</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td align="left">conjDEE</td>
 <td align="left">noSM</td>
-<td align="left">0.05 (0.04,0.07)</td>
+<td align="left">0.06 (0.04,0.08)</td>
 <td align="left">0.03 (0.02,0.04)</td>
-<td align="left">0.01 (0.01,0.02)</td>
 </tr>
 <tr class="even">
 <td align="left">conjDEE</td>
 <td align="left">withSM</td>
-<td align="left">0.05 (0.04,0.07)</td>
-<td align="left">0.02 (0.01,0.03)</td>
-<td align="left">0.01 (0.01,0.01)</td>
+<td align="left">0.06 (0.04,0.08)</td>
+<td align="left">0.02 (0.02,0.03)</td>
 </tr>
 <tr class="odd">
 <td align="left">conjDEV</td>
 <td align="left">noSM</td>
 <td align="left">0.06 (0.04,0.08)</td>
-<td align="left">0.03 (0.02,0.03)</td>
-<td align="left">0.01 (0.01,0.01)</td>
+<td align="left">0.03 (0.02,0.04)</td>
 </tr>
 <tr class="even">
 <td align="left">conjDEV</td>
 <td align="left">withSM</td>
 <td align="left">0.06 (0.04,0.08)</td>
-<td align="left">0.02 (0.02,0.03)</td>
-<td align="left">0.01 (0,0.01)</td>
-</tr>
-<tr class="odd">
-<td align="left">conjUVV</td>
-<td align="left">noSM</td>
-<td align="left">0.06 (0.04,0.08)</td>
 <td align="left">0.03 (0.02,0.04)</td>
-<td align="left">0.01 (0.01,0.02)</td>
-</tr>
-<tr class="even">
-<td align="left">conjUVV</td>
-<td align="left">withSM</td>
-<td align="left">0.06 (0.04,0.08)</td>
-<td align="left">0.02 (0.02,0.03)</td>
-<td align="left">0.01 (0.01,0.01)</td>
-</tr>
-<tr class="odd">
-<td align="left">nonconjDEV</td>
-<td align="left">noSM</td>
-<td align="left">0.06 (0.04,0.08)</td>
-<td align="left">0.03 (0.02,0.04)</td>
-<td align="left">0.01 (0.01,0.02)</td>
-</tr>
-<tr class="even">
-<td align="left">nonconjUVV</td>
-<td align="left">noSM</td>
-<td align="left">0.06 (0.05,0.09)</td>
-<td align="left">0.04 (0.03,0.05)</td>
-<td align="left">0.01 (0.01,0.02)</td>
 </tr>
 </tbody>
 </table>
@@ -537,65 +456,32 @@ IG(1,50)\)</span>.</p>
 <th align="left">SM</th>
 <th align="left">3wellsep_30</th>
 <th align="left">3wellsep_100</th>
-<th align="left">3wellsep_300</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td align="left">conjDEE</td>
 <td align="left">noSM</td>
-<td align="left">3 (3,3)</td>
+<td align="left">4 (3,4)</td>
 <td align="left">4 (4,5)</td>
-<td align="left">6 (4,7.5)</td>
 </tr>
 <tr class="even">
 <td align="left">conjDEE</td>
 <td align="left">withSM</td>
-<td align="left">3 (3,3)</td>
-<td align="left">3 (3,3)</td>
-<td align="left">3 (3,3)</td>
-</tr>
-<tr class="odd">
-<td align="left">conjDEV</td>
-<td align="left">noSM</td>
-<td align="left">3 (3,3)</td>
-<td align="left">4 (3,4.25)</td>
-<td align="left">3 (3,4)</td>
-</tr>
-<tr class="even">
-<td align="left">conjDEV</td>
-<td align="left">withSM</td>
-<td align="left">3 (3,3)</td>
-<td align="left">3 (3,3)</td>
-<td align="left">3 (3,3)</td>
-</tr>
-<tr class="odd">
-<td align="left">conjUVV</td>
-<td align="left">noSM</td>
-<td align="left">3 (3,3)</td>
 <td align="left">4 (3,4)</td>
-<td align="left">3 (3,5)</td>
-</tr>
-<tr class="even">
-<td align="left">conjUVV</td>
-<td align="left">withSM</td>
-<td align="left">3 (3,4)</td>
-<td align="left">3 (3,4)</td>
-<td align="left">3 (3,3)</td>
+<td align="left">4 (3,5)</td>
 </tr>
 <tr class="odd">
-<td align="left">nonconjDEV</td>
+<td align="left">conjDEV</td>
 <td align="left">noSM</td>
-<td align="left">3 (3,3)</td>
-<td align="left">4 (3,5)</td>
-<td align="left">4 (3,5)</td>
+<td align="left">4 (3,4)</td>
+<td align="left">5 (4,6)</td>
 </tr>
 <tr class="even">
-<td align="left">nonconjUVV</td>
-<td align="left">noSM</td>
-<td align="left">3 (3,3)</td>
-<td align="left">4 (3,5)</td>
-<td align="left">4 (3,5.75)</td>
+<td align="left">conjDEV</td>
+<td align="left">withSM</td>
+<td align="left">4 (3,4)</td>
+<td align="left">4 (3,6)</td>
 </tr>
 </tbody>
 </table>
