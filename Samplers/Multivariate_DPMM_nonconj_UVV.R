@@ -174,20 +174,23 @@ nonconj_prior_dens_UVV <- function(mu, mu0, Sigma, Sigma0, nu, Lambda0){
   return(exp(dens))
 }
 
-## LEFT OFF HERE --- RESUME CONVERTING TO UVV 
 nonconj_phi_prob_UVV <- function(curr_label, group_assign, count_assign, y, 
                                  mu, mu0, Sigma, Sigma0, Lambda0, nu){
   # This is P_GS(phi*|phi^L,...) from Jain & Neal 2007
   # for the kth component under a UVV assumption
+  # print(Sigma)
+  # print(y[[1]])
+  # print(mu)
+  # print(t(y[[1]] - mu) %*% Sigma %*% (y[[1]] - mu))
   p = nrow(mu)
   group_ind = which(group_assign == curr_label)
   loss_y_i =   Reduce(f = "+", 
                       x = lapply(X = group_ind, FUN = function(x){
-                       (y[[x]] - mu) %*% Sigma %*% t(y[[x]] - mu)}))
+                       t(y[[x]] - mu) %*% Sigma %*% (y[[x]] - mu)}))
   loss_mu_k = t(mu0 - matrix(mu, nrow = p))%*% Sigma0 %*% (mu0 - matrix(mu, nrow = p))
   # density of posterior up to a constant...
   dens = det(Sigma)^((-count_assign + nu - p - 1)/2)*det(Sigma0)^(-1/2)*det(Lambda0)^(-nu/2)*
-    exp(-(1/2)*(loss_y_i + loss_mu_k + diag(Lambda0 %*% solve(Sigma))))
+    exp(-(1/2)*(loss_y_i + loss_mu_k + sum(diag(Lambda0 %*% solve(Sigma)))))
   
   # for the kth component under a UVV assumption
   # need to fill this in 
@@ -338,10 +341,12 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
 
 ############################ INDEPENDENT IG PRIORS ############################# 
 
-MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
+MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, 
+                                k_init = 2, init_method = "kmeans",
                                 mu0, Sigma0, nu, Lambda0, standardize_y = FALSE,
                                 split_merge = FALSE, sm_iter = 5, truth = NA,
-                                diag_weights = FALSE, verbose = TRUE, print_iter = 100){
+                                diag_weights = FALSE, verbose = TRUE, 
+                                print_iter = 100, print_start = 0){
   
   # S is number of MCMC iterations
   # y is a list of data of length n
@@ -364,10 +369,10 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
   p = length(y[[1]]) # dimensionality of MVN
   k = k_init # initial number of groups
   
+  y_matrix = matrix(data = unlist(y), ncol = p, byrow = TRUE)
+  
   # center and scale data if standardize == TRUE
   if(standardize_y == TRUE){
-    
-    y_matrix = matrix(data = unlist(y), ncol = p, byrow = TRUE)
     std_y_matrix = scale(y_matrix)
     y = lapply(X = 1:nrow(std_y_matrix), 
                FUN = function(x){matrix(std_y_matrix[x,], ncol=1)})
@@ -377,9 +382,15 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
   accept_ind = matrix(data = NA, nrow = S, ncol = n)
   group_assign = matrix(data = NA, nrow = S, ncol = n)
   
-  group_assign[1, ] = sample(x = 1:k, size = length(y), replace = TRUE, prob = rep(1/k, k))
-  # try different group assign initialization
-  # group_assign[1, ] = ifelse(y > mean(y), k, k-1)  doesn't work for MVN, try kmeans?
+  if(init_method == "kmeans"){
+    group_assign[1, ] = kmeans(x = y_matrix, centers = k_init, iter.max = 10)$cluster
+  } else{
+    # random
+    group_assign[1, ] = sample(x = 1:k_init, size = length(y), 
+                               replace = TRUE, prob = rep(1/k_init, k_init))
+    # try different group assign initialization
+    # group_assign[1, ] = ifelse(y > mean(y), k, k-1)  doesn't work for MVN, try kmeans?
+  }
   
   means = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
   vars = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
@@ -438,7 +449,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
   for(s in 2:S){
     
     # print progress
-    if((s %% print_iter == 0) & (verbose == TRUE)){
+    if((s %% print_iter == 0) & (s > print_start) & (verbose == TRUE)){
       
       cat("\n\n")
       cat("*******************************************************************")
@@ -577,7 +588,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
       
     } ### end iterations from i=1:n
     
-    if((s %% print_iter == 0) & (s >= print_iter) & (verbose == TRUE)){
+    if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
       cat("\n")
       cat("End of CRP step") # just create a new line for separation
       cat("\n")
@@ -648,11 +659,11 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
         # identify original mean and variance for merge proposal
         original_param_index1 = which(curr_labels == lab1)
         original_mu1 = mu[,original_param_index1]
-        original_sigma1 = sigma2[[original_param_index1]]
+        original_sigma1 = Sigma[[original_param_index1]]
         
         original_param_index2 = which(curr_labels == lab2)
         original_mu2 = mu[,original_param_index2]
-        original_sigma2 = sigma2[[original_param_index2]]
+        original_sigma2 = Sigma[[original_param_index2]]
         
         # cat("split_labs:", split_lab)
         # cat("\n")
@@ -913,7 +924,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
                                     nonconj_phi_prob_UVV(
                                       curr_label = split_lab[x],
                                       group_assign = split_temp_group_assign[sm_iter+1,], 
-                                      count_assign = split_count_assign, y = y, 
+                                      count_assign = split_count_assign[x], y = y, 
                                       mu = split_means[[scan]][[x]], 
                                       mu0 = mu0, 
                                       Sigma = split_vars[[scan]][[x]], 
@@ -952,7 +963,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
           prob2_denom = factorial(split_counts[[split_group_count_index[1]]] + 
                                     split_counts[[split_group_count_index[2]]]-1)*
             nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
-                                   Sigma = diag(original_sigma1,p), 
+                                   Sigma = original_sigma1, 
                                    Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
           
           prob2 = log(alpha) + (log(prob2_num) - log(prob2_denom))
@@ -1014,9 +1025,9 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
             
             # if new group created by split, update mean and variance
             ## add new means and variances from final Gibbs scan to relevant vectors/lists
-            length_sigma2 = length(sigma2)
-            sigma2[[which_split_labs[1]]] = split_vars[[sm_iter+1]][[1]] # no longer scalar in UVV case
-            sigma2[[length_sigma2+1]] = split_vars[[sm_iter+1]][[2]] # no longer scalar in UVV case
+            length_Sigma = length(Sigma)
+            Sigma[[which_split_labs[1]]] = split_vars[[sm_iter+1]][[1]] # no longer scalar in UVV case
+            Sigma[[length_Sigma+1]] = split_vars[[sm_iter+1]][[2]] # no longer scalar in UVV case
             
             mu[,which_split_labs[1]] = split_means[[sm_iter+1]][[1]]
             mu = cbind(mu, split_means[[sm_iter+1]][[2]])
@@ -1286,7 +1297,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
                                     nonconj_phi_prob_UVV(
                                       curr_label = split_lab[x],
                                       group_assign = split_temp_group_assign[sm_iter+1,], 
-                                      count_assign = split_count_assign, y = y, 
+                                      count_assign = split_count_assign[x], y = y, 
                                       mu = split_means[[scan]][[x]], 
                                       mu0 = mu0, 
                                       Sigma = split_vars[[scan]][[x]], 
@@ -1319,10 +1330,10 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
           prob2_denom = factorial(split_counts[[split_group_count_index[1]]] -1)*
             factorial(split_counts[[split_group_count_index[2]]] -1)*
             nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
-                                   Sigma = diag(original_sigma1,p), 
+                                   Sigma = original_sigma1, 
                                    Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)*
             nonconj_prior_dens_UVV(mu = original_mu2, mu0 = mu0, 
-                                   Sigma = diag(original_sigma2,p), 
+                                   Sigma = original_sigma2, 
                                    Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
           
           prob2 = log(alpha) + (log(prob2_num) - log(prob2_denom))
@@ -1389,9 +1400,9 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
             
             # if new group created by merge, update mean and variance
             ## add new means and variances from final Gibbs scan to relevant vectors/lists
-            length_sigma2 = length(sigma2)
-            sigma2[[which_split_labs[1]]] = merge_vars[[sm_iter+1]] # no longer scalar in UVV
-            sigma2 = sigma2[-which_split_labs[2]]
+            length_Sigma = length(Sigma)
+            Sigma[[which_split_labs[1]]] = merge_vars[[sm_iter+1]] # no longer scalar in UVV
+            Sigma = Sigma[-which_split_labs[2]]
             
             mu[,which_split_labs[1]] = merge_means[[sm_iter+1]]
             mu = mu[,-which_split_labs[2]]
@@ -1433,7 +1444,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
           cat("\n")
           print(mu)
           cat("\n")
-          print(sigma2)
+          print(Sigma)
           cat("\n")
         }
         
@@ -1542,7 +1553,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, k_init = 2,
                            })
     
     # print progress
-    if((s %% print_iter == 0) & (s >= print_iter) & (verbose == TRUE)){
+    if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
       cat("After Gibbs step:") # just create a new line for separate
       cat("\n")
       cat("mu")

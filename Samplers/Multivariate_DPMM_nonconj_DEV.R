@@ -142,7 +142,7 @@ update_phi_DEV <- function(curr_label, group_assign, count_assign, y,
   
   mu_mean = (sum_y_i/sigma2 + mu0/sigma0)*mu_cov
   
-  mu_list = t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
+  mu = t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
                                mean = mu_mean, 
                                sigma = diag(mu_cov,p)))
   
@@ -200,7 +200,7 @@ nonconj_phi_prob_DEV <- function(curr_label, group_assign, count_assign, y,
   loss_y_i = sum(rowSums((matrix(unlist(y[group_assign == curr_label]), nrow = p) - mu[,1])^2))
   loss_mu_k = t(mu0 - matrix(mu, nrow = p))%*%(mu0 - matrix(mu, nrow = p))
   # density of posterior up to a constant...
-  dens = (sigma2^(-(p/2+a-1)))*exp(-0.5*(loss_y_i/sigma2 + 
+  dens = (sigma2^(-((p*count_assign/2)+a+1)))*exp(-0.5*(loss_y_i/sigma2 + 
                                            2*b/sigma2 + loss_mu_k/sigma0))
   
   # for the kth component under a UVV assumption
@@ -475,7 +475,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
   for(s in 2:S){
     
     # print progress
-    if((s %% print_iter == 0) & (s > print_start) & (verbose == TRUE)){
+    if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
       
       cat("\n\n")
       cat("*******************************************************************")
@@ -944,7 +944,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                   nonconj_phi_prob_DEV(
                                     curr_label = split_lab[x],
                                     group_assign = split_temp_group_assign[sm_iter+1,], 
-                                    count_assign = split_count_assign, y = y, 
+                                    count_assign = split_count_assign[x], y = y, 
                                     mu = split_means[[scan]][[x]], 
                                     mu0 = mu0, 
                                     Sigma = split_vars[[scan]][[x]], 
@@ -1312,7 +1312,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                   nonconj_phi_prob_DEV(
                                     curr_label = split_lab[x],
                                     group_assign = split_temp_group_assign[sm_iter+1,], 
-                                    count_assign = split_count_assign, y = y, 
+                                    count_assign = split_count_assign[x], y = y, 
                                     mu = split_means[[scan]][[x]], 
                                     mu0 = mu0, 
                                     Sigma = split_vars[[scan]][[x]], 
