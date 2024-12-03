@@ -184,12 +184,13 @@ nonconj_phi_prob_UVV <- function(curr_label, group_assign, count_assign, y,
   # print(t(y[[1]] - mu) %*% Sigma %*% (y[[1]] - mu))
   p = nrow(mu)
   group_ind = which(group_assign == curr_label)
-  loss_y_i =   Reduce(f = "+", 
-                      x = lapply(X = group_ind, FUN = function(x){
-                       t(y[[x]] - mu) %*% Sigma %*% (y[[x]] - mu)}))
-  loss_mu_k = t(mu0 - matrix(mu, nrow = p))%*% Sigma0 %*% (mu0 - matrix(mu, nrow = p))
+  loss_y_i = Reduce(f = "+", 
+                    x = lapply(X = group_ind, FUN = function(x){
+                    t(y[[x]] - mu) %*% Sigma %*% (y[[x]] - mu)}))
+  # wrap loss in c() to avoid length 1 array ---> dire warnings from R
+  loss_mu_k = c(t(mu0 - matrix(mu, nrow = p))%*% Sigma0 %*% (mu0 - matrix(mu, nrow = p)))
   # density of posterior up to a constant...
-  dens = det(Sigma)^((-count_assign + nu - p - 1)/2)*det(Sigma0)^(-1/2)*det(Lambda0)^(-nu/2)*
+  dens = (det(Sigma)^((-count_assign + nu - p - 1)/2))*(det(Sigma0)^(-1/2))*(det(Lambda0)^(-nu/2))*
     exp(-(1/2)*(loss_y_i + loss_mu_k + sum(diag(Lambda0 %*% solve(Sigma)))))
   
   # for the kth component under a UVV assumption
@@ -645,12 +646,12 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
         lab2 = split_temp_group_assign[1, sampled_obs[2]]
         move_type = ifelse(lab1 == lab2, "SPLIT", "MERGE")
         
-        # cat("move_type:", move_type)
-        # cat("\n")
-        # cat("sampled_obs:", sampled_obs)
-        # cat("\n")
-        # cat("group_labs:", c(lab1, lab2))
-        # cat("\n")
+        cat("move_type:", move_type)
+        cat("\n")
+        cat("sampled_obs:", sampled_obs)
+        cat("\n")
+        cat("group_labs:", c(lab1, lab2))
+        cat("\n")
         
         # bookkeeping - group labels
         subset_index = which(split_temp_group_assign[1,] %in% c(lab1, lab2)) 
@@ -932,6 +933,8 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                       nu = nu, Lambda0 = Lambda0)
                                   })
           
+          cat("\n split phi prob:", split_phi_prob)
+          
           merge_phi_prob = nonconj_phi_prob_UVV(curr_label = merge_lab, 
                                                 group_assign = merge_temp_group_assign[sm_iter+1,], 
                                                 count_assign = merge_count_assign, y = y, 
@@ -940,6 +943,8 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                                 Sigma = merge_vars[[scan]], 
                                                 Sigma0 = Sigma0,                                                  
                                                 nu = nu, Lambda0 = Lambda0)
+          
+          cat("\n merge phi prob:", merge_phi_prob)
           
           prob1_c_num = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
           prob1_phi_num = Reduce(f = "+", x = log(split_phi_prob)) # only calculated at end
@@ -1003,6 +1008,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           prob3 = prob3_num1 + prob3_num2 - prob3_denom
           
           ## evaluate acceptance prob
+          cat("\n accept prob components:", prob1, prob2, prob3, "\n")
           accept_prob = min(1, exp(prob1 + prob2 + prob3))
           u = runif(n = 1)
           if(accept_prob > u){

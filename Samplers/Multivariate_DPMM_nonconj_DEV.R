@@ -198,7 +198,11 @@ nonconj_phi_prob_DEV <- function(curr_label, group_assign, count_assign, y,
   sigma0 = diag(Sigma0)[1]
   p = nrow(mu)
   loss_y_i = sum(rowSums((matrix(unlist(y[group_assign == curr_label]), nrow = p) - mu[,1])^2))
-  loss_mu_k = t(mu0 - matrix(mu, nrow = p))%*%(mu0 - matrix(mu, nrow = p))
+  # print(loss_y_i)
+  loss_mu_k = c(t(mu0 - matrix(mu, nrow = p))%*%(mu0 - matrix(mu, nrow = p))) # make sure it becomes
+  # print(loss_mu_k)
+  # a scalar and not an array of length 1
+  
   # density of posterior up to a constant...
   dens = (sigma2^(-((p*count_assign/2)+a+1)))*exp(-0.5*(loss_y_i/sigma2 + 
                                            2*b/sigma2 + loss_mu_k/sigma0))
@@ -667,12 +671,12 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
       lab2 = split_temp_group_assign[1, sampled_obs[2]]
       move_type = ifelse(lab1 == lab2, "SPLIT", "MERGE")
       
-      # cat("move_type:", move_type)
-      # cat("\n")
-      # cat("sampled_obs:", sampled_obs)
-      # cat("\n")
-      # cat("group_labs:", c(lab1, lab2))
-      # cat("\n")
+      cat("move_type:", move_type)
+      cat("\n")
+      cat("sampled_obs:", sampled_obs)
+      cat("\n")
+      cat("group_labs:", c(lab1, lab2))
+      cat("\n")
       
       # bookkeeping - group labels
       subset_index = which(split_temp_group_assign[1,] %in% c(lab1, lab2)) 
@@ -931,60 +935,99 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         # # should never be a merge singleton --- need at least 2 anchor observations
         # 
         split_counts = table(split_temp_group_assign[sm_iter+1,])
-        # merge_counts = table(merge_temp_group_assign[sm_iter+1,])
-
-        split_group_count_index = which(as.numeric(names(split_counts)) %in% split_lab)
-        # merge_group_count_index = which(as.numeric(names(merge_counts)) %in% merge_lab)
+        merge_counts = table(merge_temp_group_assign[sm_iter+1,])
         
+        split_lab_assign = as.numeric(names(split_counts))
+        merge_lab_assign = as.numeric(names(merge_counts))
+
+        split_count_assign = as.numeric(split_counts)
+        merge_count_assign = as.numeric(merge_counts)
+
+        split_group_count_index = which(split_lab_assign %in% split_lab)
+        merge_group_count_index = which(merge_lab_assign %in% merge_lab)
+
         ## proposal probability
         
         # compute P_GS(phi) from launch state to final scan for both split and merge proposals
+        cat("\n split_lab", split_lab, "\n")
+        cat("\n index", split_group_count_index, "\n")
+        cat("\n count", split_count_assign, "\n")
+        cat("\n group_assign", split_temp_group_assign[sm_iter+1,], "\n")
+        cat("\n split_means", "\n")
+        print(split_means[[scan]])
+        cat("\n split_vars", "\n")
+        print(split_vars[[scan]])
+        
         split_phi_prob = sapply(X = 1:2, 
                                 FUN = function(x){
                                   nonconj_phi_prob_DEV(
                                     curr_label = split_lab[x],
                                     group_assign = split_temp_group_assign[sm_iter+1,], 
-                                    count_assign = split_count_assign[x], y = y, 
+                                    count_assign = split_count_assign[split_group_count_index][x], 
+                                    y = y, 
                                     mu = split_means[[scan]][[x]], 
                                     mu0 = mu0, 
                                     Sigma = split_vars[[scan]][[x]], 
                                     Sigma0 = Sigma0, a = a, b = b)
                                 })
         
+        cat("\n merge_lab", merge_lab, "\n")
+        cat("\n count_assign", merge_count_assign, "\n")
+        cat("\n index", merge_group_count_index, "\n")
+        cat("\n group_assign", merge_temp_group_assign[sm_iter+1,], "\n")
+        cat("\n merge_means", "\n")
+        print(merge_means[[scan]])
+        cat("\n merge_vars", "\n")
+        print(merge_vars[[scan]])
+        
         merge_phi_prob = nonconj_phi_prob_DEV(curr_label = merge_lab, 
                                               group_assign = merge_temp_group_assign[sm_iter+1,], 
-                                              count_assign = merge_count_assign, y = y, 
+                                              count_assign = merge_count_assign[merge_group_count_index], 
+                                              y = y, 
                                               mu = merge_means[[scan]], 
                                               mu0 = mu0, 
                                               Sigma = merge_vars[[scan]], 
                                               Sigma0 = Sigma0, a = a, b = b)
         
         prob1_c_num = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
+        
+        # check to prevent numeric overflow from small densities (happens when proposal is two large
+        # groups that are not compatible)
+        if(any(split_phi_prob < 10^(-300)) == TRUE){
+          
+          which_below_tol = which(split_phi_prob < 10^(-300))
+          split_phi_prob[which_below_tol] = 10^-300 # if below tol, set equal to tol
+          
+        } 
+          
+        # else, business as usual
         prob1_phi_num = Reduce(f = "+", x = log(split_phi_prob)) # only calculated at end
         # so no need to index
         
         prob1_c_denom = Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
-        prob1_phi_denom = log(merge_phi_prob)
+        # check to prevent numeric overflow from small densities (happens when proposal is two large
+        # groups that are not compatible)
+        prob1_phi_denom = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
         
         prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
         
         ## prior ratio
-        prob2_num = factorial(split_counts[[split_group_count_index[1]]] -1)*
-          factorial(split_counts[[split_group_count_index[2]]] -1)*
-          nonconj_prior_dens_DEV(mu = split_means[[scan]][[1]], mu0 = mu0, 
-                                 Sigma = split_vars[[scan]][[1]], 
-                                 Sigma0 = Sigma0, a = a, b = b)*
-          nonconj_prior_dens_DEV(mu = split_means[[scan]][[2]], mu0 = mu0, 
-                                 Sigma = split_vars[[scan]][[2]], 
-                                 Sigma0 = Sigma0, a = a, b = b)
-        
-        prob2_denom = factorial(split_counts[[split_group_count_index[1]]] + 
-                                  split_counts[[split_group_count_index[2]]]-1)*
-          nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
-                                 Sigma = diag(original_sigma1,p), 
-                                 Sigma0 = Sigma0, a = a, b = b)
-        
-        prob2 = log(alpha) + (log(prob2_num) - log(prob2_denom))
+        prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
+          sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) + 
+          log(nonconj_prior_dens_DEV(mu = split_means[[scan]][[1]], mu0 = mu0, 
+                                     Sigma = split_vars[[scan]][[1]], 
+                                     Sigma0 = Sigma0, a = a, b = b)) + 
+          log(nonconj_prior_dens_DEV(mu = split_means[[scan]][[2]], mu0 = mu0, 
+                                     Sigma = split_vars[[scan]][[2]], 
+                                     Sigma0 = Sigma0, a = a, b = b))
+
+        prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
+                                   split_counts[[split_group_count_index[2]]]-1))) +
+          log(nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
+                                     Sigma = diag(original_sigma1,p), 
+                                     Sigma0 = Sigma0, a = a, b = b))
+
+        prob2 = log(alpha) + prob2_num - prob2_denom
         
         ## likelihood ratio
         subset_index_grp1 = which(split_temp_group_assign[sm_iter+1,] %in% split_lab[1]) 
@@ -1287,71 +1330,117 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         # calculate & evaluate acceptance prob
         
         # update counts after scans
-        # split_count_assign = as.numeric(table(split_temp_group_assign[sm_iter+1,]))
-        # split_label_assign = as.numeric(names(table(split_temp_group_assign[sm_iter+1,])))
-        # # split_singletons = split_label_assign[which(split_count_assign == 1)]
-        # 
-        # merge_count_assign = as.numeric(table(merge_temp_group_assign[sm_iter+1,]))
-        # merge_label_assign = as.numeric(names(table(merge_temp_group_assign[sm_iter+1,])))
-        # # merge_singletons = merge_label_assign[which(merge_count_assign == 1)]
-        # # should never be a merge singleton --- need at least 2 anchor observations
-        
         split_counts = table(split_temp_group_assign[sm_iter+1,])
         merge_counts = table(merge_temp_group_assign[sm_iter+1,])
         
-        split_group_count_index = which(as.numeric(names(split_counts)) %in% split_lab)
-        merge_group_count_index = which(as.numeric(names(merge_counts)) %in% merge_lab)
+        split_lab_assign = as.numeric(names(split_counts))
+        merge_lab_assign = as.numeric(names(merge_counts))
         
-        #cat("\n Curr labels (at bottom of merge): ", curr_labels, "\n")
+        split_count_assign = as.numeric(split_counts)
+        merge_count_assign = as.numeric(merge_counts)
+        
+        split_group_count_index = which(split_lab_assign %in% split_lab)
+        merge_group_count_index = which(merge_lab_assign %in% merge_lab)
         
         ## proposal probability
         
         # compute P_GS(phi) from launch state to final scan for both split and merge proposals
+
+        cat("\n split_lab", split_lab, "\n")
+        cat("\n index", split_group_count_index, "\n")
+        cat("\n count", split_count_assign, "\n")
+        cat("\n group_assign", split_temp_group_assign[sm_iter+1,], "\n")
+        cat("\n split_means", "\n")
+        print(split_means[[scan]])
+        cat("\n split_vars", "\n")
+        print(split_vars[[scan]])
+        
+        ## proposal probability
         split_phi_prob = sapply(X = 1:2, 
                                 FUN = function(x){
                                   nonconj_phi_prob_DEV(
                                     curr_label = split_lab[x],
                                     group_assign = split_temp_group_assign[sm_iter+1,], 
-                                    count_assign = split_count_assign[x], y = y, 
+                                    count_assign = split_count_assign[split_group_count_index][x], 
+                                    y = y, 
                                     mu = split_means[[scan]][[x]], 
                                     mu0 = mu0, 
                                     Sigma = split_vars[[scan]][[x]], 
                                     Sigma0 = Sigma0, a = a, b = b)
                                 })
         
+        cat("\n merge_lab", merge_lab, "\n")
+        cat("\n index", merge_group_count_index, "\n")
+        cat("\n count", merge_count_assign, "\n")
+        cat("\n group_assign", merge_temp_group_assign[sm_iter+1,], "\n")
+        cat("\n merge_means", "\n")
+        print(merge_means[[scan]])
+        cat("\n merge_vars", "\n")
+        print(merge_vars[[scan]])
+        
+        ## proposal probability
+        
         merge_phi_prob = nonconj_phi_prob_DEV(curr_label = merge_lab, 
                                               group_assign = merge_temp_group_assign[sm_iter+1,], 
-                                              count_assign = merge_count_assign, y = y, 
+                                              count_assign = merge_count_assign[merge_group_count_index], 
+                                              y = y, 
                                               mu = merge_means[[scan]], 
                                               mu0 = mu0, 
                                               Sigma = merge_vars[[scan]], 
                                               Sigma0 = Sigma0, a = a, b = b)
+        cat("\n merge_phi_prob: ", merge_phi_prob, "\n")
         
         prob1_c_num = Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
-        prob1_phi_num = log(merge_phi_prob)
+        prob1_phi_num = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
         
         prob1_c_denom = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
+        
+        if(any(split_phi_prob < 10^(-300)) == TRUE){
+          
+          which_below_tol = which(split_phi_prob < 10^(-300))
+          split_phi_prob[which_below_tol] = 10^-300 # if below tol, set equal to tol
+          
+        } 
+        
         prob1_phi_denom = Reduce(f = "+", x = log(split_phi_prob))
+        cat("\n split_phi_prob: ", split_phi_prob, "\n")
         
         prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
         
         ## prior ratio
-        prob2_num = factorial(split_counts[[split_group_count_index[1]]] + 
-                                split_counts[[split_group_count_index[2]]]-1)*
-          nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
+        prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
+                                 split_counts[[split_group_count_index[2]]]-1))) +
+          log(nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
                                  Sigma = merge_vars[[scan]], 
-                                 Sigma0 = Sigma0, a = a, b = b)
+                                 Sigma0 = Sigma0, a = a, b = b))
         
-        prob2_denom = factorial(split_counts[[split_group_count_index[1]]] -1)*
-          factorial(split_counts[[split_group_count_index[2]]] -1)*
-          nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
-                                 Sigma = diag(original_sigma1,p), 
-                                 Sigma0 = Sigma0, a = a, b = b)*
-          nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0, 
-                                 Sigma = diag(original_sigma2,p), 
-                                 Sigma0 = Sigma0, a = a, b = b)
+        cat("\n prob2_num", prob2_num, "\n")
+        cat("\n split fact 1: ", split_counts[[split_group_count_index[1]]], "\n")
+        cat("\n split fact 2: ", split_counts[[split_group_count_index[2]]], "\n")
+        cat("\n num dens: ", nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
+                                                    Sigma = merge_vars[[scan]], 
+                                                    Sigma0 = Sigma0, a = a, b = b), "\n")
         
-        prob2 = log(alpha) + (log(prob2_num) - log(prob2_denom))
+        prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
+          sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) +
+          log(nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
+                                     Sigma = diag(original_sigma1,p), 
+                                     Sigma0 = Sigma0, a = a, b = b)) +
+          log(nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0, 
+                                     Sigma = diag(original_sigma2,p), 
+                                     Sigma0 = Sigma0, a = a, b = b))
+        
+        cat("\n prob2_denom", prob2_denom)
+        cat("\n split fact 1: ", split_counts[[split_group_count_index[1]]], "\n")
+        cat("\n split fact 2: ", split_counts[[split_group_count_index[2]]], "\n")
+        cat("\n num dens 1: ", nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
+                                                      Sigma = diag(original_sigma1,p), 
+                                                      Sigma0 = Sigma0, a = a, b = b), "\n")
+        cat("\n num dens 2: ", nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0, 
+                                                      Sigma = diag(original_sigma2,p), 
+                                                      Sigma0 = Sigma0, a = a, b = b), "\n")
+        
+        prob2 = log(alpha) + prob2_num - prob2_denom
         
         ## likelihood ratio
         subset_index_grp1 = which(split_temp_group_assign[sm_iter+1,] %in% split_lab[1]) 
@@ -1388,6 +1477,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         # flip this for merge step
         prob3 = prob3_denom - (prob3_num1 + prob3_num2)
         
+        cat("\n accept prob components:", c(prob1, prob2, prob3), "\n")
         ## evaluate acceptance prob
         accept_prob = min(1, exp(prob1 + prob2 + prob3))
         u = runif(n = 1)
