@@ -40,7 +40,7 @@ x = 1 # dataset100
 seeds = readRDS("./BHsimseeds.rds")
 
 
-w = c(0.4, 0.3, 0.3)
+w = rep(1/3,3)
 
 # negative corr
 means = list(
