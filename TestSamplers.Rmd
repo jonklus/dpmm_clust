@@ -11,8 +11,8 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 # load necessary functions
 #source("./Samplers/Multivariate_DPMM_unknownvar_DEE.R")
 #source("./Samplers/Multivariate_DPMM_unknownvar_DEV.R")
-# source("./Samplers/Multivariate_DPMM_nonconj_UVV.R")
-source("./Samplers/Multivariate_DPMM_nonconj_DEV.R")
+source("./Samplers/Multivariate_DPMM_nonconj_UVV.R")
+# source("./Samplers/Multivariate_DPMM_nonconj_DEV.R")
 # source("./Samplers/Multivariate_DPMM_unknownvar_UVV.R")
 source("./Samplers/posterior_helper_fxns.R")
 source("./Samplers/post_processing_inf.R")
@@ -200,7 +200,7 @@ plot(mod_sum$var_list_by_k_stephens[[1]]$sigma_1_1, type = "l",
 
 ```{r, include=FALSE, eval=FALSE}
 ### Fit DEE model
-n_iter = 100
+n_iter = 1000
 # set hyperparameters
 # a = 1; b = 50
 # d = 1; f = 1
@@ -258,10 +258,10 @@ n_iter = 1000
 # run in fxn
 sim_results_nonconjUVV = MVN_CRP_nonconj_UVV(
         S = n_iter, seed = seeds[x], y = y, 
-        alpha = 1, Sigma0 = diag(100,2), 
+        alpha = 1, Sigma0 = diag(225,2), 
         mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1),
         k_init = 1, init_method = "kmeans",
-        nu = 4, Lambda0 = diag(50,2),
+        nu = 4, Lambda0 = diag(10,2),
         standardize_y = FALSE,
         split_merge = TRUE, sm_iter = 5, truth = NA,
         diag_weights = FALSE, verbose = TRUE, print_iter = 1, print_start = 0)

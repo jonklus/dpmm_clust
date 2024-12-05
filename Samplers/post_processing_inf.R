@@ -336,44 +336,92 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
   # return summary of all results
     if(calc_perf == TRUE){
       
-      return(list(
-        data = output$data,
-        group_assign = output$group_assign,
-        settings = output$settings,
-        mean_list_by_k_stephens = mean_list_by_k_stephens,
-        var_list_by_k_stephens = var_list_by_k_stephens,
-        mean_summary = mean_summary,
-        var_summary = var_summary,
-        splitmerge_accept = sm_df, 
-        kl_div = round(kl_div, 4),
-        mean_ARI = mean(unlist(ARI)),
-        fit_runtime = output$runtime,
-        truth = output$truth,
-        avg_pairwise_mat = output$pairwise_mats$avg_adj,
-        k_freqtab = k_freqtab,
-        k_relfreqtab = k_relfreqtab
+      if(is.null(output$extra_params) == TRUE){
+        
+        return(list(
+          data = output$data,
+          group_assign = output$group_assign,
+          settings = output$settings,
+          mean_list_by_k_stephens = mean_list_by_k_stephens,
+          var_list_by_k_stephens = var_list_by_k_stephens,
+          # extra_params = ifelse(is.null(output$extra_params), NA, output$extra_params),
+          mean_summary = mean_summary,
+          var_summary = var_summary,
+          splitmerge_accept = sm_df, 
+          kl_div = round(kl_div, 4),
+          mean_ARI = mean(unlist(ARI)),
+          fit_runtime = output$runtime,
+          truth = output$truth,
+          avg_pairwise_mat = output$pairwise_mats$avg_adj,
+          k_freqtab = k_freqtab,
+          k_relfreqtab = k_relfreqtab
+        ))
+        
+      } else{
+        
+        return(list(
+          data = output$data,
+          group_assign = output$group_assign,
+          settings = output$settings,
+          mean_list_by_k_stephens = mean_list_by_k_stephens,
+          var_list_by_k_stephens = var_list_by_k_stephens,
+          extra_params = output$extra_params,
+          mean_summary = mean_summary,
+          var_summary = var_summary,
+          splitmerge_accept = sm_df, 
+          kl_div = round(kl_div, 4),
+          mean_ARI = mean(unlist(ARI)),
+          fit_runtime = output$runtime,
+          truth = output$truth,
+          avg_pairwise_mat = output$pairwise_mats$avg_adj,
+          k_freqtab = k_freqtab,
+          k_relfreqtab = k_relfreqtab
       ))
+        
+      }
       
     } else{
       
-      return(list(
-        data = output$data,
-        group_assign = output$group_assign,
-        settings = output$settings,
-        mean_list_by_k_stephens = mean_list_by_k_stephens,
-        var_list_by_k_stephens = var_list_by_k_stephens,
-        mean_summary = mean_summary,
-        var_summary = var_summary,
-        splitmerge_accept = sm_df,
-        fit_runtime = output$runtime,
-        avg_pairwise_mat = output$pairwise_mats$avg_adj,
-        k_freqtab = k_freqtab,
-        k_relfreqtab = k_relfreqtab
-      ))
-      
+      if(is.null(output$extra_params) == TRUE){
+        
+        return(list(
+          data = output$data,
+          group_assign = output$group_assign,
+          settings = output$settings,
+          mean_list_by_k_stephens = mean_list_by_k_stephens,
+          var_list_by_k_stephens = var_list_by_k_stephens,
+          # extra_params = output$extra_params,
+          mean_summary = mean_summary,
+          var_summary = var_summary,
+          splitmerge_accept = sm_df,
+          fit_runtime = output$runtime,
+          avg_pairwise_mat = output$pairwise_mats$avg_adj,
+          k_freqtab = k_freqtab,
+          k_relfreqtab = k_relfreqtab
+        ))
+        
+      } else{
+        
+        return(list(
+          data = output$data,
+          group_assign = output$group_assign,
+          settings = output$settings,
+          mean_list_by_k_stephens = mean_list_by_k_stephens,
+          var_list_by_k_stephens = var_list_by_k_stephens,
+          extra_params = output$extra_params,
+          mean_summary = mean_summary,
+          var_summary = var_summary,
+          splitmerge_accept = sm_df,
+          fit_runtime = output$runtime,
+          avg_pairwise_mat = output$pairwise_mats$avg_adj,
+          k_freqtab = k_freqtab,
+          k_relfreqtab = k_relfreqtab
+        ))
+        
+      }
+
     }
 
-  
 }
 
 # 

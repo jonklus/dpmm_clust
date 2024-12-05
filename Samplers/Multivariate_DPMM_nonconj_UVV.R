@@ -990,6 +990,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           
           prob2 = log(alpha) + prob2_num - prob2_denom
           
+          
           ## likelihood ratio
           subset_index_grp1 = which(split_temp_group_assign[sm_iter+1,] %in% split_lab[1]) 
           subset_index_grp2 = which(split_temp_group_assign[sm_iter+1,] %in% split_lab[2]) 
@@ -1180,8 +1181,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                   split_assign_prob = nonconj_component_prob_c(
                     obs = obs, split_labs = split_lab,
                     group_assign = split_temp_group_assign[scan,], 
-                    y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]], 
-                    Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+                    y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
                   
                   ### merge_assign prob by definition always 1 when proposing merge
                   ### launch state from c_i = c_j, no other way to permute assignment
@@ -1221,8 +1221,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                   split_assign_prob = nonconj_component_prob_c(
                     obs = obs, split_labs = split_lab,
                     group_assign = split_temp_group_assign[scan,], 
-                    y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]],
-                    Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+                    y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
                   
                   sm_prop_index = sample(x = 1:2, size = 1, 
                                          prob = split_assign_prob)
@@ -1400,6 +1399,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           prob3 = prob3_denom - (prob3_num1 + prob3_num2)
           
           ## evaluate acceptance prob
+          cat("\n accept prob components:", prob1, prob2, prob3, "\n")
           accept_prob = min(1, exp(prob1 + prob2 + prob3))
           u = runif(n = 1)
           if(accept_prob > u){
