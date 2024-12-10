@@ -241,8 +241,8 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
       
       k_i = max(as.numeric(stringr::str_extract_all(
         string = stringr::str_extract_all(string = row.names(mean_summary[[k]]), 
-                                          pattern = "_[:digit:]_"), pattern = "[:digit:]")))
-      cat("\n print_phi_sum = ", print_phi_sum, "\n")
+                                          pattern = "_[:digit:]+_"), pattern = "[:digit:]+")))
+      # cat("\n print_phi_sum = ", print_phi_sum, "\n")
       if(print_phi_sum == TRUE){
         
         # give summary of counts after thresholding

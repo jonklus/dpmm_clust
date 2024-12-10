@@ -646,12 +646,12 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
         lab2 = split_temp_group_assign[1, sampled_obs[2]]
         move_type = ifelse(lab1 == lab2, "SPLIT", "MERGE")
         
-        cat("move_type:", move_type)
-        cat("\n")
-        cat("sampled_obs:", sampled_obs)
-        cat("\n")
-        cat("group_labs:", c(lab1, lab2))
-        cat("\n")
+        # cat("move_type:", move_type)
+        # cat("\n")
+        # cat("sampled_obs:", sampled_obs)
+        # cat("\n")
+        # cat("group_labs:", c(lab1, lab2))
+        # cat("\n")
         
         # bookkeeping - group labels
         subset_index = which(split_temp_group_assign[1,] %in% c(lab1, lab2)) 
@@ -940,7 +940,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                       nu = nu, Lambda0 = Lambda0)
                                   })
           
-          cat("\n split phi prob:", split_phi_prob)
+          # cat("\n split phi prob:", split_phi_prob)
           
           merge_phi_prob = nonconj_phi_prob_UVV(curr_label = merge_lab, 
                                                 group_assign = merge_temp_group_assign[sm_iter+1,], 
@@ -952,7 +952,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                                 Sigma0 = Sigma0,                                                  
                                                 nu = nu, Lambda0 = Lambda0)
           
-          cat("\n merge phi prob:", merge_phi_prob)
+          # cat("\n merge phi prob:", merge_phi_prob)
           
           # check to prevent numeric overflow from small densities (happens when proposal is two large
           # groups that are not compatible)
@@ -1026,7 +1026,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           prob3 = prob3_num1 + prob3_num2 - prob3_denom
           
           ## evaluate acceptance prob
-          cat("\n accept prob components:", prob1, prob2, prob3, "\n")
+          # cat("\n accept prob components:", prob1, prob2, prob3, "\n")
           accept_prob = min(1, exp(prob1 + prob2 + prob3))
           u = runif(n = 1)
           if(accept_prob > u){
@@ -1379,7 +1379,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           ### component 2 - numerator II (group 2 - split proposal)
           prob3_num2 = 0
           for(obs_ind in 1:length(subset_index_grp2)){
-            val = ll_components_DEV(obs_ind = subset_index_grp2[obs_ind], y = y, 
+            val = ll_components_UVV(obs_ind = subset_index_grp2[obs_ind], y = y, 
                                     mu = original_mu2, # change, needs tot be merge mu
                                     Sigma = original_sigma2)
             prob3_num2 = prob3_num2 + log(val)
@@ -1399,7 +1399,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           prob3 = prob3_denom - (prob3_num1 + prob3_num2)
           
           ## evaluate acceptance prob
-          cat("\n accept prob components:", prob1, prob2, prob3, "\n")
+          # cat("\n accept prob components:", prob1, prob2, prob3, "\n")
           accept_prob = min(1, exp(prob1 + prob2 + prob3))
           u = runif(n = 1)
           if(accept_prob > u){
