@@ -47,10 +47,15 @@ for(ext_index in 2:length(file_ext)){ # skip first one, listing main directory
     # temp_summary_table[1:length(file_list), "Tag"] = stringr::str_remove(string = parsed_dirname[length(parsed_dirname)], pattern = "_")
     temp_summary_table[, "dataset_no"] = as.numeric(stringr::str_remove_all(string = file_list, pattern = "sum_|.rds"))
     
-    summary_list[[ext_index-1]] = temp_summary_table
+    summary_list[[ext_index-1]][[1]] = temp_summary_table # which sims are present
+    
+    # now figure out which sims are missing! 
+    summary_list[[ext_index-1]][[2]]
     
   }
   
 }
 
 head(summary_list[[1]], 10)
+
+# loop through and find which 
