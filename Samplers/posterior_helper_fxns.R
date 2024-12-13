@@ -662,13 +662,17 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
   # if label switching solution is given, also reorder params to address this
   if(relabel == FALSE){
     
+    cat("\n relabel = ", relabel, "\n")
 
     for(i in 1:length(unique_k)){
+      
+      cat("\n i_{unique_k}=", i, "\n")
       
       k_index = which(k_vec == unique_k[i]) # indices of all iters with k params
       
       if(equal_var == TRUE & param_type == "Var"){
         
+        cat("\n equal var & var \n")
         # pooled variance, single param
         # don't sort or do anything by k_list
         param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list), 
@@ -680,6 +684,8 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
         names(param_list_by_k[[i]]) =  col_header_names
         
       } else if(param_type == "Covar"){
+        
+        cat("\n covar \n")
         
         param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
                                                  ncol = npar*unique_k[i], 
@@ -702,6 +708,8 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
         # the apply statement was written to ensure correct ordering
         
       } else{
+        
+        cat("\n other---else statement")
         
         param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
                                                  ncol = npar*unique_k[i],
@@ -738,6 +746,7 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
   } else{
     
     # if relabel == TRUE
+    cat("\n relabel=", TRUE, "\n")
     
     if(equal_var == TRUE){
       
@@ -755,15 +764,54 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
         # put the k=1 group names in here 
         k_index = which(num_params == 1)
         
-        param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]),   
-                                                 ncol = npar,                   
-                                                 byrow = TRUE))
+        if(equal_var == TRUE & param_type == "Var"){
+          
+          param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]),   
+                                                   ncol = 1,                   
+                                                   byrow = TRUE))
+          
+          # name columns i.e. mu23 is param for group 2, 3rd component 
+          # (i.e. from a length 3 mean vector)
+          col_header_names = c("sigma_1_1")
+          names(param_list_by_k[[1]]) =  col_header_names
+          
+        } else if(param_type == "Covar"){
+          
+          param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]), 
+                                                   ncol = npar*unique_k[i], 
+                                                   byrow = TRUE))
+          
+          param_mat = t(sapply(X = 1:p, 
+                               FUN = function(x){
+                                 i = 1:p
+                                 paste0(x,"_",i)
+                               }))
+          
+          param_lab = c(diag(param_mat), param_mat[upper.tri(param_mat)])
+          
+          col_header_names = unlist(lapply(X = 1:unique_k[i], 
+                                           FUN = function(x){
+                                             paste0(param_symbol, "_", x, "_", param_lab)
+                                           }))
+          
+          names(param_list_by_k[[1]]) =  col_header_names
+          
+        } else{
+          # any other params - means, vars
+          
+          param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]),   
+                                                   ncol = npar,                   
+                                                   byrow = TRUE))
+          
+          
+          # name columns i.e. mu23 is mean for group 2, 3rd component 
+          # (i.e. from a length 3 mean vector)
+          
+          names(param_list_by_k[[1]]) = paste0(param_symbol, "_", 1, "_", 1:npar)
+          
+        }
         
-        
-        # name columns i.e. mu23 is mean for group 2, 3rd component 
-        # (i.e. from a length 3 mean vector)
-        
-        names(param_list_by_k[[1]]) = paste0(param_symbol, "_", 1, "_", 1:npar)
+
         
       } else{
         
@@ -838,6 +886,27 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
           # (i.e. from a length 3 mean vector)
           col_header_names = paste0(param_symbol, "_", 1, "_", 1)
           names(param_list_by_k[[i]]) = gtools::mixedsort(col_header_names)
+          
+        } else if(param_type == "Covar"){
+          
+          param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
+                                                   ncol = npar*unique_k[i], 
+                                                   byrow = TRUE))
+          
+          param_mat = t(sapply(X = 1:p, 
+                               FUN = function(x){
+                                 i = 1:p
+                                 paste0(x,"_",i)
+                               }))
+          
+          param_lab = c(diag(param_mat), param_mat[upper.tri(param_mat)])
+          
+          col_header_names = unlist(lapply(X = 1:unique_k[i], 
+                                           FUN = function(x){
+                                             paste0(param_symbol, "_", x, "_", param_lab)
+                                           }))
+          
+          names(param_list_by_k[[i]]) =  col_header_names
           
         } else{
           
@@ -1301,7 +1370,9 @@ correct_group_assign <- function(group_assign_list_by_k, stephens_result){
 
 
 calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign, 
-                           mu_true, Sigma_true, equal_var_assump = FALSE, off_diag = FALSE){
+                           mu_true, Sigma_true, 
+                           # equal_var_datagen = TRUE, consider this arg in the future
+                           equal_var_assump = FALSE, off_diag = FALSE){
   
   # function to calculate KL divergence between truth and posterior mean for
   # a particular clustering (e.g. k=3) after running MCMC
@@ -1343,29 +1414,31 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
     # calculate density of estimates
     est_dens = vector(mode = "list", length = length(mu_est))
     for(k in 1:length(mu_est)){
-
+    cat("\n k=",k,"\n")
       est_dens_k = matrix(data = NA, nrow = nrow(mu_est[[k]]), ncol = length(y))
       for(iter in 1:nrow(mu_est[[k]])){
-        
+        cat("\n iter=",iter,"\n")
+        cat("\n Sigma_est[[k]]=")
+        print(Sigma_est[[k]][iter,])
         if(off_diag == TRUE){
           
           est_dens_k[iter,] = sapply(X = 1:length(y), 
                                      FUN = function(x){
-                                       # cat("\n x ", x)
-                                       # cat("\n iter ", iter)
-                                       # cat("\n group_assign[iter,x] ", group_assign[[k]][iter,x])
+                                       cat("\n x ", x)
+                                       cat("\n iter ", iter)
+                                       cat("\n group_assign[iter,x] ", group_assign[[k]][iter,x])
                                        mean_ind = grep(
                                          pattern = paste0("mu_", group_assign[[k]][iter,x], "_"),
                                          x = colnames(mu_est[[k]]))
-                                       # cat("\n mean_ind ", mean_ind)
+                                        cat("\n mean_ind ", mean_ind)
                                        p = length(mean_ind)
-                                       #cat("\n p=", p, "\n")
+                                       cat("\n p=", p, "\n")
                                        var_ind = grep(
                                          pattern = paste0("sigma_", group_assign[[k]][iter,x]),
                                          x = colnames(Sigma_est[[k]]))
-                                       #cat("\n var_ind=", var_ind, "\n")
+                                       cat("\n var_ind=", var_ind, "\n")
                                        cov_ind = var_ind[(p+1):length(var_ind)]
-                                       #cat("\n cov_ind=", cov_ind, "\n")
+                                       cat("\n cov_ind=", cov_ind, "\n")
                                        est_var_k = diag( 
                                          # first diag variance part
                                          Sigma_est[[k]][iter, var_ind[1:p]]

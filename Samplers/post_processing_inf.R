@@ -106,9 +106,12 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
     
     # what if only 1 group is found --- need to be sure this won't fail
     if((length(group_assign_list_by_k) == 1) & (length(unique(as.numeric(names(adj_k_freqtab)))) == 1)){
-      # if only K=1, skip stephens steps (but keeping same variable names out of convencience
-      # for later steps)
-    
+      
+      if(unique(as.numeric(names(adj_k_freqtab))) == 1){
+        
+        # if only K=1, skip stephens steps (but keeping same variable names out of convencience
+        # for later steps)
+        
         
         # summarize means & variances
         # cat("\n off_diag =", off_diag)
@@ -133,14 +136,17 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
           
           var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
                                                     iter_list = prob_list_by_k$iter_list,
-                                                    k_vec = output$k, 
+                                                    k_vec = output$k, off_diag = TRUE,
                                                     relabel = FALSE, equal_var = equal_var,
                                                     param_type = "Covar")
         }
         
         
- 
+        
         group_assign_list_by_k_corr = group_assign_list_by_k # no need to change
+        
+      }
+
       
     } else{
       

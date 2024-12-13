@@ -166,8 +166,10 @@ mod_sum_DEV = dpmm_summary(output = sim_results_DEV,
        make_traceplot = FALSE,
        burn_in = 0, t_hold = 0, 
        num_dims = 2, equal_var = TRUE,
-       calc_perf = FALSE, mu_true = mu_true, 
-       var_true = var_true, assign_true = assign)
+       calc_perf = FALSE, 
+       mu_true = mu_true, 
+       var_true =  var_true,
+       assign_true = assign)
 
 plot(mod_sum$var_list_by_k_stephens[[1]]$sigma_1_1, type = "l", 
      xlab = "iter", ylab = "sigma2")
@@ -285,8 +287,9 @@ mod_sum_nonconjUVV = dpmm_summary(output = sim_results_nonconjUVV,
        make_traceplot = FALSE,
        burn_in = 500, t_hold = 100, 
        num_dims = 3, equal_var = FALSE, off_diag = TRUE,
-       calc_perf = FALSE, mu_true = mu_true, 
-       var_true = var_true, assign_true = assign)
+       calc_perf = TRUE, mu_true = mu_true, 
+       var_true = lapply(X = 1:length(mu_true), FUN = function(x){var_true}), 
+       assign_true = assign)
 
 # plot(mod_sum$var_list_by_k_stephens[[1]]$sigma_1_1, type = "l", 
 #      xlab = "iter", ylab = "sigma2")
