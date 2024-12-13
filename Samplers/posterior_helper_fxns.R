@@ -510,6 +510,8 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
   # 
   # drop_iters = unique(c(1:burn_in, singleton_iters, threshold_iters))
   
+  cat("\n param_type:", param_type, "\n")
+  
   keep_iters = unlist(iter_list)
   if(param_type == "Mean"){
     
@@ -777,8 +779,10 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
           
         } else if(param_type == "Covar"){
           
+          cat("\n npar=", npar, "\n")
+          
           param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]), 
-                                                   ncol = npar*unique_k[i], 
+                                                   ncol = npar, 
                                                    byrow = TRUE))
           
           param_mat = t(sapply(X = 1:p, 
@@ -789,10 +793,7 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
           
           param_lab = c(diag(param_mat), param_mat[upper.tri(param_mat)])
           
-          col_header_names = unlist(lapply(X = 1:unique_k[i], 
-                                           FUN = function(x){
-                                             paste0(param_symbol, "_", x, "_", param_lab)
-                                           }))
+          col_header_names = paste0(param_symbol, "_", 1, "_", param_lab)
           
           names(param_list_by_k[[1]]) =  col_header_names
           
@@ -889,24 +890,10 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
           
         } else if(param_type == "Covar"){
           
-          param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
-                                                   ncol = npar*unique_k[i], 
-                                                   byrow = TRUE))
+          # covar shouldn't come up here, npar = 1 and covar aren't really compatible
+          # devise a new error check for this combination or leave out entirely
           
-          param_mat = t(sapply(X = 1:p, 
-                               FUN = function(x){
-                                 i = 1:p
-                                 paste0(x,"_",i)
-                               }))
-          
-          param_lab = c(diag(param_mat), param_mat[upper.tri(param_mat)])
-          
-          col_header_names = unlist(lapply(X = 1:unique_k[i], 
-                                           FUN = function(x){
-                                             paste0(param_symbol, "_", x, "_", param_lab)
-                                           }))
-          
-          names(param_list_by_k[[i]]) =  col_header_names
+          stop("npar = 1 and param_type = Covar not compatible.")
           
         } else{
           
