@@ -510,8 +510,6 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
   # 
   # drop_iters = unique(c(1:burn_in, singleton_iters, threshold_iters))
   
-  cat("\n param_type:", param_type, "\n")
-  
   keep_iters = unlist(iter_list)
   if(param_type == "Mean"){
     
@@ -663,18 +661,13 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
   
   # if label switching solution is given, also reorder params to address this
   if(relabel == FALSE){
-    
-    cat("\n relabel = ", relabel, "\n")
 
     for(i in 1:length(unique_k)){
-      
-      cat("\n i_{unique_k}=", i, "\n")
       
       k_index = which(k_vec == unique_k[i]) # indices of all iters with k params
       
       if(equal_var == TRUE & param_type == "Var"){
-        
-        cat("\n equal var & var \n")
+
         # pooled variance, single param
         # don't sort or do anything by k_list
         param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list), 
@@ -686,8 +679,6 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
         names(param_list_by_k[[i]]) =  col_header_names
         
       } else if(param_type == "Covar"){
-        
-        cat("\n covar \n")
         
         param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
                                                  ncol = npar*unique_k[i], 
@@ -710,8 +701,6 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
         # the apply statement was written to ensure correct ordering
         
       } else{
-        
-        cat("\n other---else statement")
         
         param_list_by_k[[i]] = data.frame(matrix(data = unlist(param_list[k_index]), 
                                                  ncol = npar*unique_k[i],
@@ -748,7 +737,6 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
   } else{
     
     # if relabel == TRUE
-    cat("\n relabel=", TRUE, "\n")
     
     if(equal_var == TRUE){
       
@@ -778,8 +766,6 @@ list_params_by_k <- function(draws, iter_list, k_vec, off_diag = FALSE, dont_dro
           names(param_list_by_k[[1]]) =  col_header_names
           
         } else if(param_type == "Covar"){
-          
-          cat("\n npar=", npar, "\n")
           
           param_list_by_k[[1]] = data.frame(matrix(data = unlist(param_list[k_index]), 
                                                    ncol = npar, 
@@ -1411,21 +1397,14 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
           
           est_dens_k[iter,] = sapply(X = 1:length(y), 
                                      FUN = function(x){
-                                       cat("\n x ", x)
-                                       cat("\n iter ", iter)
-                                       cat("\n group_assign[iter,x] ", group_assign[[k]][iter,x])
                                        mean_ind = grep(
                                          pattern = paste0("mu_", group_assign[[k]][iter,x], "_"),
                                          x = colnames(mu_est[[k]]))
-                                        cat("\n mean_ind ", mean_ind)
                                        p = length(mean_ind)
-                                       cat("\n p=", p, "\n")
                                        var_ind = grep(
                                          pattern = paste0("sigma_", group_assign[[k]][iter,x]),
                                          x = colnames(Sigma_est[[k]]))
-                                       cat("\n var_ind=", var_ind, "\n")
                                        cov_ind = var_ind[(p+1):length(var_ind)]
-                                       cat("\n cov_ind=", cov_ind, "\n")
                                        est_var_k = diag( 
                                          # first diag variance part
                                          Sigma_est[[k]][iter, var_ind[1:p]]
