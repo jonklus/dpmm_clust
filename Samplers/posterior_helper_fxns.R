@@ -151,9 +151,9 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50, iter_threshold = 0){
         probs_kij = probs_kij[,-(k+1)] # remove last column
         
       } else if(ncol(prob_list[[k_index[j]]]) > (k+1)){
-        print(k_index[j])
-        print(original_index[k_index[j]])
-        print(head(prob_list[[k_index[j]]]))
+        # print(k_index[j])
+        # print(original_index[k_index[j]])
+        # print(head(prob_list[[k_index[j]]]))
         stop("Error: number of group membership probs provided > (k+1)")
         
       } # else continue
@@ -1390,9 +1390,9 @@ calc_KL_diverg <- function(y, mu_est, Sigma_est, group_assign, true_assign,
     cat("\n k=",k,"\n")
       est_dens_k = matrix(data = NA, nrow = nrow(mu_est[[k]]), ncol = length(y))
       for(iter in 1:nrow(mu_est[[k]])){
-        cat("\n iter=",iter,"\n")
-        cat("\n Sigma_est[[k]]=")
-        print(Sigma_est[[k]][iter,])
+        # cat("\n iter=",iter,"\n")
+        # cat("\n Sigma_est[[k]]=")
+        # print(Sigma_est[[k]][iter,])
         if(off_diag == TRUE){
           
           est_dens_k[iter,] = sapply(X = 1:length(y), 
