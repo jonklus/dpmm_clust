@@ -2,12 +2,9 @@
 
 library(stringr)
 
-# running locally
-directory_path = "/smdnas02/projects/jklus/JKSTProj/BlueHive_Sim_Results/SummaryLargePriorSS"
-
 # running on server
-# data_path = "/projects/jklus/JKSTproj/BlueHive_Sim_Results/SummaryManuscript"
-# directory_path = "/scratch/jklus/dpmSims/SummaryLargePriorSS"
+# directory_path = "/smdnas02/projects/jklus/JKSTProj/BlueHive_Sim_Results/SummaryLargePriorSS"
+directory_path = "/scratch/jklus/dpmSims/SummaryLargePriorSS"
 
 # list file extensions
 file_ext = list.dirs(directory_path)
@@ -17,8 +14,8 @@ summary_list = vector(mode = "list", length = length(file_ext)-1)
 summary_table = data.frame(Path = rep(NA, length(file_ext)-1), 
                            Model = rep(NA, length(file_ext)-1), 
                            Scenario = rep(NA, length(file_ext)-1), 
-                           n_obs = rep(NA, length(file_ext)-1), 
                            SM = rep(NA, length(file_ext)-1),
+                           n_obs = rep(NA, length(file_ext)-1), 
                            num_missing = rep(NA, length(file_ext)-1) 
                            )
 

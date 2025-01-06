@@ -145,10 +145,54 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
         
         group_assign_list_by_k_corr = group_assign_list_by_k # no need to change
         
+      } else{
+        
+        # only a single K found but K != 1
+        
+        stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
+                                              prob_list_by_k = prob_list_by_k$prob_list)
+        
+        # summarize means & variances
+        
+        mean_list_by_k_stephens = list_params_by_k(draws = output$means, 
+                                                   k_vec = output$k,
+                                                   iter_list = prob_list_by_k$iter_list,
+                                                   relabel = TRUE,
+                                                   permutation = stephens_result, 
+                                                   param_type = "Mean")
+        
+        if(off_diag == FALSE){
+          
+          var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
+                                                    iter_list = prob_list_by_k$iter_list,
+                                                    k_vec = output$k, dont_drop = TRUE,
+                                                    relabel = TRUE, equal_var = equal_var,
+                                                    permutation = stephens_result,
+                                                    param_type = "Var")
+          
+          
+        } else{
+          
+          var_list_by_k_stephens = list_params_by_k(draws = output$vars, 
+                                                    iter_list = prob_list_by_k$iter_list,
+                                                    k_vec = output$k, 
+                                                    relabel = TRUE, equal_var = equal_var,
+                                                    permutation = stephens_result,
+                                                    param_type = "Covar")
+        }
+        
+        
+        group_assign_list_by_k_corr = group_assign_list_by_k # no need to change
+        
+        
+        
+        
       }
 
       
     } else{
+      
+      cat("\n length(prob_list_by_k):", length(prob_list_by_k$prob_list), "\n")
       
         stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
                                               prob_list_by_k = prob_list_by_k$prob_list)
@@ -157,8 +201,6 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
     
         mean_list_by_k_stephens = list_params_by_k(draws = output$means, 
                                                    k_vec = output$k,
-                                                   # burn_in = burn_in, 
-                                                   # iter_threshold = thold,
                                                    iter_list = prob_list_by_k$iter_list,
                                                    relabel = TRUE,
                                                    permutation = stephens_result, 

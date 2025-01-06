@@ -274,7 +274,7 @@ get_assign_by_k <- function(assign, n_groups, burn_in = 50, iter_threshold = 0){
 ############################# LABEL SWITCHING ##################################
 
 get_stephens_result <- function(group_assign_list_by_k, prob_list_by_k){
-  # function to call label.switching package and generate permutation matrices
+  # function to call modified label.switching function and generate permutation matrices
   # to fix label switching problem in MCMC output 
   
   num_params = sapply(X = 1:length(group_assign_list_by_k),
@@ -288,11 +288,17 @@ get_stephens_result <- function(group_assign_list_by_k, prob_list_by_k){
     start_apply = 1
   }
   
+  # cat("\n num_params:", num_params, "\n")
+  # cat("\n start_apply:", start_apply, "\n")
+  # cat("\n length(group_assign_list_by_k):", length(group_assign_list_by_k), "\n")
+  # cat("\n length(prob_list_by_k):", length(prob_list_by_k), "\n")
+  
   stephens_result = lapply(X = start_apply:length(group_assign_list_by_k), 
                            FUN = function(x){
                              # use capture.output to suppress print and cat messages
                              # from label.switching function
                              # from https://stat.ethz.ch/pipermail/r-help/2008-January/151471.html
+                             # note modified with lp_tol to address rare edge cases
                              log <- capture.output({
                                res <- label.switching(method = "STEPHENS", 
                                                       z = group_assign_list_by_k[[x]],
