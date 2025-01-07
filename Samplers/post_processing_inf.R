@@ -13,10 +13,11 @@
 # homemade functions
 source("./Samplers/posterior_helper_fxns.R")
 
+
 # load R libraries
 library(ggplot2)
 library(gridExtra)
-library(label.switching)
+# library(label.switching)  # load modified version with tol instead!
 library(LaplacesDemon)
 library(parallel)
 library(stringr)
@@ -192,7 +193,7 @@ dpmm_summary <- function(output, print_phi_sum = FALSE,
       
     } else{
       
-      cat("\n length(prob_list_by_k):", length(prob_list_by_k$prob_list), "\n")
+      # cat("\n length(prob_list_by_k):", length(prob_list_by_k$prob_list), "\n")
       
         stephens_result = get_stephens_result(group_assign_list_by_k = group_assign_list_by_k, 
                                               prob_list_by_k = prob_list_by_k$prob_list)

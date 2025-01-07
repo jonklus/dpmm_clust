@@ -807,7 +807,7 @@ label.switching <- function(method, zpivot, z, K, prapivot, p, complete, mcmc,
         uy <- unique(y)
         uy[which.max(tabulate(match(y, uy)))]
       })
-      myComparison <- compare.clust(zpivot, permutations, 
+      myComparison <- label.switching:::compare.clust(zpivot, permutations, 
                                     z, K)
       best.clusterings <- myComparison$clusters
       similarity.matrix <- myComparison$similarity[1:dimname, 
@@ -821,7 +821,7 @@ label.switching <- function(method, zpivot, z, K, prapivot, p, complete, mcmc,
       }
       cat(paste("    Relabelling all methods according to ground truth ..."))
       temp <- z
-      myComparison <- compare.clust(groundTruth, permutations, 
+      myComparison <- label.switching:::compare.clust(groundTruth, permutations, 
                                     z, K)
       best.clusterings <- myComparison$clusters
       similarity.matrix <- myComparison$similarity

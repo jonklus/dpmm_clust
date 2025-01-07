@@ -3,9 +3,6 @@ source("./Samplers/post_processing_inf.R")
 
 # load R libraries
 library(ggplot2)
-library(mclust)
-library(LaplacesDemon)
-library(mvtnorm)
 library(stringr)
 library(gridExtra)
 library(dplyr)
@@ -16,15 +13,16 @@ library(kableExtra) # use for complex tables http://haozhu233.github.io/kableExt
 # results across the 100 data sets!
 
 # read in results database
-summary_table = readRDS("./results_database_SummaryLargePriorSS_2024_12_22.rds")
+data_path = "./results_database_SummaryLargePriorSS_2024_12_22.rds"
+summary_table = readRDS(data_path)
 
 ####################################################################################################################
 
 # output LATEX results to .txt file
 sink(file = paste0("./ResultsCompOutput_",
-                   stringr::str_extract(string = data_path, pattern = "[:alnum:]+$"), 
+                   stringr::str_extract(string = stringr::str_extract(string = data_path, pattern = "database_[:alnum:]+"), pattern = "[:alnum:]+$"),
                    "_",
-                   stringr::str_replace_all(string = Sys.Date(), pattern = "-", replacement = "_"),
+                   stringr::str_extract(string = data_path, pattern = "[:digit:]{4}_[:digit:]{2}_[:digit:]{2}"),
                    ".txt"),
      type = "output")
 
@@ -100,3 +98,35 @@ xtable::xtable(s3_table,
                digits = 1, 
                caption = "5grp3d", )
 
+
+# important: return output to console!!
+sink()
+
+
+
+# make visualizations for results
+
+ari_table_long = summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(med_ARI = median(ARI), iqr_ARI = IQR(ARI)) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(n_obs = as.numeric(n_obs))
+
+kld_table_long = summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(med_KL = median(KL), iqr_KL = IQR(KL)) %>%
+  dplyr::mutate(n_obs = as.numeric(n_obs))
+
+mapk_table_long = summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(med_mapk = median(MAP_K), iqr_mapk = IQR(MAP_K)) %>%
+  dplyr::mutate(n_obs = as.numeric(n_obs))
+
+ggplot2::ggplot(data = ari_table_long %>% dplyr::filter(Scenario == "3wellsep"), 
+                aes(x = n_obs, y = med_ARI)) +
+  ggplot2::geom_line(aes(group = Model)) + # need to group by model AND split/merge!!! otherwise plot will look wierd
+  ggplot2::geom_point(shape = 9, color = "blue") +
+  ggplot2::theme_classic()

@@ -14,6 +14,9 @@ library(tidyr)
 library(dplyr)
 library(gtools) # mixedsort function
 
+source("./Samplers/labelswitching_with_tol_sourceCode.R") # modified stephens
+# method from label.switching with tol argument
+
 ######################### COMPUTATIONAL TOOLS ##################################
 sum_log <- function(n_tot, n_1, n_2){
   # function to compute the factorial component of the second term of the Metropolis-

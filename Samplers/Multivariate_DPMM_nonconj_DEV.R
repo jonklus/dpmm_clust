@@ -416,10 +416,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
   means = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
   vars = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
   probs = vector(mode = "list", length = S)  # group assignment probabiltiies
-  
-  emp_means = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
-  emp_vars = vector(mode = "list", length = S) #matrix(data = NA, nrow = S, ncol = n)
-  
+
   # split merge step - only used if needed
   sm_results = matrix(data = NA, nrow = 1, ncol = 7)
   colnames(sm_results) = c("s", "sm_iter", "move_type","accept", "prob", "k_start", "k_end")
@@ -1642,20 +1639,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
     # save draws of mu and Sigma
     means[[s]] = mu
     vars[[s]] = sigma2
-    
-    # save empirical mean and variance
-    
-    emp_means[[s]] = sapply(X = 1:k, 
-                            FUN = function(x){
-                              rowMeans(matrix(unlist(y[group_assign[s,] == label_assign[x]]), nrow = p))
-                              # unravel list of p*1 observations, put in matrix, find empirical mean
-                            })
-    
-    emp_vars[[s]] = lapply(X = 1:k, 
-                           FUN = function(x){
-                             var(t(matrix(unlist(y[group_assign[s,] == label_assign[x]]), nrow = p)))
-                             # unravel list of p*1 observations, put in matrix, find emp cov matrix
-                           })
+
     
     # print progress
     if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
@@ -1743,8 +1727,6 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                        k = num_groups, 
                        means = means,
                        vars = vars,
-                       emp_means = emp_means,
-                       emp_vars = emp_vars,
                        extra_params = extra_params,
                        accept = accept_ind,
                        sm_results = sm_results,
@@ -1768,8 +1750,6 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                        k = num_groups, 
                        means = means,
                        vars = vars,
-                       emp_means = emp_means,
-                       emp_vars = emp_vars,
                        #extra_params = extra_params,
                        accept = accept_ind,
                        sm_results = sm_results,
