@@ -65,38 +65,71 @@ mapk_table = summary_table %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
   dplyr::select(1,2, gtools::mixedorder(names(.)[3:length(names(.))])+2)
 
+# function to get Model and SM columns formatted for paper 
+col_format <- function(x, type){
+  # x is a column of labels 
+  # type is string, either "Model" or "SM" corresponding to x
+  
+  if(type == "Model"){
+    
+    conjT = ifelse(stringr::str_detect(string = x, pattern = "^conj"),
+                   "Conjugate ", "Non-Conjugate ")
+    
+    label = paste0(conjT,
+      stringr::str_extract(string = x, pattern = "[:alpha:]{3}$"))
+    
+  } else if(type == "SM"){
+    
+    label = ifelse(stringr::str_detect(string = x, pattern = "noSM"),
+                   "FALSE", "TRUE")
+  }
+  
+  return(label)
+  
+}
+
+
 s1_table = cbind(
-  kld_table$Model, kld_table$SM,
+  Model = kld_table$Model, SM = kld_table$SM,
   kld_table %>% dplyr::ungroup() %>% dplyr::select(`3wellsep_30`, `3wellsep_100`, `3wellsep_300`),
   ari_table %>% dplyr::ungroup() %>% dplyr::select(`3wellsep_30`, `3wellsep_100`, `3wellsep_300`),
   mapk_table %>% dplyr::ungroup() %>% dplyr::select(`3wellsep_30`, `3wellsep_100`, `3wellsep_300`)
 )
 
+s1_table$Model = col_format(x = s1_table$Model, type = "Model")
+s1_table$SM = col_format(x = s1_table$SM, type = "SM")
+
 xtable::xtable(s1_table, 
                digits = 1, 
-               caption = "3wellsep", )
+               caption = "3wellsep")
 
 s2_table = cbind(
-  kld_table$Model, kld_table$SM,
+  Model = kld_table$Model, SM = kld_table$SM,
   kld_table %>% dplyr::ungroup() %>% dplyr::select(`3close_30`, `3close_100`, `3close_300`),
   ari_table %>% dplyr::ungroup() %>% dplyr::select(`3close_30`, `3close_100`, `3close_300`),
   mapk_table %>% dplyr::ungroup() %>% dplyr::select(`3close_30`, `3close_100`, `3close_300`)
 )
 
+s2_table$Model = col_format(x = s2_table$Model, type = "Model")
+s2_table$SM = col_format(x = s2_table$SM, type = "SM")
+
 xtable::xtable(s2_table, 
                digits = 1, 
-               caption = "3close", )
+               caption = "3close")
 
 s3_table = cbind(
-  kld_table$Model, kld_table$SM,
+  Model = kld_table$Model, SM = kld_table$SM,
   kld_table %>% dplyr::ungroup() %>% dplyr::select(`5grp3d_30`, `5grp3d_100`, `5grp3d_300`),
   ari_table %>% dplyr::ungroup() %>% dplyr::select(`5grp3d_30`, `5grp3d_100`, `5grp3d_300`),
   mapk_table %>% dplyr::ungroup() %>% dplyr::select(`5grp3d_30`, `5grp3d_100`, `5grp3d_300`)
 )
 
+s3_table$Model = col_format(x = s3_table$Model, type = "Model")
+s3_table$SM = col_format(x = s3_table$SM, type = "SM")
+
 xtable::xtable(s3_table, 
                digits = 1, 
-               caption = "5grp3d", )
+               caption = "5grp3d")
 
 
 # important: return output to console!!
@@ -109,24 +142,62 @@ sink()
 ari_table_long = summary_table %>% 
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
-  dplyr::summarize(med_ARI = median(ARI), iqr_ARI = IQR(ARI)) %>%
+  dplyr::summarize(med = median(ARI), iqr = IQR(ARI)) %>%
   dplyr::ungroup() %>%
-  dplyr::mutate(n_obs = as.numeric(n_obs))
+  dplyr::mutate(n_obs = factor(as.numeric(n_obs)), metric = "ARI")
 
 kld_table_long = summary_table %>% 
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
-  dplyr::summarize(med_KL = median(KL), iqr_KL = IQR(KL)) %>%
-  dplyr::mutate(n_obs = as.numeric(n_obs))
+  dplyr::summarize(med = median(KL), iqr = IQR(KL)) %>%
+  dplyr::mutate(n_obs = factor(as.numeric(n_obs)), metric = "KLD")
 
 mapk_table_long = summary_table %>% 
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
-  dplyr::summarize(med_mapk = median(MAP_K), iqr_mapk = IQR(MAP_K)) %>%
-  dplyr::mutate(n_obs = as.numeric(n_obs))
+  dplyr::summarize(med = median(MAP_K), iqr = IQR(MAP_K)) %>%
+  dplyr::mutate(n_obs = factor(as.numeric(n_obs)), metric = "MAPK")
 
-ggplot2::ggplot(data = ari_table_long %>% dplyr::filter(Scenario == "3wellsep"), 
-                aes(x = n_obs, y = med_ARI)) +
-  ggplot2::geom_line(aes(group = Model)) + # need to group by model AND split/merge!!! otherwise plot will look wierd
-  ggplot2::geom_point(shape = 9, color = "blue") +
-  ggplot2::theme_classic()
+results_plot_table_long = rbind(ari_table_long, mapk_table_long, kld_table_long)
+
+# thought -- pivot below by scenario for final plots??
+
+ggplot2::ggplot(data = results_plot_table_long %>% 
+                  dplyr::filter(Scenario == "3wellsep", Model %in% c("conjDEE", "conjDEV", "conjUVV")), 
+                aes(x = n_obs, y = med, shape = SM, lty = Model, 
+                    group = interaction(Model, SM))) +
+  ggplot2::facet_wrap(facets = vars(metric), ncol = 3, scales = "free") +
+  ggplot2::geom_line() + 
+  ggplot2::geom_point(size = 2) +
+  ggplot2::theme_classic() +
+  ggplot2::xlab("Sample Size") +
+  ggplot2::ylab("Value") +
+  ggplot2::ggtitle("Results for Well-Separated Scenario")
+
+
+ggplot2::ggplot(data = results_plot_table_long %>% 
+                  dplyr::filter(Scenario == "3close", Model %in% c("conjDEE", "conjDEV", "conjUVV")), 
+                aes(x = n_obs, y = med, shape = SM, lty = Model, 
+                    group = interaction(Model, SM))) +
+  ggplot2::facet_wrap(facets = vars(metric), ncol = 3, scales = "free") +
+  ggplot2::geom_line() + 
+  ggplot2::geom_point(size = 2) +
+  ggplot2::theme_classic() +
+  ggplot2::xlab("Sample Size") +
+  ggplot2::ylab("Value") +
+  ggplot2::ggtitle("Results for Close Together Scenario")
+
+
+ggplot2::ggplot(data = results_plot_table_long %>% 
+                  dplyr::filter(Scenario == "5grp3d", Model %in% c("conjDEE", "conjDEV", "conjUVV")), 
+                aes(x = n_obs, y = med, shape = SM, lty = Model, 
+                    group = interaction(Model, SM))) +
+  ggplot2::facet_wrap(facets = vars(metric), ncol = 3, scales = "free") +
+  ggplot2::geom_line() + 
+  ggplot2::geom_point(size = 2) +
+  ggplot2::theme_classic() +
+  ggplot2::xlab("Sample Size") +
+  ggplot2::ylab("Value") +
+  ggplot2::ggtitle("Results for 5 group 3D Scenario")
+
+# need to save plots for manuscript

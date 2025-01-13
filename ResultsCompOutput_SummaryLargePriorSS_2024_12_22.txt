@@ -1,108 +1,38 @@
 % latex table generated in R 4.2.1 by xtable 1.8-4 package
-% Mon Jan  6 17:07:43 2025
+% Thu Jan  9 17:23:42 2025
 \begin{table}[ht]
 \centering
 \begin{tabular}{rllrrrrrrrrr}
   \hline
  & Model & SM & 3close\_30 & 3close\_100 & 3close\_300 & 3wellsep\_30 & 3wellsep\_100 & 3wellsep\_300 & 5grp3d\_30 & 5grp3d\_100 & 5grp3d\_300 \\ 
   \hline
-1 & conjDEE & noSM & 100 & 100 &  96 & 100 & 100 &  90 & 100 & 100 &  97 \\ 
-  2 & conjDEE & withSM & 100 & 100 &  91 & 100 & 100 &  98 & 100 &  99 & 100 \\ 
+1 & conjDEE & noSM & 100 & 100 &  96 & 100 & 100 &  96 & 100 & 100 &  97 \\ 
+  2 & conjDEE & withSM & 100 & 100 & 100 & 100 & 100 &  98 & 100 &  99 & 100 \\ 
   3 & conjDEV & noSM & 100 & 100 & 100 & 100 & 100 & 100 & 100 & 100 &  97 \\ 
   4 & conjDEV & withSM & 100 & 100 & 100 & 100 & 100 & 100 & 100 & 100 & 100 \\ 
-  5 & conjUVV & noSM &  &  99 &  96 &  98 & 100 & 100 &  99 &  &  \\ 
-  6 & conjUVV & withSM &  99 &  98 &  95 & 100 & 100 & 100 & 100 & 100 &  96 \\ 
-  7 & nonconjDEV & noSM &  & 100 & 100 & 100 & 100 & 100 & 100 & 100 & 100 \\ 
+  5 & conjUVV & noSM & 100 &  99 &  96 &  98 & 100 & 100 & 100 &  99 &  96 \\ 
+  6 & conjUVV & withSM &  99 &  98 & 100 & 100 & 100 & 100 & 100 & 100 &  96 \\ 
+  7 & nonconjDEV & noSM & 100 & 100 & 100 & 100 & 100 & 100 & 100 & 100 & 100 \\ 
   8 & nonconjDEV & withSM & 100 & 100 &  98 & 100 & 100 & 100 & 100 & 100 &  83 \\ 
-  9 & nonconjUVV & noSM &  70 & 100 & 100 & 100 & 100 & 100 &  &  60 &  31 \\ 
-  10 & nonconjUVV & withSM & 100 & 100 &  99 & 100 & 100 &  98 &  99 &  99 &  92 \\ 
+  9 & nonconjUVV & noSM & 100 & 100 & 100 & 100 & 100 & 100 & 100 & 100 & 100 \\ 
+  10 & nonconjUVV & withSM & 100 & 100 & 100 & 100 & 100 &  98 &  99 &  99 &  92 \\ 
    \hline
 \end{tabular}
 \caption{Counts} 
 \end{table}
-% latex table generated in R 4.2.1 by xtable 1.8-4 package
-% Mon Jan  6 17:07:47 2025
-\begin{table}[ht]
-\centering
-\begin{tabular}{rlllllllllll}
-  \hline
- & kld\_table\$Model & kld\_table\$SM & 3wellsep\_30 & 3wellsep\_100 & 3wellsep\_300 & 3wellsep\_30 & 3wellsep\_100 & 3wellsep\_300 & 3wellsep\_30 & 3wellsep\_100 & 3wellsep\_300 \\ 
-  \hline
-1 & conjDEE & noSM & 0.06 (0.04) & 0.03 (0.02) & 0.01 (0.01) & 0.94 (0.06) & 0.77 (0.11) & 0.58 (0.33) & 3 (0) & 5 (1) & 6 (4) \\ 
-  2 & conjDEE & withSM & 0.06 (0.04) & 0.02 (0.01) & 0.01 (0.01) & 0.93 (0.04) & 0.9 (0.07) & 0.8 (0.22) & 3 (0) & 3 (0) & 3 (0) \\ 
-  3 & conjDEV & noSM & 0.06 (0.04) & 0.03 (0.02) & 0.01 (0.01) & 0.98 (0.03) & 0.89 (0.19) & 0.88 (0.29) & 3 (0) & 4 (1) & 4 (2) \\ 
-  4 & conjDEV & withSM & 0.06 (0.04) & 0.02 (0.01) & 0.01 (0.01) & 0.97 (0.03) & 0.98 (0.02) & 1 (0.02) & 3 (0) & 3 (0) & 3 (0) \\ 
-  5 & conjUVV & noSM & 0.08 (0.04) & 0.04 (0.02) & 0.01 (0.01) & 0.98 (0.03) & 0.99 (0.14) & 1 (0.14) & 3 (0) & 3 (1) & 3 (1) \\ 
-  6 & conjUVV & withSM & 0.09 (0.04) & 0.03 (0.02) & 0.01 (0.01) & 0.9 (0.02) & 0.92 (0.02) & 0.99 (0.01) & 3 (0) & 3 (0) & 3 (0) \\ 
-  7 & nonconjDEV & noSM & 0.06 (0.04) & 0.03 (0.02) & 0.01 (0.01) & 0.97 (0.04) & 0.84 (0.17) & 0.86 (0.29) & 3 (0) & 4 (2) & 4 (2) \\ 
-  8 & nonconjDEV & withSM & 0.07 (0.04) & 0.03 (0.01) & 0.01 (0.01) & 0.79 (0.04) & 0.76 (0.04) & 0.65 (0.06) & 4 (1) & 5 (1) & 7 (1) \\ 
-  9 & nonconjUVV & noSM & 0.06 (0.04) & 0.03 (0.02) & 0.02 (0.01) & 0.91 (0.1) & 0.75 (0.15) & 0.75 (0.43) & 3 (1) & 5 (1) & 5 (4) \\ 
-  10 & nonconjUVV & withSM & 0.09 (0.05) & 0.04 (0.02) & 0.02 (0.01) & 0.4 (0.07) & 0.58 (0.03) & 0.56 (0.04) & 3 (0) & 5 (1) & 7 (1) \\ 
-   \hline
-\end{tabular}
-\caption{3wellsep} 
-\end{table}
-% latex table generated in R 4.2.1 by xtable 1.8-4 package
-% Mon Jan  6 17:07:47 2025
-\begin{table}[ht]
-\centering
-\begin{tabular}{rlllllllllll}
-  \hline
- & kld\_table\$Model & kld\_table\$SM & 3close\_30 & 3close\_100 & 3close\_300 & 3close\_30 & 3close\_100 & 3close\_300 & 3close\_30 & 3close\_100 & 3close\_300 \\ 
-  \hline
-1 & conjDEE & noSM & 0.06 (0.04) & 0.03 (0.02) & 0.02 (0.02) & 0.84 (0.1) & 0.64 (0.18) & 0.45 (0.37) & 4 (1) & 5 (2.25) & 7 (11) \\ 
-  2 & conjDEE & withSM & 0.07 (0.05) & 0.03 (0.02) & 0.03 (0.02) & 0.73 (0.14) & 0.66 (0.11) & 0.33 (0.05) & 4 (1) & 7 (5) & 15 (2) \\ 
-  3 & conjDEV & noSM & 0.06 (0.04) & 0.03 (0.02) & 0.01 (0.01) & 0.94 (0.09) & 0.8 (0.16) & 0.92 (0.22) & 3 (0) & 4 (1) & 4 (2) \\ 
-  4 & conjDEV & withSM & 0.06 (0.05) & 0.02 (0.01) & 0.01 (0.01) & 0.71 (0.2) & 0.94 (0.06) & 0.97 (0.12) & 3 (0) & 3 (0) & 3 (0) \\ 
-  5 & conjUVV & noSM &  & 0.04 (0.02) & 0.01 (0.01) &  & 0.89 (0.19) & 0.98 (0.18) &  & 3 (1) & 3 (2) \\ 
-  6 & conjUVV & withSM & 0.1 (0.05) & 0.04 (0.02) & 0.01 (0.01) & 0.71 (0.1) & 0.84 (0.04) & 0.98 (0.04) & 3 (1) & 4 (1) & 3 (0) \\ 
-  7 & nonconjDEV & noSM &  & 0.03 (0.02) & 0.01 (0.01) &  & 0.82 (0.22) & 0.86 (0.26) &  & 4 (1.25) & 4 (2) \\ 
-  8 & nonconjDEV & withSM & 0.08 (0.05) & 0.03 (0.01) & 0.01 (0.01) & 0.62 (0.08) & 0.67 (0.04) & 0.57 (0.05) & 3 (1) & 5 (1) & 7 (1) \\ 
-  9 & nonconjUVV & noSM & 0.06 (0.04) & 0.04 (0.02) & 0.02 (0.02) & 0.85 (0.14) & 0.71 (0.13) & 0.69 (0.42) & 3 (1) & 5 (1) & 5 (3) \\ 
-  10 & nonconjUVV & withSM & 0.08 (0.05) & 0.04 (0.02) & 0.02 (0.01) & 0.52 (0.04) & 0.57 (0.04) & 0.45 (0.04) & 3 (0) & 5 (0) & 9 (2) \\ 
-   \hline
-\end{tabular}
-\caption{3close} 
-\end{table}
-% latex table generated in R 4.2.1 by xtable 1.8-4 package
-% Mon Jan  6 17:07:47 2025
-\begin{table}[ht]
-\centering
-\begin{tabular}{rlllllllllll}
-  \hline
- & kld\_table\$Model & kld\_table\$SM & 5grp3d\_30 & 5grp3d\_100 & 5grp3d\_300 & 5grp3d\_30 & 5grp3d\_100 & 5grp3d\_300 & 5grp3d\_30 & 5grp3d\_100 & 5grp3d\_300 \\ 
-  \hline
-1 & conjDEE & noSM & 0.11 (0.07) & 0.05 (0.03) & 0.04 (0.05) & 1 (0.01) & 0.96 (0.07) & 0.87 (0.13) & 5 (0) & 5 (1) & 7 (2) \\ 
-  2 & conjDEE & withSM & 0.12 (0.06) & 0.05 (0.03) & 0.02 (0.03) & 0.94 (0.06) & 0.99 (0.01) & 0.99 (0.02) & 5 (0) & 5 (0) & 5 (0) \\ 
-  3 & conjDEV & noSM & 0.16 (0.1) & 0.06 (0.03) & 0.02 (0.03) & 0.99 (0.02) & 0.98 (0.07) & 0.97 (0.09) & 5 (0) & 5 (1) & 5 (1) \\ 
-  4 & conjDEV & withSM & 0.18 (0.1) & 0.06 (0.04) & 0.03 (0.04) & 0.87 (0.09) & 0.99 (0.02) & 0.99 (0.02) & 5 (1) & 5 (0) & 5 (0) \\ 
-  5 & conjUVV & noSM & 0.23 (0.08) &  &  & 0.72 (0.13) &  &  & 3 (1) &  &  \\ 
-  6 & conjUVV & withSM & 0.2 (0.07) & 0.08 (0.02) & 0.04 (0.03) & 0.8 (0.07) & 0.96 (0.01) & 0.98 (0.02) & 4 (1) & 5 (0) & 5 (0) \\ 
-  7 & nonconjDEV & noSM & 0.15 (0.11) & 0.05 (0.02) & 0.02 (0.01) & 0.98 (0.06) & 1 (0.01) & 1 (0) & 5 (0) & 5 (0) & 5 (0) \\ 
-  8 & nonconjDEV & withSM & 0.25 (0.12) & 0.1 (0.05) & 0.04 (0.02) & 0.41 (0.05) & 0.51 (0.03) & 0.48 (0.03) & 2 (1) & 3 (0) & 3 (0) \\ 
-  9 & nonconjUVV & noSM &  & 0.08 (0.04) & 0.04 (0.03) &  & 0.95 (0.06) & 0.94 (0.06) &  & 5 (0) & 5 (0.5) \\ 
-  10 & nonconjUVV & withSM & 0.23 (0.09) & 0.13 (0.03) & 0.08 (0.02) & 0.02 (0.01) & 0.04 (0.01) & 0.06 (0.01) & 1 (0) & 1 (0) & 1 (0) \\ 
-   \hline
-\end{tabular}
-\caption{5grp3d} 
-\end{table}
-# A tibble: 6 × 5
-# Groups:   Model, Scenario, SM [2]
-  Model   Scenario SM     n_obs mean_ARI   
-  <chr>   <chr>    <chr>  <chr> <chr>      
-1 conjDEE 3close   noSM   100   0.64 (0.18)
-2 conjDEE 3close   noSM   30    0.84 (0.1) 
-3 conjDEE 3close   noSM   300   0.45 (0.37)
-4 conjDEE 3close   withSM 100   0.66 (0.11)
-5 conjDEE 3close   withSM 30    0.73 (0.14)
-6 conjDEE 3close   withSM 300   0.33 (0.05)
-# A tibble: 6 × 5
-# Groups:   Model, Scenario, SM [2]
-  Model   Scenario SM     n_obs mean_ARI   
-  <chr>   <chr>    <chr>  <chr> <chr>      
-1 conjDEE 3close   noSM   100   0.64 (0.18)
-2 conjDEE 3close   noSM   30    0.84 (0.1) 
-3 conjDEE 3close   noSM   300   0.45 (0.37)
-4 conjDEE 3close   withSM 100   0.66 (0.11)
-5 conjDEE 3close   withSM 30    0.73 (0.14)
-6 conjDEE 3close   withSM 300   0.33 (0.05)
+ [1] "conjDEE"    "conjDEE"    "conjDEV"    "conjDEV"    "conjUVV"    "conjUVV"    "nonconjDEV" "nonconjDEV"
+ [9] "nonconjUVV" "nonconjUVV"
+    Model     SM 3wellsep_30 3wellsep_100 3wellsep_300 3wellsep_30 3wellsep_100 3wellsep_300 3wellsep_30
+1 conjDEE   noSM 0.06 (0.04)  0.03 (0.02)  0.01 (0.01) 0.94 (0.06)  0.77 (0.11)  0.57 (0.33)       3 (0)
+2 conjDEE withSM 0.06 (0.04)  0.02 (0.01)  0.01 (0.01) 0.93 (0.04)   0.9 (0.07)   0.8 (0.22)       3 (0)
+3 conjDEV   noSM 0.06 (0.04)  0.03 (0.02)  0.01 (0.01) 0.98 (0.03)  0.89 (0.19)  0.88 (0.29)       3 (0)
+4 conjDEV withSM 0.06 (0.04)  0.02 (0.01)  0.01 (0.01) 0.97 (0.03)  0.98 (0.02)     1 (0.02)       3 (0)
+5 conjUVV   noSM 0.08 (0.04)  0.04 (0.02)  0.01 (0.01) 0.98 (0.03)  0.99 (0.14)     1 (0.14)       3 (0)
+6 conjUVV withSM 0.09 (0.04)  0.03 (0.02)  0.01 (0.01)  0.9 (0.02)  0.92 (0.02)  0.99 (0.01)       3 (0)
+  3wellsep_100 3wellsep_300
+1        5 (1)        7 (4)
+2        3 (0)        3 (0)
+3        4 (1)        4 (2)
+4        3 (0)        3 (0)
+5        3 (1)        3 (1)
+6        3 (0)        3 (0)

@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 # load necessary functions
-#source("./Samplers/Multivariate_DPMM_unknownvar_DEE.R")
+# source("./Samplers/Multivariate_DPMM_unknownvar_DEE.R")
 # source("./Samplers/Multivariate_DPMM_unknownvar_DEV.R")
 source("./Samplers/Multivariate_DPMM_nonconj_UVV.R")
 # source("./Samplers/Multivariate_DPMM_nonconj_DEV.R")
@@ -36,7 +36,7 @@ library(xtable)
 ################## simulate data ##############################################
 
 set.seed(516)
-x = 78 # dataset100
+x = 90 # dataset100
 seeds = readRDS("./BHsimseeds.rds")
 
 
@@ -75,7 +75,7 @@ seeds = readRDS("./BHsimseeds.rds")
 
 
 set.seed(seeds[x])
-assign = sample(x = 1:length(means), size = 100, replace = TRUE, prob = w)
+assign = sample(x = 1:length(means), size = 30, replace = TRUE, prob = w)
 y = lapply(X = assign,
           FUN = function(x){
           t(mvtnorm::rmvnorm(n = 1, mean = means[[x]], sigma = var))
@@ -103,7 +103,7 @@ plot(dpCluster)
 
 ```{r, include=FALSE, eval=FALSE}
 ### Fit DEE model
-n_iter = 500
+n_iter = 2500
 # set hyperparameters
 # a = 1; b = 50
 # d = 1; f = 1
@@ -115,19 +115,19 @@ n_iter = 500
 # run in fxn
 sim_results_DEE = MVN_CRP_sampler_DEE(
         S = n_iter, seed = seeds[x], y = y,
-        alpha = 1, r = 1, d = 1, f = 1 , g = 1, h = 25,
+        alpha = 1, r = 1, d = 1, f = 1 , g = 1, h = 20,
         sigma_hyperprior = FALSE, fix_r = FALSE,
-        mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1),
+        mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 3))),0), ncol = 1),
         a = 1, b = 1,
         k_init = 1, init_method = "kmeans", diag_weights = FALSE, 
-        verbose = TRUE, split_merge = FALSE, print_iter = 1, print_start = 0
+        verbose = TRUE, split_merge = FALSE, print_iter = 100, print_start = 0
         )
 
 mod_sum_DEE = dpmm_summary(output = sim_results_DEE, 
        print_k_sum = TRUE, 
        print_phi_sum = TRUE,
        make_traceplot = FALSE,
-       burn_in = 0, t_hold = 0, 
+       burn_in = 500, t_hold = 100, 
        num_dims = 2, equal_var = TRUE,
        calc_perf = FALSE, mu_true = mu_true, 
        var_true = var_true, assign_true = assign)
@@ -278,8 +278,8 @@ sim_results_nonconjUVV = MVN_CRP_nonconj_UVV(
         k_init = 1, init_method = "kmeans",
         nu = 5, Lambda0 = diag(1,3),
         standardize_y = FALSE,
-        split_merge = FALSE, sm_iter = 0, truth = NA,
-        diag_weights = FALSE, verbose = TRUE, print_iter = 100, print_start = 0)
+        split_merge = TRUE, sm_iter = 5, truth = NA,
+        diag_weights = FALSE, verbose = TRUE, print_iter = 5, print_start = 0)
   
 mod_sum_nonconjUVV = dpmm_summary(output = sim_results_nonconjUVV, 
        print_k_sum = TRUE, 

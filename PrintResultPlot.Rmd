@@ -1,0 +1,96 @@
+---
+title: "Sim Results -Large Prior"
+author: "Jonathan Klus"
+date: "2025-01-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+source("./Samplers/posterior_helper_fxns.R")
+source("./Samplers/post_processing_inf.R")
+
+# load R libraries
+library(ggplot2)
+library(stringr)
+library(gridExtra)
+library(dplyr)
+library(knitr) # kable
+library(kableExtra) # use for complex tables http://haozhu233.github.io/kableExtra/awesome_table_in_pdf.pdf
+
+# ARI and KL are typically skewed, so use the median (min, max) to summarize
+# results across the 100 data sets!
+
+# read in results database
+data_path = "./results_database_SummaryLargePriorSS_2024_12_22.rds"
+summary_table = readRDS(data_path)
+
+######################################################################################################
+
+# make visualizations for results
+
+ari_table_long = summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(med = median(ARI), iqr = IQR(ARI)) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(n_obs = factor(as.numeric(n_obs)), metric = "ARI")
+
+kld_table_long = summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(med = median(KL), iqr = IQR(KL)) %>%
+  dplyr::mutate(n_obs = factor(as.numeric(n_obs)), metric = "KLD")
+
+mapk_table_long = summary_table %>% 
+  # dplyr::filter(Tag == "ENAR") %>%
+  dplyr::group_by(Model, Scenario, SM, n_obs) %>%
+  dplyr::summarize(med = median(MAP_K), iqr = IQR(MAP_K)) %>%
+  dplyr::mutate(n_obs = factor(as.numeric(n_obs)), metric = "MAPK")
+
+results_plot_table_long = rbind(ari_table_long, mapk_table_long, kld_table_long)
+
+# thought -- pivot below by scenario for final plots??
+
+ggplot2::ggplot(data = results_plot_table_long %>% 
+                  dplyr::filter(Scenario == "3wellsep", Model %in% c("conjDEE", "conjDEV", "conjUVV")), 
+                aes(x = n_obs, y = med, shape = SM, lty = Model, 
+                    group = interaction(Model, SM))) +
+  ggplot2::facet_wrap(facets = vars(metric), ncol = 3, scales = "free") +
+  ggplot2::geom_line() + 
+  ggplot2::geom_point(size = 2) +
+  ggplot2::theme_classic() +
+  ggplot2::xlab("Sample Size") +
+  ggplot2::ylab("Value") +
+  ggplot2::ggtitle("Results for Well-Separated Scenario")
+
+
+ggplot2::ggplot(data = results_plot_table_long %>% 
+                  dplyr::filter(Scenario == "3close", Model %in% c("conjDEE", "conjDEV", "conjUVV")), 
+                aes(x = n_obs, y = med, shape = SM, lty = Model, 
+                    group = interaction(Model, SM))) +
+  ggplot2::facet_wrap(facets = vars(metric), ncol = 3, scales = "free") +
+  ggplot2::geom_line() + 
+  ggplot2::geom_point(size = 2) +
+  ggplot2::theme_classic() +
+  ggplot2::xlab("Sample Size") +
+  ggplot2::ylab("Value") +
+  ggplot2::ggtitle("Results for Close Together Scenario")
+
+
+ggplot2::ggplot(data = results_plot_table_long %>% 
+                  dplyr::filter(Scenario == "5grp3d", Model %in% c("conjDEE", "conjDEV", "conjUVV")), 
+                aes(x = n_obs, y = med, shape = SM, lty = Model, 
+                    group = interaction(Model, SM))) +
+  ggplot2::facet_wrap(facets = vars(metric), ncol = 3, scales = "free") +
+  ggplot2::geom_line() + 
+  ggplot2::geom_point(size = 2) +
+  ggplot2::theme_classic() +
+  ggplot2::xlab("Sample Size") +
+  ggplot2::ylab("Value") +
+  ggplot2::ggtitle("Results for 5 group 3D Scenario")
+```
+

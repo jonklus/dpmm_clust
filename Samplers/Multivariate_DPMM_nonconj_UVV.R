@@ -634,8 +634,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
         
         # randomly select two observed data points y
         sampled_obs = sample(x = 1:length(y), size = 2, replace = FALSE)
-        # cat("sampled_obs:", sampled_obs)
-        # cat("\n")
+
         
         # check if in same group - if yes SPLIT
         # if no, MERGE
@@ -643,12 +642,12 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
         lab2 = split_temp_group_assign[1, sampled_obs[2]]
         move_type = ifelse(lab1 == lab2, "SPLIT", "MERGE")
         
-        # cat("move_type:", move_type)
-        # cat("\n")
-        # cat("sampled_obs:", sampled_obs)
-        # cat("\n")
-        # cat("group_labs:", c(lab1, lab2))
-        # cat("\n")
+        cat("move_type:", move_type)
+        cat("\n")
+        cat("sampled_obs:", sampled_obs)
+        cat("\n")
+        cat("group_labs:", c(lab1, lab2))
+        cat("\n")
         
         # bookkeeping - group labels
         subset_index = which(split_temp_group_assign[1,] %in% c(lab1, lab2)) 
@@ -1023,8 +1022,9 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           prob3 = prob3_num1 + prob3_num2 - prob3_denom
           
           ## evaluate acceptance prob
-          # cat("\n accept prob components:", prob1, prob2, prob3, "\n")
+          cat("\n accept prob components:", prob1, prob2, prob3, "\n")
           accept_prob = min(1, exp(prob1 + prob2 + prob3))
+          cat("\n accept prob:", round(accept_prob,5), "\n")
           u = runif(n = 1)
           if(accept_prob > u){
             
@@ -1059,7 +1059,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
             # group assign remains unchanged
           }
           
-          
+          cat("\n accept = ", accept, "\n")
           
           
           # if MERGE    
@@ -1396,8 +1396,9 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           prob3 = prob3_denom - (prob3_num1 + prob3_num2)
           
           ## evaluate acceptance prob
-          # cat("\n accept prob components:", prob1, prob2, prob3, "\n")
+          cat("\n accept prob components:", prob1, prob2, prob3, "\n")
           accept_prob = min(1, exp(prob1 + prob2 + prob3))
+          cat("\n accept prob:", round(accept_prob,5), "\n")
           u = runif(n = 1)
           if(accept_prob > u){
             
@@ -1436,10 +1437,14 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
             # group assign remains unchanged
           }
           
+          cat("\n accept = ", accept, "\n")
+          
         } # end merge proposal
         
         k_end = k
         sm_results = rbind(sm_results, c(s, sm_iter, move_type, accept, accept_prob, k_start, k_end))
+        
+        Sys.sleep(5)
         
         # cat("\n")
         # cat("SM Step complete:")
@@ -1591,6 +1596,29 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           ggtitle(paste0("Group Assignments at Iteration s=", s, ", k=", k)) + 
           theme_classic()
         print(prog_plot)
+      } else if(nrow(mu0) == 3){
+        # if this is a 3D problem, can make scatterplot of group assign
+        yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
+        plot_y = data.frame(
+          y1 = yvals[,1],
+          y2 = yvals[,2],
+          y3 = yvals[,3],
+          curr_assign = group_assign[s,]
+        )
+        
+        print(plot_y$curr_assign)
+        
+        split_obs_col = rep(1, nrow(plot_y))
+        split_obs_col[sampled_obs] = 2 # color SM candidates RED
+        
+        prog_plot = scatterplot3d(x = plot_y$y1, y = plot_y$y2, z = plot_y$y3, 
+                      color = plot_y$curr_assign, angle = -45, cex.symbols = 0.5, 
+                      xlab = "y1", ylab = "y2", zlab = "y3", pch = 20,
+                      main = paste0("Group Assignments at Iteration s=", s, ", k=", k))
+        
+        text(prog_plot$xyz.convert(plot_y[,1:3]), labels = rownames(plot_y), 
+             pos = 4, cex = 0.75, col = split_obs_col)
+        # print(prog_plot)
       }
       
       

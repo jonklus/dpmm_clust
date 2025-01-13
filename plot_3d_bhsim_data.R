@@ -77,10 +77,10 @@ yreps300 = lapply(X = 1:nreps,
                     return(list(y = y, assign = assign))
                   })
 
-# make a grid of plots
-pltlist = list()
+# make plots
 
 rep = 5
+par(mfrow=c(1,3))
 
 ######### n=30
 ###############
@@ -103,11 +103,11 @@ data = data.frame(
 #   ggtitle("n=30")
 
 attach(data)
-p = scatterplot3d(x = y1, y = y2, z = y3, color = assign, angle = -45, 
+png(filename = "./manuscript_plots/k53d_3blockplot_30.png", res = 300, width = 6, height = 6, units = "in")
+p1 = scatterplot3d(x = y1, y = y2, z = y3, color = assign, angle = -45, xlab = "", ylab = "", zlab = "",
                   pch = 20, main = "n=30", xlim = c(0,12), ylim = c(0,10), zlim = c(-4,8))
-ggsave(filename = "./k53d_3blockplot_30.png", device = "png", plot = p)
+dev.off()
 
-pltlist[[1]] = p
 
 ######### n=100
 ###############
@@ -130,11 +130,11 @@ data = data.frame(
 #   ggtitle("n=100")
 
 attach(data)
-p = scatterplot3d(x = y1, y = y2, z = y3, color = assign, angle = -45, 
-                  pch = 20, main = "n=100", xlim = c(0,12), ylim = c(0,10), zlim = c(-4,8))
-ggsave(filename = "./k53d_3blockplot_100.png", device = "png", plot = p)
+png(filename = "./manuscript_plots/k53d_3blockplot_100.png", res = 300, width = 6, height = 6, units = "in")
+p2 = scatterplot3d(x = y1, y = y2, z = y3, color = assign, angle = -45, xlab = "", ylab = "", zlab = "",
+                   pch = 20, main = "n=100", xlim = c(0,12), ylim = c(0,10), zlim = c(-4,8))
+dev.off()
 
-pltlist[[2]] = p
 
 ######### n=300
 ###############
@@ -157,11 +157,10 @@ data = data.frame(
 #   ggtitle("n=300")
 
 attach(data)
-p = scatterplot3d(x = y1, y = y2, z = y3, color = assign, angle = -45, 
-                  pch = 20, main = "n=300")
-ggsave(filename = "./k53d_3blockplot_300.png", device = "png", plot = p)
-
-pltlist[[3]] = p
+png(filename = "./manuscript_plots/k53d_3blockplot_300.png", res = 300, width = 6, height = 6, units = "in")
+p3 = scatterplot3d(x = y1, y = y2, z = y3, color = assign, angle = -45, xlab = "", ylab = "", zlab = "",
+                   pch = 20, main = "n=300", xlim = c(0,12), ylim = c(0,10), zlim = c(-4,8))
+dev.off()
 
 # 
 # for(rep in 1:nreps){
@@ -184,12 +183,9 @@ pltlist[[3]] = p
 #   pltlist[[rep]] = p
 # }
 
-# do.call(grid.arrange, pltlist)#, top = "Simulated 2D Data and True Group Assignments")
-gridplot = arrangeGrob(pltlist[[1]], pltlist[[2]], pltlist[[3]], 
-                       nrow = 1, 
-                       respect = TRUE) #
-
-plotly::layout(pltlist[[1]], pltlist[[2]], pltlist[[3]])
 # widths = rep(2,3), 
 # heights = 2)
-ggsave(filename = "./k53d_3blockplot_30.png", device = "png", plot = gridplot)
+# ggsave(filename = "./manuscript_plots/k53d_3blockplot_30.png", device = "png", plot = gridplot)
+
+
+# plotly::layout(pltlist[[1]], pltlist[[2]], pltlist[[3]])
