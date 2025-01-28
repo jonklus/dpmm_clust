@@ -6,13 +6,14 @@
 
 ## Author: Jonathan Klus
 ## Date: 6 June 2023
-## Description: Sampler for a mixture of multivariate normal densities using Algorithm 2
+## Description: Sampler for a mixture of multivariate normal densities using Algorithm 8
 ## from Neal (2000). We assume the variance is unknown, and no longer assume conjugacy.
 
 
 ############################# load packages ####################################
 # set.seed(516)
 library(ggplot2)
+library(scatterplot3d)
 library(LaplacesDemon)
 library(mvtnorm)
 
@@ -128,6 +129,17 @@ update_phi_UVV <- function(curr_label, group_assign, count_assign, y,
   # print(unlist(y[group_assign == curr_label]))
   # print(matrix(unlist(y[group_assign == curr_label]), nrow = p))
   
+  # draw group variance
+  group_ind = which(group_assign == curr_label)
+  
+  loss_y_i = Reduce(f = "+", 
+                    x = lapply(X = group_ind, FUN = function(x){
+                      (y[[x]] - mu)%*%t(y[[x]] - mu)}))
+  
+  
+  Sigma = LaplacesDemon::rinvwishart(nu = nu + count_assign, 
+                                     S = loss_y_i + Lambda0)
+  
   # draw group mean
   sum_y_i = rowSums(matrix(unlist(y[group_assign == curr_label]), nrow = p))
   
@@ -138,19 +150,6 @@ update_phi_UVV <- function(curr_label, group_assign, count_assign, y,
   mu = t(mvtnorm::rmvnorm(n = 1, 
                            mean = mu_mean, 
                            sigma = mu_cov))
-  
-  
-  
-  # draw group variance
-  group_ind = which(group_assign == curr_label)
-  
-  loss_y_i = Reduce(f = "+", 
-                     x = lapply(X = group_ind, FUN = function(x){
-                       (y[[x]] - mu)%*%t(y[[x]] - mu)}))
-  
-
-  Sigma = LaplacesDemon::rinvwishart(nu = nu + count_assign, 
-                                     S = loss_y_i + Lambda0)
   
   return(list(mu = mu, Sigma = Sigma))
   
@@ -191,6 +190,9 @@ nonconj_phi_prob_UVV <- function(curr_label, group_assign, count_assign, y,
   # density of posterior up to a constant...
   dens = (det(Sigma)^((-count_assign + nu - p - 1)/2))*(det(Sigma0)^(-1/2))*(det(Lambda0)^(-nu/2))*
     exp(-(1/2)*(loss_y_i + loss_mu_k + sum(diag(Lambda0 %*% solve(Sigma)))))
+
+  # replace with
+  # dens = mvtnorm::dmvnorm(x = , mean = , sigma = )
   
   # for the kth component under a UVV assumption
   # need to fill this in 
@@ -714,10 +716,20 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                                                     S = Lambda0)
                                        })
               
+              cat("\n Split means (init): \n")
+              print(split_means[[1]])
+              cat("\n Split vars: \n")
+              print(split_vars[[1]])
+              
               # draw params from prior - random launch state for merge proposal
               merge_means[[1]] = t(mvtnorm::rmvnorm(n = 1, mean = mu0, sigma = Sigma0))
               merge_vars[[1]] = LaplacesDemon::rinvwishart(nu = nu, S = Lambda0)
               # merge_vars[[1]] = LaplacesDemon::rinvwishart(nu = nu, S = Lambda0)
+              
+              cat("\n Merge means (init): \n")
+              print(merge_means[[1]])
+              cat("\n Merge vars: \n")
+              print(merge_vars[[1]])
               
             } else{
               
@@ -787,6 +799,9 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                     group_assign = split_temp_group_assign[scan,], 
                     y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
                   
+                  cat("\n Obs:", obs, "\n")
+                  cat("\n split_assign_prob", split_assign_prob, "\n")
+                  
                   ### merge_assign prob by definition always 1 when proposing merge
                   ### launch state from c_i = c_j, no other way to permute assignment
                   merge_assign_prob = 1
@@ -794,7 +809,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                   # dont sample --- but do record prob of group anchor obs in in!
                   which_split_labs_anchor = which(split_lab == split_temp_group_assign[scan,obs])
                   # how to do this best for merge????
-                  which_merge_lab_anchor = 1  # why is this 1?? need to figure out what this should be 
+                  which_merge_lab_anchor = 1  
                   
                   # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
                   # dont need to assign again - already initialized since anchor
@@ -812,7 +827,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                   # merge_singletons = merge_label_assign[which(merge_count_assign == 1)]
                   # should never be a merge singleton --- need at least 2 anchor observations
                   
-                  # not subtracted 1 for kth observation here -- do within function
+                  # have not subtracted 1 for kth observation here -- do within function
                   split_counts = table(split_temp_group_assign[scan,])
                   merge_counts = table(merge_temp_group_assign[scan,])
                   
@@ -826,6 +841,9 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                     obs = obs, split_labs = split_lab,
                     group_assign = split_temp_group_assign[scan,], 
                     y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
+                  
+                  cat("\n Obs:", obs, "\n")
+                  cat("\n split_assign_prob", split_assign_prob, "\n")
                   
                   sm_prop_index = sample(x = 1:2, size = 1, 
                                          prob = split_assign_prob)
@@ -892,6 +910,16 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
             merge_means[[scan]] = merge_phi$mu
             merge_vars[[scan]] = merge_phi$Sigma
             
+            cat("\n Split means: \n")
+            print(split_means[[scan]])
+            cat("\n Split vars: \n")
+            print(split_vars[[scan]])
+            
+            cat("\n Merge means: \n")
+            print(merge_means[[scan]])
+            cat("\n Merge vars: \n")
+            print(merge_vars[[scan]])
+            
           } # scans 1:(sm_iter+1)
           
           
@@ -909,6 +937,9 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           # 
           split_counts = table(split_temp_group_assign[sm_iter+1,])
           merge_counts = table(merge_temp_group_assign[sm_iter+1,])
+          
+          cat("\n split_counts: \n")
+          print(split_counts)
           
           split_lab_assign = as.numeric(names(split_counts))
           merge_lab_assign = as.numeric(names(merge_counts))
