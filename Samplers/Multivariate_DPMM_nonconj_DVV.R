@@ -1,11 +1,11 @@
 ##############################################################
 ################# MULTIVARIATE DPMM MODEL ####################
 ###############  NO GAPS NON CONJ - ALG 8 ####################
-################# INDEP IG PRIORS - UVV   ####################
+################# INDEP IG PRIORS - DVV   ####################
 ##############################################################
 
 ## Author: Jonathan Klus
-## Date: 6 June 2023
+## Date: 28 January 2025
 ## Description: Sampler for a mixture of multivariate normal densities using Algorithm 8
 ## from Neal (2000). We assume the variance is unknown, and no longer assume conjugacy.
 
@@ -111,48 +111,48 @@ group_prob_calc_DVV <- function(k, n, n_j, alpha, y_i, mu, Sigma, mu0, Sigma0, a
   
   
   
-update_phi_UVV <- function(curr_label, group_assign, count_assign, y, 
-                           mu, mu0, Sigma, Sigma0, Lambda0, nu){
-  # function to sample from full conditional posteriors of DEV model
-  
-  # group_index is the current split or merge group for which new parameters are 
-  # being drawn
-  
-  # distinguish between split, where mu and Sigma will have two entries, and merge
-  # where they will have just 1???? do we need to do this?
-  
-  p = nrow(mu)
-  
-  # cat("\n p=", p)
-  # cat("\n curr_label=", curr_label)
-  # print(unlist(y[group_assign == curr_label]))
-  # print(matrix(unlist(y[group_assign == curr_label]), nrow = p))
-  
-  # draw group variance
-  group_ind = which(group_assign == curr_label)
-  
-  loss_y_i = Reduce(f = "+", 
-                    x = lapply(X = group_ind, FUN = function(x){
-                      (y[[x]] - mu)%*%t(y[[x]] - mu)}))
-  
-  
-  Sigma = LaplacesDemon::rinvwishart(nu = nu + count_assign, 
-                                     S = loss_y_i + Lambda0)
-  
-  # draw group mean
-  sum_y_i = rowSums(matrix(unlist(y[group_assign == curr_label]), nrow = p))
-  
-  mu_cov = solve(count_assign*solve(Sigma) + solve(Sigma0))
-  
-  mu_mean = (t(sum_y_i)%*%solve(Sigma) + t(mu0)%*%solve(Sigma0))%*%mu_cov
-  
-  mu = t(mvtnorm::rmvnorm(n = 1, 
-                           mean = mu_mean, 
-                           sigma = mu_cov))
-  
-  return(list(mu = mu, Sigma = Sigma))
-  
-}
+# update_phi_UVV <- function(curr_label, group_assign, count_assign, y, 
+#                            mu, mu0, Sigma, Sigma0, Lambda0, nu){
+#   # function to sample from full conditional posteriors of DEV model
+#   
+#   # group_index is the current split or merge group for which new parameters are 
+#   # being drawn
+#   
+#   # distinguish between split, where mu and Sigma will have two entries, and merge
+#   # where they will have just 1???? do we need to do this?
+#   
+#   p = nrow(mu)
+#   
+#   # cat("\n p=", p)
+#   # cat("\n curr_label=", curr_label)
+#   # print(unlist(y[group_assign == curr_label]))
+#   # print(matrix(unlist(y[group_assign == curr_label]), nrow = p))
+#   
+#   # draw group variance
+#   group_ind = which(group_assign == curr_label)
+#   
+#   loss_y_i = Reduce(f = "+", 
+#                     x = lapply(X = group_ind, FUN = function(x){
+#                       (y[[x]] - mu)%*%t(y[[x]] - mu)}))
+#   
+#   
+#   Sigma = LaplacesDemon::rinvwishart(nu = nu + count_assign, 
+#                                      S = loss_y_i + Lambda0)
+#   
+#   # draw group mean
+#   sum_y_i = rowSums(matrix(unlist(y[group_assign == curr_label]), nrow = p))
+#   
+#   mu_cov = solve(count_assign*solve(Sigma) + solve(Sigma0))
+#   
+#   mu_mean = (t(sum_y_i)%*%solve(Sigma) + t(mu0)%*%solve(Sigma0))%*%mu_cov
+#   
+#   mu = t(mvtnorm::rmvnorm(n = 1, 
+#                            mean = mu_mean, 
+#                            sigma = mu_cov))
+#   
+#   return(list(mu = mu, Sigma = Sigma))
+#   
+# }
 
 
 ############################ INDEPENDENT IG PRIORS ############################# 
@@ -560,16 +560,16 @@ MVN_CRP_nonconj_DVV <- function(S = 10^3, seed = 516, y, alpha = 1,
         
         print(plot_y$curr_assign)
         
-        split_obs_col = rep(1, nrow(plot_y))
-        split_obs_col[sampled_obs] = 2 # color SM candidates RED
+        #split_obs_col = rep(1, nrow(plot_y))
+        #split_obs_col[sampled_obs] = 2 # color SM candidates RED
         
         prog_plot = scatterplot3d(x = plot_y$y1, y = plot_y$y2, z = plot_y$y3, 
                       color = plot_y$curr_assign, angle = -45, cex.symbols = 0.5, 
                       xlab = "y1", ylab = "y2", zlab = "y3", pch = 20,
                       main = paste0("Group Assignments at Iteration s=", s, ", k=", k))
         
-        text(prog_plot$xyz.convert(plot_y[,1:3]), labels = rownames(plot_y), 
-             pos = 4, cex = 0.75, col = split_obs_col)
+        # text(prog_plot$xyz.convert(plot_y[,1:3]), labels = rownames(plot_y), 
+        #      pos = 4, cex = 0.75, col = split_obs_col)
         # print(prog_plot)
       }
       

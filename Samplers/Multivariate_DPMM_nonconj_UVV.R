@@ -1428,6 +1428,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           
           ## evaluate acceptance prob
           cat("\n accept prob components:", prob1, prob2, prob3, "\n")
+          cat("\n exp() accept prob components:", exp(prob1), exp(prob2), exp(prob3), "\n")
           accept_prob = min(1, exp(prob1 + prob2 + prob3))
           cat("\n accept prob:", round(accept_prob,5), "\n")
           u = runif(n = 1)
