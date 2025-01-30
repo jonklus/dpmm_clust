@@ -184,9 +184,9 @@ nonconj_phi_prob_UVV <- function(curr_label, group_assign, count_assign, y,
   group_ind = which(group_assign == curr_label)
   loss_y_i = Reduce(f = "+", 
                     x = lapply(X = group_ind, FUN = function(x){
-                    t(y[[x]] - mu) %*% Sigma %*% (y[[x]] - mu)}))
+                    t(y[[x]] - mu) %*% solve(Sigma) %*% (y[[x]] - mu)}))
   # wrap loss in c() to avoid length 1 array ---> dire warnings from R
-  loss_mu_k = c(t(mu0 - matrix(mu, nrow = p))%*% Sigma0 %*% (mu0 - matrix(mu, nrow = p)))
+  loss_mu_k = c(t(mu0 - matrix(mu, nrow = p))%*% solve(Sigma0) %*% (mu0 - matrix(mu, nrow = p)))
   # density of posterior up to a constant...
   dens = (det(Sigma)^((-count_assign + nu - p - 1)/2))*(det(Sigma0)^(-1/2))*(det(Lambda0)^(-nu/2))*
     exp(-(1/2)*(loss_y_i + loss_mu_k + sum(diag(Lambda0 %*% solve(Sigma)))))
@@ -990,12 +990,12 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
             
           } 
           
-          prob1_c_num = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
-          prob1_phi_num = Reduce(f = "+", x = log(split_phi_prob)) # only calculated at end
+          prob1_c_denom = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
+          prob1_phi_denom = Reduce(f = "+", x = log(split_phi_prob)) # only calculated at end
           # so no need to index
           
-          prob1_c_denom = Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
-          prob1_phi_denom = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
+          prob1_c_num = Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
+          prob1_phi_num = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
           
           prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
           
