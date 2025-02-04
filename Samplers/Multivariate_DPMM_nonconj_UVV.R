@@ -186,16 +186,10 @@ nonconj_phi_prob_UVV <- function(curr_label, group_assign, count_assign, y,
                     x = lapply(X = group_ind, FUN = function(x){
                     t(y[[x]] - mu) %*% solve(Sigma) %*% (y[[x]] - mu)}))
   # wrap loss in c() to avoid length 1 array ---> dire warnings from R
-  loss_mu_k = c(t(mu0 - matrix(mu, nrow = p))%*% solve(Sigma0) %*% (mu0 - matrix(mu, nrow = p)))
+  loss_mu_k = c(t(matrix(mu, nrow = p) - mu0)%*% solve(Sigma0) %*% (matrix(mu, nrow = p)- mu0))
   # density of posterior up to a constant...
-  dens = (det(Sigma)^((-count_assign + nu - p - 1)/2))*(det(Sigma0)^(-1/2))*(det(Lambda0)^(-nu/2))*
-    exp(-(1/2)*(loss_y_i + loss_mu_k + sum(diag(Lambda0 %*% solve(Sigma)))))
-
-  # replace with
-  # dens = mvtnorm::dmvnorm(x = , mean = , sigma = )
-  
-  # for the kth component under a UVV assumption
-  # need to fill this in 
+  dens = (det(Sigma)^(-(count_assign + nu + p + 1)/2))*
+    exp(-(1/2)*(loss_y_i + loss_mu_k + tr(Lambda0 %*% solve(Sigma))))
   
   return(dens)
 }
@@ -799,8 +793,8 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                     group_assign = split_temp_group_assign[scan,], 
                     y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
                   
-                  cat("\n Obs:", obs, "\n")
-                  cat("\n split_assign_prob", split_assign_prob, "\n")
+                  # cat("\n Obs:", obs, "\n")
+                  # cat("\n split_assign_prob", split_assign_prob, "\n")
                   
                   ### merge_assign prob by definition always 1 when proposing merge
                   ### launch state from c_i = c_j, no other way to permute assignment
@@ -842,8 +836,8 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                     group_assign = split_temp_group_assign[scan,], 
                     y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
                   
-                  cat("\n Obs:", obs, "\n")
-                  cat("\n split_assign_prob", split_assign_prob, "\n")
+                  # cat("\n Obs:", obs, "\n")
+                  # cat("\n split_assign_prob", split_assign_prob, "\n")
                   
                   sm_prop_index = sample(x = 1:2, size = 1, 
                                          prob = split_assign_prob)
@@ -960,9 +954,9 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                       group_assign = split_temp_group_assign[sm_iter+1,], 
                                       count_assign = split_count_assign[split_group_count_index][x], 
                                       y = y, 
-                                      mu = split_means[[scan]][[x]], 
+                                      mu = split_means[[sm_iter+1]][[x]], 
                                       mu0 = mu0, 
-                                      Sigma = split_vars[[scan]][[x]], 
+                                      Sigma = split_vars[[sm_iter+1]][[x]], 
                                       Sigma0 = Sigma0,                                                 
                                       nu = nu, Lambda0 = Lambda0)
                                   })
@@ -973,9 +967,9 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                                 group_assign = merge_temp_group_assign[sm_iter+1,], 
                                                 count_assign = merge_count_assign[merge_group_count_index], 
                                                 y = y, 
-                                                mu = merge_means[[scan]], 
+                                                mu = merge_means[[sm_iter+1]], 
                                                 mu0 = mu0, 
-                                                Sigma = merge_vars[[scan]], 
+                                                Sigma = merge_vars[[sm_iter+1]], 
                                                 Sigma0 = Sigma0,                                                  
                                                 nu = nu, Lambda0 = Lambda0)
           
@@ -1002,11 +996,11 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           ## prior ratio
           prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
             sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) + 
-            log(nonconj_prior_dens_UVV(mu = split_means[[scan]][[1]], mu0 = mu0, 
-                                   Sigma = split_vars[[scan]][[1]], 
+            log(nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[1]], mu0 = mu0, 
+                                   Sigma = split_vars[[sm_iter+1]][[1]], 
                                    Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)) + 
-            log(nonconj_prior_dens_UVV(mu = split_means[[scan]][[2]], mu0 = mu0, 
-                                   Sigma = split_vars[[scan]][[2]], 
+            log(nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[2]], mu0 = mu0, 
+                                   Sigma = split_vars[[sm_iter+1]][[2]], 
                                    Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0))
           
           prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
@@ -1343,9 +1337,9 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                       group_assign = split_temp_group_assign[sm_iter+1,], 
                                       count_assign = split_count_assign[split_group_count_index][x], 
                                       y = y, 
-                                      mu = split_means[[scan]][[x]], 
+                                      mu = split_means[[sm_iter+1]][[x]], 
                                       mu0 = mu0, 
-                                      Sigma = split_vars[[scan]][[x]], 
+                                      Sigma = split_vars[[sm_iter+1]][[x]], 
                                       Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
                                   })
           
@@ -1353,13 +1347,13 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                                 group_assign = merge_temp_group_assign[sm_iter+1,], 
                                                 count_assign =merge_count_assign[merge_group_count_index], 
                                                 y = y, 
-                                                mu = merge_means[[scan]], 
+                                                mu = merge_means[[sm_iter+1]], 
                                                 mu0 = mu0, 
-                                                Sigma = merge_vars[[scan]], 
+                                                Sigma = merge_vars[[sm_iter+1]], 
                                                 Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
           
-          prob1_c_num = Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
-          prob1_phi_num = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
+          prob1_c_denom = 0 # log(1) = 0 #Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
+          prob1_phi_denom = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
           
           if(any(split_phi_prob < 10^(-300)) == TRUE){
             
@@ -1368,16 +1362,16 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
             
           } 
           
-          prob1_c_denom = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
-          prob1_phi_denom = Reduce(f = "+", x = log(split_phi_prob))
+          prob1_c_num = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
+          prob1_phi_num = Reduce(f = "+", x = log(split_phi_prob))
           
           prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
           
           ## prior ratio
           prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
                                    split_counts[[split_group_count_index[2]]]-1))) +
-            log(nonconj_prior_dens_UVV(mu = merge_means[[scan]], mu0 = mu0, 
-                                   Sigma = merge_vars[[scan]], 
+            log(nonconj_prior_dens_UVV(mu = merge_means[[sm_iter+1]], mu0 = mu0, 
+                                   Sigma = merge_vars[[sm_iter+1]], 
                                    Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0))
           
           prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
@@ -1506,6 +1500,56 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           cat("\n")
           print(Sigma)
           cat("\n")
+          
+          # print plot
+          if(move_type == "SPLIT"){
+            proposed_assign = split_temp_group_assign[sm_iter+1,]
+          } else{
+            # merge
+            proposed_assign = merge_temp_group_assign[sm_iter+1,]
+          }
+          
+          
+          if(nrow(mu0) == 2){
+            # if this is a 2D problem, can make scatterplot of group assign
+            yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
+            plot_y = data.frame(
+              y1 = yvals[,1],
+              y2 = yvals[,2],
+              curr_assign = proposed_assign
+            )
+ 
+            prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = rownames(plot_y))) +
+              #geom_point(color = assign) +
+              #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+              geom_text(size = 3, color = plot_y$curr_assign) +
+              ggtitle(paste0("Proposed ", move_type, " s=", s, ", k=", k, "Accept=", accept)) + 
+              theme_classic()
+            print(prog_plot)
+          } else if(nrow(mu0) == 3){
+            # if this is a 3D problem, can make scatterplot of group assign
+            yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
+            plot_y = data.frame(
+              y1 = yvals[,1],
+              y2 = yvals[,2],
+              y3 = yvals[,3],
+              curr_assign = proposed_assign
+            )
+            
+            split_obs_col = rep(1, nrow(plot_y))
+            split_obs_col[sampled_obs] = 3 # color SM candidates green
+            
+            prog_plot = scatterplot3d(x = plot_y$y1, y = plot_y$y2, z = plot_y$y3, 
+                                      color = plot_y$curr_assign, angle = -45, cex.symbols = 0.5, 
+                                      xlab = "y1", ylab = "y2", zlab = "y3", pch = 20,
+                                      main = paste0("Proposed ", move_type, " s=", s, ", k=", k, "Accept=", accept))
+            
+            text(prog_plot$xyz.convert(plot_y[,1:3]), labels = rownames(plot_y), 
+                 pos = 4, cex = 0.75, col = split_obs_col)
+            # print(prog_plot)
+          }
+          
+          
         }
         
       }
@@ -1612,44 +1656,44 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
       print(Sigma)
       cat("\n")
 
-      if(nrow(mu0) == 2){
-        # if this is a 2D problem, can make scatterplot of group assign
-        yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
-        plot_y = data.frame(
-          y1 = yvals[,1],
-          y2 = yvals[,2],
-          curr_assign = group_assign[s,]
-        )
-        print(plot_y$curr_assign)
-        prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = rownames(plot_y))) +
-          #geom_point(color = assign) +
-          #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
-          geom_text(size = 3, color = plot_y$curr_assign) +
-          ggtitle(paste0("Group Assignments at Iteration s=", s, ", k=", k)) + 
-          theme_classic()
-        print(prog_plot)
-      } else if(nrow(mu0) == 3){
-        # if this is a 3D problem, can make scatterplot of group assign
-        yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
-        plot_y = data.frame(
-          y1 = yvals[,1],
-          y2 = yvals[,2],
-          y3 = yvals[,3],
-          curr_assign = group_assign[s,]
-        )
-        
-        print(plot_y$curr_assign)
-        
-        split_obs_col = rep(1, nrow(plot_y))
-        split_obs_col[sampled_obs] = 2 # color SM candidates RED
-        
-        prog_plot = scatterplot3d(x = plot_y$y1, y = plot_y$y2, z = plot_y$y3, 
-                      color = plot_y$curr_assign, angle = -45, cex.symbols = 0.5, 
-                      xlab = "y1", ylab = "y2", zlab = "y3", pch = 20,
-                      main = paste0("Group Assignments at Iteration s=", s, ", k=", k))
-        
-        text(prog_plot$xyz.convert(plot_y[,1:3]), labels = rownames(plot_y), 
-             pos = 4, cex = 0.75, col = split_obs_col)
+      # if(nrow(mu0) == 2){
+      #   # if this is a 2D problem, can make scatterplot of group assign
+      #   yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
+      #   plot_y = data.frame(
+      #     y1 = yvals[,1],
+      #     y2 = yvals[,2],
+      #     curr_assign = group_assign[s,]
+      #   )
+      #   print(plot_y$curr_assign)
+      #   prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = rownames(plot_y))) +
+      #     #geom_point(color = assign) +
+      #     #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+      #     geom_text(size = 3, color = plot_y$curr_assign) +
+      #     ggtitle(paste0("Group Assignments at Iteration s=", s, ", k=", k)) + 
+      #     theme_classic()
+      #   print(prog_plot)
+      # } else if(nrow(mu0) == 3){
+      #   # if this is a 3D problem, can make scatterplot of group assign
+      #   yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
+      #   plot_y = data.frame(
+      #     y1 = yvals[,1],
+      #     y2 = yvals[,2],
+      #     y3 = yvals[,3],
+      #     curr_assign = group_assign[s,]
+      #   )
+      #   
+      #   print(plot_y$curr_assign)
+      #   
+      #   split_obs_col = rep(1, nrow(plot_y))
+      #   split_obs_col[sampled_obs] = 2 # color SM candidates RED
+      #   
+      #   prog_plot = scatterplot3d(x = plot_y$y1, y = plot_y$y2, z = plot_y$y3, 
+      #                 color = plot_y$curr_assign, angle = -45, cex.symbols = 0.5, 
+      #                 xlab = "y1", ylab = "y2", zlab = "y3", pch = 20,
+      #                 main = paste0("Group Assignments at Iteration s=", s, ", k=", k))
+      #   
+      #   text(prog_plot$xyz.convert(plot_y[,1:3]), labels = rownames(plot_y), 
+      #        pos = 4, cex = 0.75, col = split_obs_col)
         # print(prog_plot)
       }
       
