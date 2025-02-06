@@ -1695,7 +1695,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
       #   text(prog_plot$xyz.convert(plot_y[,1:3]), labels = rownames(plot_y), 
       #        pos = 4, cex = 0.75, col = split_obs_col)
         # print(prog_plot)
-      }
+      #}
       
       
     }

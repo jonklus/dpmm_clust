@@ -667,12 +667,12 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
       lab2 = split_temp_group_assign[1, sampled_obs[2]]
       move_type = ifelse(lab1 == lab2, "SPLIT", "MERGE")
       
-      # cat("move_type:", move_type)
-      # cat("\n")
-      # cat("sampled_obs:", sampled_obs)
-      # cat("\n")
-      # cat("group_labs:", c(lab1, lab2))
-      # cat("\n")
+      cat("move_type:", move_type)
+      cat("\n")
+      cat("sampled_obs:", sampled_obs)
+      cat("\n")
+      cat("group_labs:", c(lab1, lab2))
+      cat("\n")
       
       # bookkeeping - group labels
       subset_index = which(split_temp_group_assign[1,] %in% c(lab1, lab2)) 
@@ -739,10 +739,20 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                        #                            S = lambda0)
                                      })
             
+            cat("\n Split means (init): \n")
+            print(split_means[[1]])
+            cat("\n Split vars: \n")
+            print(split_vars[[1]])
+            
             # draw params from prior - random launch state for merge proposal
             merge_means[[1]] = t(mvtnorm::rmvnorm(n = 1, mean = mu0, sigma = Sigma0))
             merge_vars[[1]] = diag(1/rgamma(n = 1, shape = a, rate = b), p)  
             # merge_vars[[1]] = LaplacesDemon::rinvwishart(nu = nu, S = lambda0)
+            
+            cat("\n Merge means (init): \n")
+            print(merge_means[[1]])
+            cat("\n Merge vars: \n")
+            print(merge_vars[[1]])
             
           } else{
             
@@ -915,6 +925,16 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           merge_means[[scan]] = merge_phi$mu
           merge_vars[[scan]] = merge_phi$Sigma
           
+          cat("\n Updated split means: \n")
+          print(split_means[[scan]])
+          cat("\n Updated split vars: \n")
+          print(split_vars[[scan]])
+          
+          cat("\n Updated merge means: \n")
+          print(merge_means[[scan]])
+          cat("\n Updated merge vars: \n")
+          print(merge_vars[[scan]])
+          
         } # scans 1:(sm_iter+1)
         
         
@@ -932,6 +952,9 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         # 
         split_counts = table(split_temp_group_assign[sm_iter+1,])
         merge_counts = table(merge_temp_group_assign[sm_iter+1,])
+        
+        cat("\n split_counts: \n")
+        print(split_counts)
         
         split_lab_assign = as.numeric(names(split_counts))
         merge_lab_assign = as.numeric(names(merge_counts))
@@ -985,7 +1008,13 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                               Sigma = merge_vars[[scan]], 
                                               Sigma0 = Sigma0, a = a, b = b)
         
-        prob1_c_num = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
+        
+        prob1_c_num = Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
+        # check to prevent numeric overflow from small densities (happens when proposal is two large
+        # groups that are not compatible)
+        prob1_phi_num = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
+        
+        prob1_c_denom = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
         
         # check to prevent numeric overflow from small densities (happens when proposal is two large
         # groups that are not compatible)
@@ -997,13 +1026,8 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         } 
         
         # else, business as usual
-        prob1_phi_num = Reduce(f = "+", x = log(split_phi_prob)) # only calculated at end
+        prob1_phi_denom = Reduce(f = "+", x = log(split_phi_prob)) # only calculated at end
         # so no need to index
-        
-        prob1_c_denom = Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
-        # check to prevent numeric overflow from small densities (happens when proposal is two large
-        # groups that are not compatible)
-        prob1_phi_denom = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
         
         prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
         
@@ -1060,7 +1084,9 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         prob3 = prob3_num1 + prob3_num2 - prob3_denom
         
         ## evaluate acceptance prob
+        cat("\n accept prob components:", prob1, prob2, prob3, "\n")
         accept_prob = min(1, exp(prob1 + prob2 + prob3))
+        cat("\n accept prob:", round(accept_prob,5), "\n")
         u = runif(n = 1)
         if(accept_prob > u){
           
@@ -1096,7 +1122,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         }
         
         
-        
+        cat("\n accept = ", accept, "\n")
         
         # if MERGE    
       } else if(move_type == "MERGE"){
@@ -1386,10 +1412,10 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                               Sigma0 = Sigma0, a = a, b = b)
         #cat("\n merge_phi_prob: ", merge_phi_prob, "\n")
         
-        prob1_c_num = Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
-        prob1_phi_num = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
+        prob1_c_denom = Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
+        prob1_phi_denom = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
         
-        prob1_c_denom = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
+        prob1_c_num = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
         
         if(any(split_phi_prob < 10^(-300)) == TRUE){
           
@@ -1398,7 +1424,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           
         } 
         
-        prob1_phi_denom = Reduce(f = "+", x = log(split_phi_prob))
+        prob1_phi_num = Reduce(f = "+", x = log(split_phi_prob))
         # cat("\n split_phi_prob: ", split_phi_prob, "\n")
         
         prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
@@ -1473,9 +1499,11 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         # flip this for merge step
         prob3 = prob3_denom - (prob3_num1 + prob3_num2)
         
-        # cat("\n accept prob components:", c(prob1, prob2, prob3), "\n")
         ## evaluate acceptance prob
+        cat("\n accept prob components:", prob1, prob2, prob3, "\n")
+        cat("\n exp() accept prob components:", exp(prob1), exp(prob2), exp(prob3), "\n")
         accept_prob = min(1, exp(prob1 + prob2 + prob3))
+        cat("\n accept prob:", round(accept_prob,5), "\n")
         u = runif(n = 1)
         if(accept_prob > u){
           
@@ -1514,6 +1542,8 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           # group assign remains unchanged
         }
         
+        cat("\n accept = ", accept, "\n")
+        
       } # end merge proposal
       
       k_end = k
@@ -1547,6 +1577,57 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         cat("\n")
         print(sigma2)
         cat("\n")
+        
+        # print plot
+        if(move_type == "SPLIT"){
+          proposed_assign = split_temp_group_assign[sm_iter+1,]
+        } else{
+          # merge
+          proposed_assign = merge_temp_group_assign[sm_iter+1,]
+        }
+        
+        
+        if(nrow(mu0) == 2){
+          # if this is a 2D problem, can make scatterplot of group assign
+          yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
+          plot_y = data.frame(
+            y1 = yvals[,1],
+            y2 = yvals[,2],
+            curr_assign = proposed_assign
+          )
+          
+          prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = rownames(plot_y))) +
+            #geom_point(color = assign) +
+            #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+            geom_text(size = 3, color = plot_y$curr_assign) +
+            ggtitle(paste0("Proposed ", move_type, " s=", s, ", k=", k, " Accept=", accept)) + 
+            theme_classic()
+          print(prog_plot)
+          
+        } else if(nrow(mu0) == 3){
+          # if this is a 3D problem, can make scatterplot of group assign
+          yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
+          plot_y = data.frame(
+            y1 = yvals[,1],
+            y2 = yvals[,2],
+            y3 = yvals[,3],
+            curr_assign = proposed_assign
+          )
+          
+          split_obs_col = rep(1, nrow(plot_y))
+          split_obs_col[sampled_obs] = 3 # color SM candidates green
+          
+          prog_plot = scatterplot3d(x = plot_y$y1, y = plot_y$y2, z = plot_y$y3, 
+                                    color = plot_y$curr_assign, angle = -45, cex.symbols = 0.5, 
+                                    xlab = "y1", ylab = "y2", zlab = "y3", pch = 20,
+                                    main = paste0("Proposed ", move_type, " s=", s, ", k=", k, ", Accept=", accept))
+          
+          text(prog_plot$xyz.convert(plot_y[,1:3]), labels = rownames(plot_y), 
+               pos = 4, cex = 0.75, col = split_obs_col)
+          # print(prog_plot)
+        }
+        
+        
       }
       
     }
