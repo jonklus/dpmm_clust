@@ -994,20 +994,21 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
           
           ## prior ratio
+          ## dont log prior density again here -- already taking log in fxn!
           prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
             sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) + 
-            log(nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[1]], mu0 = mu0, 
+            nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[1]], mu0 = mu0, 
                                    Sigma = split_vars[[sm_iter+1]][[1]], 
-                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)) + 
-            log(nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[2]], mu0 = mu0, 
+                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0) + 
+            nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[2]], mu0 = mu0, 
                                    Sigma = split_vars[[sm_iter+1]][[2]], 
-                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0))
+                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
           
           prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
                                      split_counts[[split_group_count_index[2]]]-1))) +
-            log(nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
+            nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
                                    Sigma = original_sigma1, 
-                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0))
+                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
           
           prob2 = log(alpha) + prob2_num - prob2_denom
           
@@ -1370,18 +1371,18 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           ## prior ratio
           prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
                                    split_counts[[split_group_count_index[2]]]-1))) +
-            log(nonconj_prior_dens_UVV(mu = merge_means[[sm_iter+1]], mu0 = mu0, 
+            nonconj_prior_dens_UVV(mu = merge_means[[sm_iter+1]], mu0 = mu0, 
                                    Sigma = merge_vars[[sm_iter+1]], 
-                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0))
+                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
           
           prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
             sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) +
-            log(nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
+            nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
                                    Sigma = original_sigma1, 
-                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)) +
-            log(nonconj_prior_dens_UVV(mu = original_mu2, mu0 = mu0, 
+                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0) +
+            nonconj_prior_dens_UVV(mu = original_mu2, mu0 = mu0, 
                                    Sigma = original_sigma2, 
-                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0))
+                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
           
           prob2 = log(alpha) + prob2_num - prob2_denom
           

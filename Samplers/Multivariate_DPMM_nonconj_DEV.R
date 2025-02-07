@@ -1032,20 +1032,21 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
         
         ## prior ratio
+        ## don't log nonconj_prior_dens again, already taking log in fxn!
         prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
           sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) + 
-          log(nonconj_prior_dens_DEV(mu = split_means[[scan]][[1]], mu0 = mu0, 
+          nonconj_prior_dens_DEV(mu = split_means[[scan]][[1]], mu0 = mu0, 
                                      Sigma = split_vars[[scan]][[1]], 
-                                     Sigma0 = Sigma0, a = a, b = b)) + 
-          log(nonconj_prior_dens_DEV(mu = split_means[[scan]][[2]], mu0 = mu0, 
+                                     Sigma0 = Sigma0, a = a, b = b) + 
+          nonconj_prior_dens_DEV(mu = split_means[[scan]][[2]], mu0 = mu0, 
                                      Sigma = split_vars[[scan]][[2]], 
-                                     Sigma0 = Sigma0, a = a, b = b))
+                                     Sigma0 = Sigma0, a = a, b = b)
         
         prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
                                    split_counts[[split_group_count_index[2]]]-1))) +
-          log(nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
+          nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
                                      Sigma = diag(original_sigma1,p), 
-                                     Sigma0 = Sigma0, a = a, b = b))
+                                     Sigma0 = Sigma0, a = a, b = b)
         
         prob2 = log(alpha) + prob2_num - prob2_denom
         
@@ -1430,37 +1431,38 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
         
         ## prior ratio
+        ## dont log prior density again here -- already taking log in fxn!
         prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
                                  split_counts[[split_group_count_index[2]]]-1))) +
-          log(nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
+          nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
                                      Sigma = merge_vars[[scan]], 
-                                     Sigma0 = Sigma0, a = a, b = b))
+                                     Sigma0 = Sigma0, a = a, b = b)
         
         # cat("\n prob2_num", prob2_num, "\n")
-        # cat("\n split fact 1: ", split_counts[[split_group_count_index[1]]], "\n")
-        # cat("\n split fact 2: ", split_counts[[split_group_count_index[2]]], "\n")
-        # cat("\n num dens: ", nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
-        #                                             Sigma = merge_vars[[scan]], 
-        #                                             Sigma0 = Sigma0, a = a, b = b), "\n")
+        cat("\n merge factorial: ", sum(log(1:(split_counts[[split_group_count_index[1]]] + 
+                                                 split_counts[[split_group_count_index[2]]]-1))), "\n")
+        cat("\n num dens: ", log(nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
+                                                        Sigma = merge_vars[[scan]], 
+                                                        Sigma0 = Sigma0, a = a, b = b)), "\n")
         
         prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
           sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) +
-          log(nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
+          nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
                                      Sigma = diag(original_sigma1,p), 
-                                     Sigma0 = Sigma0, a = a, b = b)) +
-          log(nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0, 
+                                     Sigma0 = Sigma0, a = a, b = b) +
+          nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0, 
                                      Sigma = diag(original_sigma2,p), 
-                                     Sigma0 = Sigma0, a = a, b = b))
+                                     Sigma0 = Sigma0, a = a, b = b)
         
-        # cat("\n prob2_denom", prob2_denom)
-        # cat("\n split fact 1: ", split_counts[[split_group_count_index[1]]], "\n")
-        # cat("\n split fact 2: ", split_counts[[split_group_count_index[2]]], "\n")
-        # cat("\n num dens 1: ", nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
-        #                                               Sigma = diag(original_sigma1,p), 
-        #                                               Sigma0 = Sigma0, a = a, b = b), "\n")
-        # cat("\n num dens 2: ", nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0, 
-        #                                               Sigma = diag(original_sigma2,p), 
-        #                                               Sigma0 = Sigma0, a = a, b = b), "\n")
+        cat("\n prob2_denom", prob2_denom)
+        cat("\n split factorial: ", sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
+              sum(log(1:(split_counts[[split_group_count_index[2]]]-1))), "\n")
+        cat("\n num dens 1: ", nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0,
+                                                      Sigma = diag(original_sigma1,p),
+                                                      Sigma0 = Sigma0, a = a, b = b), "\n")
+        cat("\n num dens 2: ", nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0,
+                                                      Sigma = diag(original_sigma2,p),
+                                                      Sigma0 = Sigma0, a = a, b = b), "\n")
         
         prob2 = log(alpha) + prob2_num - prob2_denom
         
