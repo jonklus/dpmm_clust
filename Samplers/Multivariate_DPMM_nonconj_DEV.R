@@ -201,10 +201,13 @@ nonconj_phi_prob_DEV <- function(curr_label, group_assign, count_assign, y,
   loss_mu_k = c(t(mu0 - matrix(mu, nrow = p))%*%(mu0 - matrix(mu, nrow = p))) # make sure it becomes
   # print(loss_mu_k)
   # a scalar and not an array of length 1
-  
+
   # density of posterior up to a constant...
-  dens = (sigma2^(-((p*count_assign/2)+a+1)))*exp(-0.5*(loss_y_i/sigma2 + 
+  dens = (sigma2^(-((p*count_assign/2)+a+1)))*exp(-0.5*(loss_y_i/sigma2 +
                                                           2*b/sigma2 + loss_mu_k/sigma0))
+
+  # dens = log(mvtnorm::dmvnorm(x = c(mu), mean = c(mu0), sigma = Sigma0)) + 
+  #   log(LaplacesDemon::dinvgamma(x = sigma2, shape = a, scale = b))
   
   # for the kth component under a UVV assumption
   # need to fill this in 
@@ -739,21 +742,21 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                        #                            S = lambda0)
                                      })
             
-            cat("\n Split means (init): \n")
-            print(split_means[[1]])
-            cat("\n Split vars: \n")
-            print(split_vars[[1]])
+            # cat("\n Split means (init): \n")
+            # print(split_means[[1]])
+            # cat("\n Split vars: \n")
+            # print(split_vars[[1]])
             
             # draw params from prior - random launch state for merge proposal
             merge_means[[1]] = t(mvtnorm::rmvnorm(n = 1, mean = mu0, sigma = Sigma0))
             merge_vars[[1]] = diag(1/rgamma(n = 1, shape = a, rate = b), p)  
             # merge_vars[[1]] = LaplacesDemon::rinvwishart(nu = nu, S = lambda0)
             
-            cat("\n Merge means (init): \n")
-            print(merge_means[[1]])
-            cat("\n Merge vars: \n")
-            print(merge_vars[[1]])
-            
+            # cat("\n Merge means (init): \n")
+            # print(merge_means[[1]])
+            # cat("\n Merge vars: \n")
+            # print(merge_vars[[1]])
+            # 
           } else{
             
             # initialize current restricted Gibbs scan iteration with previous result
@@ -925,15 +928,15 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           merge_means[[scan]] = merge_phi$mu
           merge_vars[[scan]] = merge_phi$Sigma
           
-          cat("\n Updated split means: \n")
-          print(split_means[[scan]])
-          cat("\n Updated split vars: \n")
-          print(split_vars[[scan]])
-          
-          cat("\n Updated merge means: \n")
-          print(merge_means[[scan]])
-          cat("\n Updated merge vars: \n")
-          print(merge_vars[[scan]])
+          # cat("\n Updated split means: \n")
+          # print(split_means[[scan]])
+          # cat("\n Updated split vars: \n")
+          # print(split_vars[[scan]])
+          # 
+          # cat("\n Updated merge means: \n")
+          # print(merge_means[[scan]])
+          # cat("\n Updated merge vars: \n")
+          # print(merge_vars[[scan]])
           
         } # scans 1:(sm_iter+1)
         
@@ -1439,11 +1442,11 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                      Sigma0 = Sigma0, a = a, b = b)
         
         # cat("\n prob2_num", prob2_num, "\n")
-        cat("\n merge factorial: ", sum(log(1:(split_counts[[split_group_count_index[1]]] + 
-                                                 split_counts[[split_group_count_index[2]]]-1))), "\n")
-        cat("\n num dens: ", log(nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
-                                                        Sigma = merge_vars[[scan]], 
-                                                        Sigma0 = Sigma0, a = a, b = b)), "\n")
+        # cat("\n merge factorial: ", sum(log(1:(split_counts[[split_group_count_index[1]]] + 
+        #                                          split_counts[[split_group_count_index[2]]]-1))), "\n")
+        # cat("\n num dens: ", log(nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
+        #                                                 Sigma = merge_vars[[scan]], 
+        #                                                 Sigma0 = Sigma0, a = a, b = b)), "\n")
         
         prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
           sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) +
@@ -1454,15 +1457,15 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                      Sigma = diag(original_sigma2,p), 
                                      Sigma0 = Sigma0, a = a, b = b)
         
-        cat("\n prob2_denom", prob2_denom)
-        cat("\n split factorial: ", sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
-              sum(log(1:(split_counts[[split_group_count_index[2]]]-1))), "\n")
-        cat("\n num dens 1: ", nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0,
-                                                      Sigma = diag(original_sigma1,p),
-                                                      Sigma0 = Sigma0, a = a, b = b), "\n")
-        cat("\n num dens 2: ", nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0,
-                                                      Sigma = diag(original_sigma2,p),
-                                                      Sigma0 = Sigma0, a = a, b = b), "\n")
+        # cat("\n prob2_denom", prob2_denom)
+        # cat("\n split factorial: ", sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
+        #       sum(log(1:(split_counts[[split_group_count_index[2]]]-1))), "\n")
+        # cat("\n num dens 1: ", nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0,
+        #                                               Sigma = diag(original_sigma1,p),
+        #                                               Sigma0 = Sigma0, a = a, b = b), "\n")
+        # cat("\n num dens 2: ", nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0,
+        #                                               Sigma = diag(original_sigma2,p),
+        #                                               Sigma0 = Sigma0, a = a, b = b), "\n")
         
         prob2 = log(alpha) + prob2_num - prob2_denom
         

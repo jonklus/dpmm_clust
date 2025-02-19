@@ -169,7 +169,7 @@ nonconj_prior_dens_UVV <- function(mu, mu0, Sigma, Sigma0, nu, Lambda0){
   dens = log(mvtnorm::dmvnorm(x = c(mu), mean = c(mu0), sigma = Sigma0)) + 
     log(LaplacesDemon::dinvwishart(Sigma = Sigma, nu = nu, S = Lambda0))
   
-  return(exp(dens))
+  return(dens)
 }
 
 nonconj_phi_prob_UVV <- function(curr_label, group_assign, count_assign, y, 
@@ -1471,7 +1471,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
         k_end = k
         sm_results = rbind(sm_results, c(s, sm_iter, move_type, accept, accept_prob, k_start, k_end))
         
-        Sys.sleep(5)
+        #Sys.sleep(5)
         
         # cat("\n")
         # cat("SM Step complete:")

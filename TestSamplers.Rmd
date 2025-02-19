@@ -1,5 +1,5 @@
 ---
-title: "DEE Well Separated Print Out"
+title: "Sampler Test Script"
 author: "Jonathan Klus"
 date: "2024-10-29"
 output: html_document
@@ -11,9 +11,9 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 # load necessary functions
 # source("./Samplers/Multivariate_DPMM_unknownvar_DEE.R")
 # source("./Samplers/Multivariate_DPMM_unknownvar_DEV.R")
-source("./Samplers/Multivariate_DPMM_nonconj_UVV.R")
+# source("./Samplers/Multivariate_DPMM_nonconj_UVV.R")
 # source("./Samplers/Multivariate_DPMM_nonconj_DVV.R")
-# source("./Samplers/Multivariate_DPMM_nonconj_DEV.R")
+source("./Samplers/Multivariate_DPMM_nonconj_DEV.R")
 # source("./Samplers/Multivariate_DPMM_unknownvar_UVV.R")
 source("./Samplers/posterior_helper_fxns.R")
 source("./Samplers/post_processing_inf.R")
@@ -228,9 +228,9 @@ n_iter = 1000
 # run in fxn
 sim_results_nonconjDEV = MVN_CRP_nonconj_DEV(
         S = n_iter, seed = seeds[x], y = y, 
-        alpha = 1, a = 1, b = 10, 
-        mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1),
-        sigma0 = 225, 
+        alpha = 1, a = 1, b = 1, 
+        mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 3))),0), ncol = 1),
+        sigma0 = 100, 
         k_init = 1, init_method = "kmeans",
         # d = 1, f = 1, 
         sigma_hyperprior = FALSE, standardize_y = FALSE,
@@ -308,7 +308,7 @@ nonconj_phi_prob_DEV(curr_label = 1, group_assign = group_assign,
 
 ```{r, include=FALSE, eval=FALSE}
 
-n_iter = 150
+n_iter = 500
 # set hyperparameters
 # a = 1; b = 50
 # d = 1; f = 1

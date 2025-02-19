@@ -41,6 +41,7 @@ simData <- function(scenario = "3wellsep", seed = 516, n = 30, means, var, w){
 }
 
 ################## simulate data ##############################################
+
 seeds = readRDS("./BHsimseeds.rds")
 x = 5 
 scenario = "3close"
