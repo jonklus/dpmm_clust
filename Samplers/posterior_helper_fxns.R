@@ -73,7 +73,15 @@ get_probs_by_k <- function(probs, n_groups, burn_in = 50, iter_threshold = 0){
     singleton_iters = NULL
   }
   
-  drop_iters = unique(c(1:burn_in, singleton_iters))
+  if(burn_in == 0){
+    
+    drop_iters = singleton_iters
+    
+  } else{
+    
+    drop_iters = unique(c(1:burn_in, singleton_iters))
+    
+  }
   
   # drop burn-in AND any singleton iterations before proceeding
   prob_list = probs[-drop_iters]
@@ -199,7 +207,15 @@ get_assign_by_k <- function(assign, n_groups, burn_in = 50, iter_threshold = 0){
     singleton_iters = NULL
   }
   
-  drop_iters = unique(c(1:burn_in, singleton_iters))
+  if(burn_in == 0){
+    
+    drop_iters = singleton_iters
+    
+  } else{
+    
+    drop_iters = unique(c(1:burn_in, singleton_iters))
+    
+  }
   
   # drop burn-in AND any singleton iterations before proceeding
   assign_mat = assign[-drop_iters,]
