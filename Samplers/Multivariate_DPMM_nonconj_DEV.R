@@ -676,6 +676,8 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
       cat("\n")
       cat("group_labs:", c(lab1, lab2))
       cat("\n")
+      cat("curr_labels:", curr_labels)
+      cat("\n")
       
       # bookkeeping - group labels
       subset_index = which(split_temp_group_assign[1,] %in% c(lab1, lab2)) 
@@ -1011,8 +1013,8 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                               Sigma = merge_vars[[scan]], 
                                               Sigma0 = Sigma0, a = a, b = b)
         
-        
-        prob1_c_num = Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
+        # for reverse split proposal, only one way to arrange --- merge, so overall prob = 1
+        prob1_c_num = log(1) # Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
         # check to prevent numeric overflow from small densities (happens when proposal is two large
         # groups that are not compatible)
         prob1_phi_num = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
@@ -1416,7 +1418,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                               Sigma0 = Sigma0, a = a, b = b)
         #cat("\n merge_phi_prob: ", merge_phi_prob, "\n")
         
-        prob1_c_denom = Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
+        prob1_c_denom = log(1) # Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
         prob1_phi_denom = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
         
         prob1_c_num = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
@@ -1500,6 +1502,11 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                   Sigma = merge_vars[[sm_iter+1]])
           prob3_denom = prob3_denom + log(val)
         }
+        
+        cat("\n")
+        cat("merge_vars[[sm_iter+1]]", merge_vars[[sm_iter+1]])
+        cat("\n")
+        cat("merge_means[[sm_iter+1]]", merge_means[[sm_iter+1]])
         
         # flip this for merge step
         prob3 = prob3_denom - (prob3_num1 + prob3_num2)
