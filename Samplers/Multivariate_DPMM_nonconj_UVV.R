@@ -988,7 +988,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           prob1_phi_denom = Reduce(f = "+", x = log(split_phi_prob)) # only calculated at end
           # so no need to index
           
-          prob1_c_num = Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
+          prob1_c_num = log(1) # Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
           prob1_phi_num = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
           
           prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
@@ -1353,7 +1353,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                                 Sigma = merge_vars[[sm_iter+1]], 
                                                 Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
           
-          prob1_c_denom = 0 # log(1) = 0 #Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
+          prob1_c_denom = log(1) #Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
           prob1_phi_denom = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
           
           if(any(split_phi_prob < 10^(-300)) == TRUE){
