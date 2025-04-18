@@ -638,12 +638,12 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
         lab2 = split_temp_group_assign[1, sampled_obs[2]]
         move_type = ifelse(lab1 == lab2, "SPLIT", "MERGE")
         
-        cat("move_type:", move_type)
-        cat("\n")
-        cat("sampled_obs:", sampled_obs)
-        cat("\n")
-        cat("group_labs:", c(lab1, lab2))
-        cat("\n")
+        # cat("move_type:", move_type)
+        # cat("\n")
+        # cat("sampled_obs:", sampled_obs)
+        # cat("\n")
+        # cat("group_labs:", c(lab1, lab2))
+        # cat("\n")
         
         # bookkeeping - group labels
         subset_index = which(split_temp_group_assign[1,] %in% c(lab1, lab2)) 
@@ -710,20 +710,20 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                                                     S = Lambda0)
                                        })
               
-              cat("\n Split means (init): \n")
-              print(split_means[[1]])
-              cat("\n Split vars: \n")
-              print(split_vars[[1]])
+              # cat("\n Split means (init): \n")
+              # print(split_means[[1]])
+              # cat("\n Split vars: \n")
+              # print(split_vars[[1]])
               
               # draw params from prior - random launch state for merge proposal
               merge_means[[1]] = t(mvtnorm::rmvnorm(n = 1, mean = mu0, sigma = Sigma0))
               merge_vars[[1]] = LaplacesDemon::rinvwishart(nu = nu, S = Lambda0)
               # merge_vars[[1]] = LaplacesDemon::rinvwishart(nu = nu, S = Lambda0)
               
-              cat("\n Merge means (init): \n")
-              print(merge_means[[1]])
-              cat("\n Merge vars: \n")
-              print(merge_vars[[1]])
+              # cat("\n Merge means (init): \n")
+              # print(merge_means[[1]])
+              # cat("\n Merge vars: \n")
+              # print(merge_vars[[1]])
               
             } else{
               
@@ -904,15 +904,15 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
             merge_means[[scan]] = merge_phi$mu
             merge_vars[[scan]] = merge_phi$Sigma
             
-            cat("\n Split means: \n")
-            print(split_means[[scan]])
-            cat("\n Split vars: \n")
-            print(split_vars[[scan]])
-            
-            cat("\n Merge means: \n")
-            print(merge_means[[scan]])
-            cat("\n Merge vars: \n")
-            print(merge_vars[[scan]])
+            # cat("\n Split means: \n")
+            # print(split_means[[scan]])
+            # cat("\n Split vars: \n")
+            # print(split_vars[[scan]])
+            # 
+            # cat("\n Merge means: \n")
+            # print(merge_means[[scan]])
+            # cat("\n Merge vars: \n")
+            # print(merge_vars[[scan]])
             
           } # scans 1:(sm_iter+1)
           
@@ -932,8 +932,8 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           split_counts = table(split_temp_group_assign[sm_iter+1,])
           merge_counts = table(merge_temp_group_assign[sm_iter+1,])
           
-          cat("\n split_counts: \n")
-          print(split_counts)
+          # cat("\n split_counts: \n")
+          # print(split_counts)
           
           split_lab_assign = as.numeric(names(split_counts))
           merge_lab_assign = as.numeric(names(merge_counts))
@@ -1048,9 +1048,33 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           prob3 = prob3_num1 + prob3_num2 - prob3_denom
           
           ## evaluate acceptance prob
-          cat("\n accept prob components:", prob1, prob2, prob3, "\n")
-          accept_prob = min(1, exp(prob1 + prob2 + prob3))
-          cat("\n accept prob:", round(accept_prob,5), "\n")
+          prob_components = c(prob1, prob2, prob3)
+          
+          ## check for indeterminate forms in accept prob - will cause errors
+          if(is.nan(exp(prob1 + prob2 + prob3)) == TRUE){
+            cat("move_type:", move_type)
+            cat("\n")
+            cat("\n split_counts: \n")
+            print(split_counts)
+            cat("\n log prob_components = ", c(prob1, prob2, prob3), "\n")
+            cat("\n exp accept_prob = ", exp(prob1 + prob2 + prob3))
+            
+            prob_sign = sign(c(prob1, prob2, prob3))
+            inf_index = which(is.infinite(prob_components))
+            
+            # if NaN but no inf components detected - throw error
+            if(length(inf_index) == 0){
+              stop("NaN detected in SM acceptance probability. Unable to resolve.")
+            }
+            
+            # if inf detected, resolve indeterminate forms by setting Inf equal to 
+            # some arbitrarily large number
+            for(prob_i in 1:length(inf_index)){
+              prob_components[inf_index[prob_i]] = prob_sign[inf_index[prob_i]]*5000
+            }
+          }
+          
+          accept_prob = min(1, exp(sum(prob_components)))
           u = runif(n = 1)
           if(accept_prob > u){
             
@@ -1085,7 +1109,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
             # group assign remains unchanged
           }
           
-          cat("\n accept = ", accept, "\n")
+          # cat("\n accept = ", accept, "\n")
           
           
           # if MERGE    
@@ -1422,10 +1446,33 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           prob3 = prob3_denom - (prob3_num1 + prob3_num2)
           
           ## evaluate acceptance prob
-          cat("\n accept prob components:", prob1, prob2, prob3, "\n")
-          cat("\n exp() accept prob components:", exp(prob1), exp(prob2), exp(prob3), "\n")
-          accept_prob = min(1, exp(prob1 + prob2 + prob3))
-          cat("\n accept prob:", round(accept_prob,5), "\n")
+          prob_components = c(prob1, prob2, prob3)
+          
+          ## check for indeterminate forms in accept prob - will cause errors
+          if(is.nan(exp(prob1 + prob2 + prob3)) == TRUE){
+            cat("move_type:", move_type)
+            cat("\n")
+            cat("\n split_counts: \n")
+            print(split_counts)
+            cat("\n log prob_components = ", c(prob1, prob2, prob3), "\n")
+            cat("\n exp accept_prob = ", exp(prob1 + prob2 + prob3))
+            
+            prob_sign = sign(c(prob1, prob2, prob3))
+            inf_index = which(is.infinite(prob_components))
+            
+            # if NaN but no inf components detected - throw error
+            if(length(inf_index) == 0){
+              stop("NaN detected in SM acceptance probability. Unable to resolve.")
+            }
+            
+            # if inf detected, resolve indeterminate forms by setting Inf equal to 
+            # some arbitrarily large number
+            for(prob_i in 1:length(inf_index)){
+              prob_components[inf_index[prob_i]] = prob_sign[inf_index[prob_i]]*5000
+            }
+          }
+          
+          accept_prob = min(1, exp(sum(prob_components)))
           u = runif(n = 1)
           if(accept_prob > u){
             
@@ -1464,7 +1511,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
             # group assign remains unchanged
           }
           
-          cat("\n accept = ", accept, "\n")
+          # cat("\n accept = ", accept, "\n")
           
         } # end merge proposal
         
