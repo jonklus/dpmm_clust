@@ -134,19 +134,6 @@ update_phi_DEV <- function(curr_label, group_assign, count_assign, y,
   # print(unlist(y[group_assign == curr_label]))
   # print(matrix(unlist(y[group_assign == curr_label]), nrow = p))
   
-  # draw group mean
-  sum_y_i = rowSums(matrix(unlist(y[group_assign == curr_label]), nrow = p))
-  
-  mu_cov = 1/(count_assign/sigma2 + 1/sigma0)
-  
-  mu_mean = (sum_y_i/sigma2 + mu0/sigma0)*mu_cov
-  
-  mu = t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
-                          mean = mu_mean, 
-                          sigma = diag(mu_cov,p)))
-  
-  
-  
   # draw group variance
   loss_y_i = rowSums((matrix(unlist(y[group_assign == curr_label]), nrow = p) - c(mu))^2)
   
@@ -161,6 +148,22 @@ update_phi_DEV <- function(curr_label, group_assign, count_assign, y,
   Sigma = diag(1/rgamma(n = 1, 
                         shape = (p*count_assign + 2*a)/2,
                         rate = sum(loss_y_i)/2 + b), p)
+  
+  
+  # draw group mean
+  sum_y_i = rowSums(matrix(unlist(y[group_assign == curr_label]), nrow = p))
+  
+  mu_cov = 1/(count_assign/sigma2 + 1/sigma0)
+  
+  mu_mean = (sum_y_i/sigma2 + mu0/sigma0)*mu_cov
+  
+  mu = t(mvtnorm::rmvnorm(n = 1, # make this the kth mean
+                          mean = mu_mean, 
+                          sigma = diag(mu_cov,p)))
+  
+  
+  
+
   
   return(list(mu = mu, Sigma = Sigma))
   
@@ -193,26 +196,39 @@ nonconj_phi_prob_DEV <- function(curr_label, group_assign, count_assign, y,
   
   
   # for the kth component under a DEV assumption
-  sigma2 = diag(Sigma)[1]
-  sigma0 = diag(Sigma0)[1]
-  p = nrow(mu)
-  loss_y_i = sum(rowSums((matrix(unlist(y[group_assign == curr_label]), nrow = p) - mu[,1])^2))
-  # print(loss_y_i)
-  loss_mu_k = c(t(mu0 - matrix(mu, nrow = p))%*%(mu0 - matrix(mu, nrow = p))) # make sure it becomes
-  # print(loss_mu_k)
-  # a scalar and not an array of length 1
+  # mu and mu0 are p-dimensional arrays
+  # Sigma Sigma0 are p*p dimensional matrices
+  # mu_L represents the launch state, mu is the current state
+  # a and b are scalar hyperparameters for the IG prior
   
-  # density of posterior up to a constant...
-  dens = (sigma2^(-((p*count_assign/2)+a+1)))*exp(-0.5*(loss_y_i/sigma2 +
-                                                          2*b/sigma2 + loss_mu_k/sigma0))
+    p = nrow(mu)
+    sigma2 = diag(Sigma)[1]
+    sigma0 = diag(Sigma0)[1]
+    
+    # mean - posterior density of newly drawn mu* given launch state
+    sum_y_i = rowSums(matrix(unlist(y[group_assign == curr_label]), nrow = p))
+    
+    mu_cov = 1/(count_assign/sigma2_L + 1/sigma0)
+    
+    mu_mean = (sum_y_i/sigma2_L + mu0/sigma0)*mu_cov
+    
+    ldens_mu = mvtnorm::dmvnorm(
+      x = mu,
+      mean = mu_mean, 
+      sigma = diag(mu_cov,p)))
   
-  # dens = log(mvtnorm::dmvnorm(x = c(mu), mean = c(mu0), sigma = Sigma0)) + 
-  #   log(LaplacesDemon::dinvgamma(x = sigma2, shape = a, scale = b))
+  # variance - posterior density of newly drawn sigma2* given launch state
+  loss_y_i = rowSums((matrix(unlist(y[group_assign == curr_label]), nrow = p) - c(mu_L))^2)
   
-  # for the kth component under a UVV assumption
-  # need to fill this in 
+  loss_mu_k = t(mu0 - matrix(mu_L, nrow = p))%*%(mu0 - matrix(mu_L, nrow = p))
   
-  return(dens)
+  ldens_sigma2 = LaplacesDemon::dinvgamma(
+    x = sigma2,
+    shape = (p*count_assign + 2*a)/2,
+    scale = sum(loss_y_i)/2 + b, 
+    log = TRUE)
+  
+  return(ldens_mu + ldens_sigma2)
 }
 
 ll_components_DEV <- function(obs_ind, y, mu, Sigma){
@@ -227,7 +243,8 @@ ll_components_DEV <- function(obs_ind, y, mu, Sigma){
   
 }
 
-nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma){
+nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma,
+                                     proposal_calc = FALSE){
   # This is P_GS(c*|c^L,...) from Jain & Neal 2007 
   
   # split_labs is an array of length 2 indicating which entries in counts correspond
@@ -347,8 +364,17 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
   }
   
   
+  if(proposal_calc == TRUE){
+    
+    return(ratio[which_group_k])
+    
+  } else{
+    
+    return(ratio)
+    
+  }
   
-  return(ratio)
+  
   
 }
 
@@ -915,20 +941,31 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                               Sigma0 = Sigma0, a = a, b = b)
                              })
           
-          merge_phi = update_phi_DEV(curr_label = merge_lab, 
-                                     group_assign = merge_temp_group_assign[scan,], 
-                                     count_assign = merge_count_assign[merge_group_count_index], 
-                                     y = y, 
-                                     mu = merge_means[[scan]], 
-                                     mu0 = mu0, 
-                                     Sigma = merge_vars[[scan]], 
-                                     Sigma0 = Sigma0, a = a, b = b)
-          
           split_means[[scan]] = list(split_phi[[1]]$mu, split_phi[[2]]$mu)
           split_vars[[scan]] = list(split_phi[[1]]$Sigma, split_phi[[2]]$Sigma)
           
-          merge_means[[scan]] = merge_phi$mu
-          merge_vars[[scan]] = merge_phi$Sigma
+          if(scan == sm_iter + 1){
+            # stop, record launch state (previous scan result), no need to do extra scan
+            
+            merge_means[[scan]] = merge_phi$mu
+            merge_vars[[scan]] = merge_phi$Sigma
+            
+          } else{
+            
+            merge_phi = update_phi_DEV(curr_label = merge_lab, 
+                                       group_assign = merge_temp_group_assign[scan,], 
+                                       count_assign = merge_count_assign[merge_group_count_index], 
+                                       y = y, 
+                                       mu = merge_means[[scan]], 
+                                       mu0 = mu0, 
+                                       Sigma = merge_vars[[scan]], 
+                                       Sigma0 = Sigma0, a = a, b = b)
+            
+            merge_means[[scan]] = merge_phi$mu
+            merge_vars[[scan]] = merge_phi$Sigma
+            
+          }
+          
           
           # cat("\n Updated split means: \n")
           # print(split_means[[scan]])
@@ -986,9 +1023,11 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                     group_assign = split_temp_group_assign[sm_iter+1,], 
                                     count_assign = split_count_assign[split_group_count_index][x], 
                                     y = y, 
-                                    mu = split_means[[scan]][[x]], 
+                                    mu_L = split_means[[scan-1]][[x]], # launch state
+                                    mu = split_means[[scan]][[x]], # final proposal
                                     mu0 = mu0, 
-                                    Sigma = split_vars[[scan]][[x]], 
+                                    Sigma_L = split_vars[[scan-1]][[x]], # launch state
+                                    Sigma = split_vars[[scan]][[x]], # final proposal
                                     Sigma0 = Sigma0, a = a, b = b)
                                 })
         
@@ -1001,20 +1040,25 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         # cat("\n merge_vars", "\n")
         # print(merge_vars[[scan]])
         
+        # when doing a SPLIT proposal, this is the \phi component of 
+        # q(\gamma|\gamma^{split}) - i.e. the Gibbs sampling transition kernel
+        # from the merge launch state to the *original merged configuration*
         merge_phi_prob = nonconj_phi_prob_DEV(curr_label = merge_lab, 
                                               group_assign = merge_temp_group_assign[sm_iter+1,], 
                                               count_assign = merge_count_assign[merge_group_count_index], 
                                               y = y, 
-                                              mu = merge_means[[scan]], 
+                                              mu_L = merge_means[[scan-1]], # launch state
+                                              mu = original_mu1
                                               mu0 = mu0, 
-                                              Sigma = merge_vars[[scan]], 
+                                              Sigma_L = merge_vars[[scan-1]], # launch state
+                                              Sigma = diag(original_sigma1,p),
                                               Sigma0 = Sigma0, a = a, b = b)
         
         # for reverse split proposal, only one way to arrange --- merge, so overall prob = 1
         prob1_c_num = log(1) # Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
         # check to prevent numeric overflow from small densities (happens when proposal is two large
         # groups that are not compatible)
-        prob1_phi_num = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
+        prob1_phi_num = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), merge_phi_prob)  
         
         prob1_c_denom = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
         
@@ -1028,7 +1072,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         } 
         
         # else, business as usual
-        prob1_phi_denom = Reduce(f = "+", x = log(split_phi_prob)) # only calculated at end
+        prob1_phi_denom = Reduce(f = "+", x = split_phi_prob) # only calculated at end
         # so no need to index
         
         prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
@@ -1307,16 +1351,42 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                 
                 # current observation under consideration cannot be included here
                 
-                split_assign_prob = nonconj_component_prob_c(
-                  obs = obs, split_labs = split_lab,
-                  group_assign = split_temp_group_assign[scan,], 
-                  y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
-                
-                sm_prop_index = sample(x = 1:2, size = 1, 
-                                       prob = split_assign_prob)
-                
-                split_temp_group_assign[scan,obs] = split_lab[sm_prop_index]
-                split_sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
+                if(scan == sm_iter + 1){
+                  # final scan is hypothetical transition from split launch state
+                  # back to original split configuration (use \phi from launch
+                  # state but calculate prob of going back to original group assigns)
+                  
+                  split_assign_prob = nonconj_component_prob_c(
+                    obs = obs, split_labs = split_lab, y = y, 
+                    group_assign = group_assign[s,], # original group assign 
+                    mu = split_means[[scan]], Sigma = split_vars[[scan]],
+                    proposal_calc = TRUE)
+                  
+                  # sm_prop_index = sample(x = 1:2, size = 1, 
+                  #                        prob = split_assign_prob)
+                  
+                  # dont actually change assignments from launch state
+                  split_temp_group_assign[scan,obs] =  split_temp_group_assign[scan-1,obs]
+                  
+                  # record probs of returning to original configuration
+                  split_sm_probs[scan,obs] = split_assign_prob # function should
+                  # only return a single prob when proposal_calc == TRUE
+                  
+                } else{
+                  
+                  split_assign_prob = nonconj_component_prob_c(
+                    obs = obs, split_labs = split_lab,
+                    group_assign = split_temp_group_assign[scan,], 
+                    y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
+                  
+                  sm_prop_index = sample(x = 1:2, size = 1, 
+                                         prob = split_assign_prob)
+                  
+                  split_temp_group_assign[scan,obs] = split_lab[sm_prop_index]
+                  split_sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
+                  
+                }
+
                 
                 ### merge_assign prob by definition always 1 when proposing merge
                 ### launch state from c_i = c_j, no other way to permute assignment
@@ -1348,17 +1418,30 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           split_group_count_index = which(as.numeric(names(split_counts)) %in% split_lab)
           merge_group_count_index = which(as.numeric(names(merge_counts)) %in% merge_lab)
           
-          split_phi = lapply(X = 1:2, #split_lab, 
-                             FUN = function(x){
-                               update_phi_DEV(curr_label = split_lab[x], 
-                                              group_assign = split_temp_group_assign[scan,], 
-                                              count_assign = split_count_assign[split_group_count_index][x], 
-                                              y = y, 
-                                              mu = split_means[[scan]][[x]], 
-                                              mu0 = mu0, 
-                                              Sigma = split_vars[[scan]][[x]], 
-                                              Sigma0 = Sigma0, a = a, b = b)
-                             })
+          if(scan == sm_iter + 1){
+            # don't do final scan - stop at split launch state
+            split_means[[scan]] = split_means[[scan-1]] 
+            split_vars[[scan]] = split_vars[[scan-1]] 
+            
+          } else{
+            
+            split_phi = lapply(X = 1:2, #split_lab, 
+                               FUN = function(x){
+                                 update_phi_DEV(curr_label = split_lab[x], 
+                                                group_assign = split_temp_group_assign[scan,], 
+                                                count_assign = split_count_assign[split_group_count_index][x], 
+                                                y = y, 
+                                                mu = split_means[[scan]][[x]], 
+                                                mu0 = mu0, 
+                                                Sigma = split_vars[[scan]][[x]], 
+                                                Sigma0 = Sigma0, a = a, b = b)
+                               })
+            
+            split_means[[scan]] = list(split_phi[[1]]$mu, split_phi[[2]]$mu)
+            split_vars[[scan]] = list(split_phi[[1]]$Sigma, split_phi[[2]]$Sigma)
+            
+          }
+          
           
           merge_phi = update_phi_DEV(curr_label = merge_lab, 
                                      group_assign = merge_temp_group_assign[scan,], 
@@ -1368,9 +1451,6 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                      mu0 = mu0, 
                                      Sigma = merge_vars[[scan]], 
                                      Sigma0 = Sigma0, a = a, b = b)
-          
-          split_means[[scan]] = list(split_phi[[1]]$mu, split_phi[[2]]$mu)
-          split_vars[[scan]] = list(split_phi[[1]]$Sigma, split_phi[[2]]$Sigma)
           
           merge_means[[scan]] = merge_phi$mu
           merge_vars[[scan]] = merge_phi$Sigma
@@ -1414,9 +1494,12 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                     group_assign = split_temp_group_assign[sm_iter+1,], 
                                     count_assign = split_count_assign[split_group_count_index][x], 
                                     y = y, 
-                                    mu = split_means[[scan]][[x]], 
+                                    mu_L = split_means[[scan-1]][[x]], 
+                                    mu = list(original_mu1, original_mu_2)[[x]]
                                     mu0 = mu0, 
-                                    Sigma = split_vars[[scan]][[x]], 
+                                    Sigma_L = split_vars[[scan-1]][[x]], 
+                                    Sigma = list(diag(original_sigma1, p),
+                                                 diag(original_sigma2, p))[[x]]
                                     Sigma0 = Sigma0, a = a, b = b)
                                 })
         
@@ -1435,14 +1518,16 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                               group_assign = merge_temp_group_assign[sm_iter+1,], 
                                               count_assign = merge_count_assign[merge_group_count_index], 
                                               y = y, 
+                                              mu_L = merge_means[[scan-1]], 
                                               mu = merge_means[[scan]], 
                                               mu0 = mu0, 
+                                              Sigma_L = merge_vars[[scan-1]], 
                                               Sigma = merge_vars[[scan]], 
                                               Sigma0 = Sigma0, a = a, b = b)
         #cat("\n merge_phi_prob: ", merge_phi_prob, "\n")
         
         prob1_c_denom = log(1) # Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
-        prob1_phi_denom = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
+        prob1_phi_denom = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), merge_phi_prob)  
         
         prob1_c_num = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
         
@@ -1453,7 +1538,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
           
         } 
         
-        prob1_phi_num = Reduce(f = "+", x = log(split_phi_prob))
+        prob1_phi_num = Reduce(f = "+", x = split_phi_prob)
         # cat("\n split_phi_prob: ", split_phi_prob, "\n")
         
         prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
