@@ -231,11 +231,31 @@ sim_results_nonconjDEV = MVN_CRP_nonconj_DEV(
         alpha = 1, a = 1, b = 1, 
         mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 3))),0), ncol = 1),
         sigma0 = 100, 
-        k_init = 3, init_method = "kmeans",
+        k_init = 2, init_method = "kmeans",
         # d = 1, f = 1, 
         sigma_hyperprior = FALSE, standardize_y = FALSE,
         split_merge = TRUE, sm_iter = 5, truth = NA,
         diag_weights = FALSE, verbose = TRUE, print_iter = 1, print_start = 0)
+
+S = n_iter
+seed = seeds[x]
+y = y
+alpha = 1 
+a = 1 
+b = 1 
+mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 3))),0), ncol = 1)
+sigma0 = 100
+k_init = 1
+init_method = "kmeans"
+sigma_hyperprior = FALSE
+standardize_y = FALSE
+split_merge = TRUE
+sm_iter = 5
+truth = NA
+diag_weights = FALSE
+verbose = TRUE
+print_iter = 1
+print_start = 0
   
 mod_sum_nonconjDEV = dpmm_summary(output = sim_results_nonconjDEV, 
        print_k_sum = TRUE, 

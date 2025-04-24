@@ -123,7 +123,12 @@ update_phi_DEV <- function(curr_label, group_assign, count_assign, y,
   # distinguish between split, where mu and Sigma will have two entries, and merge
   # where they will have just 1???? do we need to do this?
   
-  p = nrow(mu)
+  if(is.null(nrow(mu)) == TRUE){
+    p = length(mu)
+  } else{
+    p = nrow(mu)
+  }
+  
   sigma2 = diag(Sigma)[1]
   sigma0 = diag(Sigma0)[1]
   
@@ -191,7 +196,7 @@ nonconj_prior_dens_DEV <- function(mu, mu0, Sigma, Sigma0, a, b){
 
 
 nonconj_phi_prob_DEV <- function(curr_label, group_assign, count_assign, y, 
-                                 mu, mu0, Sigma, Sigma0, a, b){
+                                 mu, mu_L, mu0, Sigma, Sigma_L, Sigma0, a, b){
   # This is P_GS(phi*|phi^L,...) from Jain & Neal 2007 
   
   
@@ -201,8 +206,14 @@ nonconj_phi_prob_DEV <- function(curr_label, group_assign, count_assign, y,
   # mu_L represents the launch state, mu is the current state
   # a and b are scalar hyperparameters for the IG prior
   
-    p = nrow(mu)
+    if(is.null(nrow(mu)) == TRUE){
+      p = length(mu)
+    } else{
+      p = nrow(mu)
+    }
+  
     sigma2 = diag(Sigma)[1]
+    sigma2_L = diag(Sigma_L)[1]
     sigma0 = diag(Sigma0)[1]
     
     # mean - posterior density of newly drawn mu* given launch state
@@ -213,9 +224,9 @@ nonconj_phi_prob_DEV <- function(curr_label, group_assign, count_assign, y,
     mu_mean = (sum_y_i/sigma2_L + mu0/sigma0)*mu_cov
     
     ldens_mu = mvtnorm::dmvnorm(
-      x = mu,
-      mean = mu_mean, 
-      sigma = diag(mu_cov,p)))
+      x = c(mu),
+      mean = c(mu_mean), 
+      sigma = diag(mu_cov,p))
   
   # variance - posterior density of newly drawn sigma2* given launch state
   loss_y_i = rowSums((matrix(unlist(y[group_assign == curr_label]), nrow = p) - c(mu_L))^2)
@@ -260,8 +271,10 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
   # sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign[-obs] == x)})
   # need to make up your mind -- drop obs or leave in here??
   sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign == x)})
+  cat("\n sm_counts:", sm_counts, "\n")
   which_group_k = which(split_labs == group_assign[obs])
   sm_counts[which_group_k] = sm_counts[which_group_k] - 1
+  cat("\n sm_counts[which_group_k]:", sm_counts[which_group_k], "\n")
   
   if(0 %in% sm_counts){
     
@@ -282,7 +295,12 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
                                                       sigma = Sigma[[1]])
         
         # will just be (1,0)... seems extreme
-        ratio = c(1-(num/denom), num/denom)
+        if(is.nan(num/denom)){
+          cat("\n Warning: NaN detected in SM group assignment calculation. ")
+          ratio = rep(1/2,2)
+        } else{
+          ratio =  ratio = c(1-(num/denom), num/denom)
+        }
         
       } else{ 
         # which_one == 2
@@ -296,7 +314,12 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
                                                       sigma = Sigma[[2]])
         
         # will just be (1,0)... seems extreme
-        ratio = c(num/denom, 1-(num/denom))
+        if(is.nan(num/denom)){
+          cat("\n Warning: NaN detected in SM group assignment calculation. ")
+          ratio = rep(1/2,2)
+        } else{
+          ratio = c(num/denom, 1-(num/denom))
+        }
         
       }
       
@@ -354,12 +377,22 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
     num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
                                           mean = mu[[1]][,1], 
                                           sigma = Sigma[[1]]) 
-    
+    # cat("\n num:",num,"\n")
+    # print(sm_counts[1])
+    # print(y[[obs]][,1])
+    # print(mu[[1]][,1])
+    # print(Sigma[[1]])
     denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
                                                   mean = mu[[2]][,1], 
                                                   sigma = Sigma[[2]])
+    # cat("\n denom:",denom,"\n")
+    if(is.nan(num/denom)){
+      cat("\n Warning: NaN detected in SM group assignment calculation. ")
+      ratio = rep(1/2,2)
+    } else{
+      ratio = c(num/denom, 1-(num/denom))
+    }
     
-    ratio = c(num/denom, 1-(num/denom))
     
   }
   
@@ -1048,7 +1081,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                               count_assign = merge_count_assign[merge_group_count_index], 
                                               y = y, 
                                               mu_L = merge_means[[scan-1]], # launch state
-                                              mu = original_mu1
+                                              mu = original_mu1,
                                               mu0 = mu0, 
                                               Sigma_L = merge_vars[[scan-1]], # launch state
                                               Sigma = diag(original_sigma1,p),
@@ -1495,11 +1528,11 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                     count_assign = split_count_assign[split_group_count_index][x], 
                                     y = y, 
                                     mu_L = split_means[[scan-1]][[x]], 
-                                    mu = list(original_mu1, original_mu_2)[[x]]
+                                    mu = list(original_mu1, original_mu2)[[x]],
                                     mu0 = mu0, 
                                     Sigma_L = split_vars[[scan-1]][[x]], 
                                     Sigma = list(diag(original_sigma1, p),
-                                                 diag(original_sigma2, p))[[x]]
+                                                 diag(original_sigma2, p))[[x]],
                                     Sigma0 = Sigma0, a = a, b = b)
                                 })
         
