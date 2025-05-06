@@ -19,13 +19,15 @@ library(LaplacesDemon)
 
 ## calculate group membership probabilities
 
-group_prob_calc_DEV <- function(k, n, n_j, alpha, y_i, mu, sigma2, a, b, mu0, sigma0,
+group_prob_calc_DEV <- function(k, n, n_j, alpha, m,
+                                y_i, mu, sigma2, a, b, mu0, sigma0,
                                 singleton = 0, curr_group_assign = NULL, 
                                 curr_labels = NULL){
   # k is the number of existing groups
   # n is total number of observations
   # n_j is a vector of length k with the total number of observations in each group
   # alpha is the scalar concentration parameter from the dirichlet process
+  # m is the number of new groups to consider
   # y_i is the single data vector of dimension p*1 that we are considering
   # mu is a matrix with k columns, contains k group mean vectors of dimension p*1
   # sigma2 is either a scalar or a list of within-group variances, assumption dependent
@@ -55,41 +57,44 @@ group_prob_calc_DEV <- function(k, n, n_j, alpha, y_i, mu, sigma2, a, b, mu0, si
     ## not sure that this is correct way to handle singletons here === come back
     ## looks like we're already dropping ith observation if singleton before
     ## sending to function so it's kosher
-    pr_curr = sapply(X = 1:k, 
+    log_pr_curr = sapply(X = 1:k, 
                      FUN = function(x){
                        # print("Step1")
                        # print(matrix(mu[,x], nrow = p))
                        # print(y_i)
-                       c1 = n_j[x]/(n-1+alpha)
-                       c2 = mvtnorm::dmvnorm(x = y_i[,1], 
+                       log_c1 = log(n_j[x]) - log(n-1+alpha)
+                       log_c2 = mvtnorm::dmvnorm(x = y_i[,1], 
                                              mean = mu[,x], 
-                                             sigma = diag(sigma2[[x]], p)) 
-                       return(c1*c2)
+                                             sigma = diag(sigma2[[x]], p), 
+                                             log = TRUE) 
+                       return(log_c1 + log_c2)
                      })
     
   } else{
     
-    pr_curr = sapply(X = 1:k, 
+    log_pr_curr = sapply(X = 1:k, 
                      FUN = function(x){
                        #### make sure you're calculating n_{-i, c}
                        if(curr_group_assign == curr_labels[x]){
                          # print("Step2")
                          # print(matrix(mu[,x], nrow = p))
                          # print(y_i)
-                         c1 = (n_j[x]-1)/(n-1+alpha)
-                         c2 = mvtnorm::dmvnorm(x = y_i[,1], 
+                         log_c1 = log(n_j[x]-1) - log(n-1+alpha)
+                         log_c2 = mvtnorm::dmvnorm(x = y_i[,1], 
                                                mean = mu[,x], 
-                                               sigma = diag(sigma2[[x]], p)) 
+                                               sigma = diag(sigma2[[x]], p), 
+                                               log = TRUE) 
                        } else{
                          # print("Step3")
                          # print(matrix(mu[,x], nrow = p))
                          # print(y_i)
-                         c1 = n_j[x]/(n-1+alpha)
-                         c2 = mvtnorm::dmvnorm(x = y_i[,1], 
+                         log_c1 = log(n_j[x]) - log(n-1+alpha)
+                         log_c2 = mvtnorm::dmvnorm(x = y_i[,1], 
                                                mean = mu[,x],
-                                               sigma = diag(sigma2[[x]], p)) 
+                                               sigma = diag(sigma2[[x]], p), 
+                                               log = TRUE) 
                        }
-                       return(c1*c2)
+                       return(log_c1 + log_c2)
                      })
     
   }
@@ -97,15 +102,41 @@ group_prob_calc_DEV <- function(k, n, n_j, alpha, y_i, mu, sigma2, a, b, mu0, si
   #### probability of creating a new group
   
   ##### draw new values of phi from G_0
-  mu_new = t(mvtnorm::rmvnorm(n = 1, mean = mu0[,1], sigma = diag(sigma0, p))) # column vec
-  sigma2_new = 1/rgamma(n = 1, shape = a, rate = b)
+  mu_new = t(mvtnorm::rmvnorm(n = m, mean = mu0[,1], sigma = diag(sigma0, p))) # column vec
+  sigma2_new = 1/rgamma(n = m, shape = a, rate = b)
   
   ##### calculate probs
-  pr_new = ((alpha/1)/(n-1+alpha))*mvtnorm::dmvnorm(x = y_i[,1], 
-                                                    mean = mu_new[,1],
-                                                    sigma = diag(sigma2_new, p)) 
+  log_pr_new = sapply(X = 1:m, 
+                      FUN = function(x){
+                        
+                        log_c1_new = log(alpha/m) - log(n-1+alpha)
+                        # loss_w_j = t(w_j - lambda_new[x]*x_new[,x])%*%(w_j - lambda_new[x]*x_new[,x])
+                        # log_c2_new = (-n/2)*log(tau2_new[x]) - (loss_w_j/(2*tau2_new[x]))[[1]]
+                        log_c2_new = mvtnorm::dmvnorm(x = y_i[,1], 
+                                                      mean = mu_new[,1],
+                                                      sigma = diag(sigma2_new, p), 
+                                                      log = TRUE) 
+                        
+                        log_pr_new = log_c1_new + log_c2_new
+                        
+                        if(is.nan(log_pr_new) == TRUE){
+                          cat("\n mu_new[x]=", mu_new[x], "\n")
+                          cat("\n sigma2_new[x]=", sigma2_new[x], "\n")
+                          cat("\n log_pr_new=", log_pr_new, ", corrected... \n")
+                          warning("Error in group prob calc function. NaNs produced in 
+                                    log_pr_new. Set to zero to prevent script failure.")
+                          log_pr_new = log(10^(-300)) # prevent numerical issues 
+                        }
+                        
+                        return(log_pr_new)
+                        
+                      })
+  
   #### normalize probs to account for "b"
-  pr_c = c(pr_curr, pr_new)/(sum(pr_curr) + pr_new)
+  log_pr_all = c(log_pr_curr, log_pr_new)
+  log_pr_all = log_pr_all - max(log_pr_all) # for numerical stability
+  pr_c = exp(log_pr_all)/sum(exp(log_pr_all))
+  cat("\n pr_c=", pr_c, ", sum pr(c)=", sum(pr_c), "\n")
   
   return(list(pr_c = pr_c, sigma2_new = sigma2_new))
   
@@ -418,7 +449,7 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
 
 ############################ INDEPENDENT IG PRIORS ############################# 
 
-MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, 
+MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
                                 a = 1, b = 10, mu0, sigma0, 
                                 k_init = 3, init_method = "kmeans",
                                 # d = 1, f = 1, 
@@ -604,7 +635,8 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         
         #### calculate proposal distribution for group assignment
         ### for any observation i, calculate group membership probabilities
-        pr_res = group_prob_calc_DEV(k = k, n = n, n_j = count_assign, alpha = alpha, 
+        pr_res = group_prob_calc_DEV(k = k, n = n, n_j = count_assign, 
+                                     alpha = alpha, m = m,
                                      y_i = y[[i]], mu = mu, sigma2 = sigma2,
                                      a = a, b = b, mu0 = mu0, sigma0 = sigma0, 
                                      singleton = 1)
@@ -614,7 +646,8 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         
         #### calculate proposal distribution for group assignment
         #### if obs i is not presently a singleton
-        pr_res = group_prob_calc_DEV(k = k, n = n, n_j = count_assign, alpha = alpha, 
+        pr_res = group_prob_calc_DEV(k = k, n = n, n_j = count_assign, 
+                                     alpha = alpha, m = m,
                                      y_i = y[[i]], mu = mu, sigma2 = sigma2, 
                                      a = a, b = b, mu0 = mu0, sigma0 = sigma0, singleton = 0, 
                                      curr_group_assign = group_assign[s,i], 
@@ -625,15 +658,16 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
       }
       
       ### draw a group assignment conditional on group membership probs
-      group_assign[s,i] = sample(x = c(curr_labels, avail_labels[1]), 
+      group_assign[s,i] = sample(x = c(curr_labels, avail_labels[1:m]), 
                                  size = 1, prob = pr_c)
       
       #### if new group selected
-      if(group_assign[s,i] == avail_labels[1]){
+      if(group_assign[s,i] %in% avail_labels[1:m]){
         
         #### handle bookkeeping
-        curr_labels = c(curr_labels, avail_labels[1])
-        avail_labels = avail_labels[-1]
+        which_m = which(avail_labels[1:m] == group_assign[s,i])
+        curr_labels = c(curr_labels, avail_labels[which_m])
+        avail_labels = avail_labels[-which_m]
         k = length(curr_labels)
         
         
@@ -641,7 +675,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
         
         #### draw variance for newly created group from FC posterior of sigma2
         #### according to algo, but this is conditional on mean so do prior for now
-        sigma2_k = pr_res$sigma2_new #1/rgamma(n = 1, shape = a, rate = b)
+        sigma2_k = pr_res$sigma2_new[which_m] 
         sigma2 = c(sigma2, sigma2_k)
         
         #### draw a mean for newly created group from FC posterior of mu 
@@ -1773,10 +1807,10 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
             curr_assign = proposed_assign
           )
           
-          prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = rownames(plot_y))) +
-            #geom_point(color = assign) +
+          prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2)) + #, label = rownames(plot_y))) +
+            geom_point(color = curr_assign) +
             #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
-            geom_text(size = 3, color = plot_y$curr_assign) +
+            # geom_text(size = 3, color = plot_y$curr_assign) +
             ggtitle(paste0("Proposed ", move_type, " s=", s, ", k=", k, " Accept=", accept)) + 
             theme_classic()
           print(prog_plot)
@@ -1799,8 +1833,8 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                     xlab = "y1", ylab = "y2", zlab = "y3", pch = 20,
                                     main = paste0("Proposed ", move_type, " s=", s, ", k=", k, ", Accept=", accept))
           
-          text(prog_plot$xyz.convert(plot_y[,1:3]), labels = rownames(plot_y), 
-               pos = 4, cex = 0.75, col = split_obs_col)
+          # text(prog_plot$xyz.convert(plot_y[,1:3]), labels = rownames(plot_y), 
+          #      pos = 4, cex = 0.75, col = split_obs_col)
           # print(prog_plot)
         }
         
@@ -1971,7 +2005,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
   
   if(sigma_hyperprior == TRUE){
     
-    settings = list(S = S, alpha = alpha, a = a, b = b, 
+    settings = list(S = S, alpha = alpha, m = m, a = a, b = b, 
                     mu0 = mu0, sigma0 = sigma0,
                     k_init = k_init, init_method = init_method,
                     mod_type = "nonconjDEV", 
@@ -1993,7 +2027,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1,
     
   } else{
     
-    settings = list(S = S, seed = seed, alpha = alpha,
+    settings = list(S = S, seed = seed, alpha = alpha, m = m,
                     a = a, b = b, mu0 = mu0, sigma0 = sigma0, 
                     k_init = k_init, init_method = init_method,
                     #d = d, f = f,

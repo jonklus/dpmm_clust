@@ -27,7 +27,7 @@ library(stringr)
 library(gridExtra)
 library(dplyr)
 library(knitr) # kable
-library(kableExtra) # use for complex tables http://haozhu233.github.io/kableExtra/awesome_table_in_pdf.pdf
+# library(kableExtra) # use for complex tables http://haozhu233.github.io/kableExtra/awesome_table_in_pdf.pdf
 library(xtable)
 ```
 
