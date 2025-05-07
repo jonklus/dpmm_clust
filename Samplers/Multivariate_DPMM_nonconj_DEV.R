@@ -218,8 +218,8 @@ update_phi_DEV <- function(curr_label, group_assign, count_assign, y,
   
   # calculate Gibbs sampling transition prob density for q
   # This is P_GS(phi*|phi^L,...) from Jain & Neal 2007 
-  dens1 = mvtnorm::dmvnorm(x = mu, 
-                           mean = mu_mean, 
+  dens1 = mvtnorm::dmvnorm(x = c(mu), 
+                           mean = c(mu_mean), 
                            sigma = diag(mu_cov,p), 
                            log = TRUE)
   
@@ -276,8 +276,8 @@ nonconj_phi_prob_DEV <- function(curr_label, group_assign, count_assign, y,
   
   # calculate Gibbs sampling transition prob density for q
   # This is P_GS(phi*|phi^L,...) from Jain & Neal 2007 
-  dens1 = mvtnorm::dmvnorm(x = original_mu, 
-                           mean = mu_mean, 
+  dens1 = mvtnorm::dmvnorm(x = c(original_mu), 
+                           mean = c(mu_mean), 
                            sigma = diag(mu_cov,p), 
                            log = TRUE)
   
@@ -342,10 +342,10 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
   # sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign[-obs] == x)})
   # need to make up your mind -- drop obs or leave in here??
   sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign == x)})
-  cat("\n sm_counts:", sm_counts, "\n")
+  # cat("\n sm_counts:", sm_counts, "\n")
   which_group_k = which(split_labs == group_assign[obs])
   sm_counts[which_group_k] = sm_counts[which_group_k] - 1
-  cat("\n sm_counts[which_group_k]:", sm_counts[which_group_k], "\n")
+  # cat("\n sm_counts[which_group_k]:", sm_counts[which_group_k], "\n")
   
   if(0 %in% sm_counts){
     
@@ -367,7 +367,7 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
         
         # will just be (1,0)... seems extreme
         if(is.nan(num/denom)){
-          warning("NaN detected in SM group assignment calculation. ")
+          warning("NaN detected in SM group assignment calculation: nonconj_component_prob_c")
           ratio = rep(1/2,2)
         } else{
           ratio =  ratio = c(1-(num/denom), num/denom)
@@ -386,7 +386,7 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
         
         # will just be (1,0)... seems extreme
         if(is.nan(num/denom)){
-          warning("NaN detected in SM group assignment calculation. ")
+          warning("NaN detected in SM group assignment calculation: nonconj_component_prob_c")
           ratio = rep(1/2,2)
         } else{
           ratio = c(num/denom, 1-(num/denom))
@@ -458,7 +458,7 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
                                                   sigma = Sigma[[2]])
     # cat("\n denom:",denom,"\n")
     if(is.nan(num/denom)){
-      warning("NaN detected in SM group assignment calculation. ")
+      warning("NaN detected in SM group assignment calculation: nonconj_component_prob_c")
       ratio = rep(1/2,2)
     } else{
       ratio = c(num/denom, 1-(num/denom))
@@ -491,7 +491,7 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
 
 MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
                                 a = 1, b = 10, mu0, sigma0, 
-                                k_init = 3, init_method = "kmeans",
+                                k_init = 1, init_method = "kmeans",
                                 # d = 1, f = 1, 
                                 sigma_hyperprior = FALSE, standardize_y = FALSE,
                                 split_merge = FALSE, sm_iter = 5, sm_freq = 10, 
@@ -964,7 +964,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
                 # dont sample --- but do record prob of group anchor obs in in!
                 which_split_labs_anchor = which(split_lab == split_temp_group_assign[scan,obs])
                 # how to do this best for merge????
-                which_merge_lab_anchor = 1  # why is this 1?? need to figure out what this should be 
+                which_merge_lab_anchor = 1 
                 
                 # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
                 # dont need to assign again - already initialized since anchor
@@ -1392,7 +1392,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
                 # dont sample --- but do record prob of group anchor obs in in!
                 which_split_labs_anchor = which(split_lab == split_temp_group_assign[scan,obs])
                 # how to do this best for merge????
-                which_merge_lab_anchor = 1  # why is this 1?? need to figure out what this should be 
+                which_merge_lab_anchor = 1 
                 
                 # temp_group_assign[scan,obs] = split_lab[sm_prop_index]
                 # dont need to assign again - already initialized since anchor
@@ -1547,7 +1547,8 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
         # calculate & evaluate acceptance prob
         
         # update counts after scans
-        split_counts = table(split_temp_group_assign[sm_iter+1,])
+        split_counts = table(group_assign[s,]) # need to be original counts
+        # table(split_temp_group_assign[sm_iter+1,])
         merge_counts = table(merge_temp_group_assign[sm_iter+1,])
         
         split_lab_assign = as.numeric(names(split_counts))
@@ -1630,36 +1631,40 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
         prob2 = log(alpha) + prob2_num - prob2_denom
         
         ## likelihood ratio
-        subset_index_grp1 = which(split_temp_group_assign[sm_iter+1,] %in% split_lab[1]) 
-        subset_index_grp2 = which(split_temp_group_assign[sm_iter+1,] %in% split_lab[2]) 
         
-        ### component 1 - numerator I (group 1 - split proposal)
-        prob3_num1 = 0
-        for(obs_ind in 1:length(subset_index_grp1)){
-          val = ll_components_DEV(obs_ind = subset_index_grp1[obs_ind], y = y, 
-                                  mu = original_mu1, 
-                                  Sigma = diag(original_sigma1,p))
-          prob3_num1 = prob3_num1 + log(val)
-        }
+        # original indices 
+        subset_index_grp1 = which(group_assign[s,] %in% split_lab[1]) 
+        subset_index_grp2 = which(group_assign[s,] %in% split_lab[2]) 
         
-        ### component 2 - numerator II (group 2 - split proposal)
-        prob3_num2 = 0
-        for(obs_ind in 1:length(subset_index_grp2)){
-          val = ll_components_DEV(obs_ind = subset_index_grp2[obs_ind], y = y, 
-                                  mu = original_mu2, # change, needs tot be merge mu
-                                  Sigma = diag(original_sigma2,p))
-          prob3_num2 = prob3_num2 + log(val)
-        }
-        
-        
-        ### component 3 - denominator (all in original group w/ merge proposal params)
-        prob3_denom = 0
+        ### component 1 - numerator (all in original group w/ merge proposal params)
+        prob3_num = 0
         for(obs_ind in 1:length(subset_index)){
           val = ll_components_DEV(obs_ind = subset_index[obs_ind], y = y, 
                                   mu = merge_means[[sm_iter+1]], 
                                   Sigma = merge_vars[[sm_iter+1]])
-          prob3_denom = prob3_denom + log(val)
+          prob3_num = prob3_num + log(val)
         }
+        
+        ### component 1 - numerator I (group 1 - split proposal)
+        prob3_denom1 = 0
+        for(obs_ind in 1:length(subset_index_grp1)){
+          val = ll_components_DEV(obs_ind = subset_index_grp1[obs_ind], y = y, 
+                                  mu = original_mu1, 
+                                  Sigma = diag(original_sigma1,p))
+          prob3_denom1 = prob3_denom1 + log(val)
+        }
+        
+        ### component 2 - numerator II (group 2 - split proposal)
+        prob3_denom2 = 0
+        for(obs_ind in 1:length(subset_index_grp2)){
+          val = ll_components_DEV(obs_ind = subset_index_grp2[obs_ind], y = y, 
+                                  mu = original_mu2, # change, needs tot be merge mu
+                                  Sigma = diag(original_sigma2,p))
+          prob3_denom2 = prob3_denom2 + log(val)
+        }
+        
+        
+ 
         
         # cat("\n")
         # cat("merge_vars[[sm_iter+1]]", merge_vars[[sm_iter+1]])
@@ -1667,7 +1672,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
         # cat("merge_means[[sm_iter+1]]", merge_means[[sm_iter+1]])
         
         # flip this for merge step
-        prob3 = prob3_denom - (prob3_num1 + prob3_num2)
+        prob3 = prob3_num - (prob3_denom1 + prob3_denom2)
         
         ## evaluate acceptance prob
         prob_components = c(prob1, prob2, prob3)

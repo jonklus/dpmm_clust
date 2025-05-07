@@ -153,10 +153,10 @@ n_iter = 100
 # run in fxn
 sim_results_DEV = MVN_CRP_sampler_DEV(
         S = n_iter, seed = seeds[x], y = y,
-        alpha = 1, r = 1, d = 1, f = 1 , g = 1, h = 25,
+        alpha = 1, r = 1, d = 1, f = 1 , g = 1, h = 10,
         sigma_hyperprior = FALSE, fix_r = FALSE,
         mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 2))),0), ncol = 1),
-        a = 1, b = 10,
+        a = 1, b = 1,
         k_init = 1, init_method = "kmeans", diag_weights = FALSE, 
         verbose = TRUE, split_merge = FALSE, print_iter = 1, print_start = 0
         )
@@ -226,16 +226,17 @@ n_iter = 1000
 # nu = length(means[[1]])  # must have nu >= p...Otherwise rinvwish will fail!
 
 # run in fxn
+n_iter = 10^3
 sim_results_nonconjDEV = MVN_CRP_nonconj_DEV(
         S = n_iter, seed = seeds[x], y = y, 
-        alpha = 1, a = 1, b = 1, 
+        alpha = 1, m = 5, a = 1, b = 1, 
         mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 3))),0), ncol = 1),
         sigma0 = 100, 
         k_init = 2, init_method = "kmeans",
         # d = 1, f = 1, 
         sigma_hyperprior = FALSE, standardize_y = FALSE,
-        split_merge = TRUE, sm_iter = 5, truth = NA,
-        diag_weights = FALSE, verbose = TRUE, print_iter = 1, print_start = 0)
+        split_merge = TRUE, sm_iter = 10, truth = NA, sm_freq = 10,
+        diag_weights = FALSE, verbose = TRUE, print_iter = 10^1, print_start = 0)
 
 S = n_iter
 seed = seeds[x]
