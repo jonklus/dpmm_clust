@@ -326,7 +326,7 @@ ll_components_DEV <- function(obs_ind, y, mu, Sigma){
 }
 
 nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma,
-                                     proposal_calc = FALSE){
+                                     proposal_calc = FALSE, iter){
   # This is P_GS(c*|c^L,...) from Jain & Neal 2007 
   
   # split_labs is an array of length 2 indicating which entries in counts correspond
@@ -349,7 +349,7 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
   
   if(0 %in% sm_counts){
     
-    which_one = which(sm_counts == 1)
+    which_one = which(sm_counts == 0)
     
     # check length of which_zero
     if(length(which_one) == 1){
@@ -357,113 +357,58 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
       # cat("1 singleton", "\n")
       if(which_one == 1){
         
-        num = (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
-                                              mean = mu[[2]][,1], 
-                                              sigma = Sigma[[2]]) 
-        
-        denom = num + (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
-                                                      mean = mu[[1]][,1], 
-                                                      sigma = Sigma[[1]])
-        
-        # will just be (1,0)... seems extreme
-        if(is.nan(num/denom)){
-          warning("NaN detected in SM group assignment calculation: nonconj_component_prob_c")
-          ratio = rep(1/2,2)
-        } else{
-          ratio =  ratio = c(1-(num/denom), num/denom)
-        }
+        ratio = c(0,1)
         
       } else{ 
         # which_one == 2
         
-        num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
-                                              mean = mu[[1]][,1], 
-                                              sigma = Sigma[[1]]) 
-        
-        denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
-                                                      mean = mu[[2]][,1], 
-                                                      sigma = Sigma[[2]])
-        
-        # will just be (1,0)... seems extreme
-        if(is.nan(num/denom)){
-          warning("NaN detected in SM group assignment calculation: nonconj_component_prob_c")
-          ratio = rep(1/2,2)
-        } else{
-          ratio = c(num/denom, 1-(num/denom))
-        }
+        ratio = c(1,0)
         
       }
-      
+        
     } else{
       # two singletons being considered
-      # cat("2 singleton", "\n")
-      # num = sm_counts[1]*mvtnorm::dmvnorm(x = y[[obs]], 
-      #                                     mean = mu[[1]], 
-      #                                     sigma = Sigma[[1]]) 
-      # 
-      # denom = num + sm_counts[2]*mvtnorm::dmvnorm(x = y[[obs]], 
-      #                                             mean = mu[[2]], 
-      #                                             sigma = Sigma[[2]])
-      
+
       ratio = c(0.5, 0.5)
       
     }
     
-    
-    # } else if(0 %in% sm_counts){
-    #   
-    #   which_one = which(sm_counts == 0)
-    #   
-    #   if(which_one == 1){
-    #     
-    #     num = (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]], 
-    #                                           mean = mu[[2]], 
-    #                                           sigma = Sigma[[2]]) 
-    #     
-    #     denom = num + (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]], 
-    #                                                   mean = mu[[1]], 
-    #                                                   sigma = Sigma[[1]])
-    #     
-    #     # will just be (1,0)... seems extreme
-    #     ratio = c(1-(num/denom), num/denom)
-    
-    # } else{ 
-    #   # which_one == 2
-    #   
-    #   num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]], 
-    #                                         mean = mu[[1]], 
-    #                                         sigma = Sigma[[1]]) 
-    #   
-    #   denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]], 
-    #                                                 mean = mu[[2]], 
-    #                                                 sigma = Sigma[[2]])
-    #   
-    #   # will just be (1,0)... seems extreme
-    #   ratio = c(num/denom, 1-(num/denom))
-    #   
-    # }
-    
+
   } else{
     
-    num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
-                                          mean = mu[[1]][,1], 
-                                          sigma = Sigma[[1]]) 
-    # cat("\n num:",num,"\n")
-    # print(sm_counts[1])
-    # print(y[[obs]][,1])
-    # print(mu[[1]][,1])
-    # print(Sigma[[1]])
-    denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
-                                                  mean = mu[[2]][,1], 
-                                                  sigma = Sigma[[2]])
-    # cat("\n denom:",denom,"\n")
-    if(is.nan(num/denom)){
-      warning("NaN detected in SM group assignment calculation: nonconj_component_prob_c")
-      ratio = rep(1/2,2)
-    } else{
-      ratio = c(num/denom, 1-(num/denom))
-    }
     
+    c1 = log(sm_counts[1]) + mvtnorm::dmvnorm(x = y[[obs]][,1], 
+                                              mean = mu[[1]][,1], 
+                                              sigma = Sigma[[1]], log = TRUE) 
+    
+    c2 = log(sm_counts[2]) + mvtnorm::dmvnorm(x = y[[obs]][,1], 
+                                              mean = mu[[2]][,1], 
+                                              sigma = Sigma[[2]], log = TRUE) 
+    
+    sumc12 = log(sm_counts[1]*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+                                               mean = mu[[1]][,1], 
+                                               sigma = Sigma[[1]]) + 
+                   sm_counts[2]*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+                                                 mean = mu[[2]][,1], 
+                                                 sigma = Sigma[[2]]))
+    
+    ratio = c(exp(c1 - sumc12), exp(c2 - sumc12))
+    
+    if(any(is.nan(ratio))){
+      cat("\n NaN detected", " sm_counts=", sm_counts, " c1=", c1, " c2=", c2, "sum=", sumc12, "\n")
+      warning(paste0("NaN detected in SM group assignment calculation: nonconj_component_prob_c at iter", iter))
+      ratio = rep(0.5,2)
+    } 
+    
+    if(any(is.infinite(ratio))){
+      which_inf = which(is.infinite(ratio))
+      if(length(which_inf) == 2){
+        ratio = rep(0.5,2)
+      } else{
+        ratio = ifelse(which_inf == 1, c(1,0), c(0,1))
+      }
+      
+    } 
     
   }
   
@@ -1152,20 +1097,80 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
         
         ## prior ratio
         ## don't log nonconj_prior_dens again, already taking log in fxn!
-        prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
-          sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) + 
-          nonconj_prior_dens_DEV(mu = split_means[[scan]][[1]], mu0 = mu0, 
-                                 Sigma = split_vars[[scan]][[1]], 
-                                 Sigma0 = Sigma0, a = a, b = b) + 
-          nonconj_prior_dens_DEV(mu = split_means[[scan]][[2]], mu0 = mu0, 
-                                 Sigma = split_vars[[scan]][[2]], 
-                                 Sigma0 = Sigma0, a = a, b = b)
-        
-        prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
-                                   split_counts[[split_group_count_index[2]]]-1))) +
-          nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
-                                 Sigma = diag(original_sigma1,p), 
-                                 Sigma0 = Sigma0, a = a, b = b)
+        # check if any resulting group has only one observation
+        if(any(split_counts == 1)){
+          # need to change strategy, since 0! = 1
+          # cat("\n Singletons detected \n")
+          which_split_counts_one = which(split_counts == 1)
+          if(length(which_split_counts_one) == 1){
+            # just one singleton
+            
+            if(which_split_counts_one == 1){
+              
+              prob2_num = log(1) + 
+                sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) + 
+                nonconj_prior_dens_DEV(mu = split_means[[sm_iter+1]][[1]], mu0 = mu0, 
+                                       Sigma = split_vars[[sm_iter+1]][[1]], 
+                                       Sigma0 = Sigma0, a = a, b = b) + 
+                nonconj_prior_dens_DEV(mu = split_means[[sm_iter+1]][[2]], mu0 = mu0, 
+                                       Sigma = split_vars[[sm_iter+1]][[2]], 
+                                       Sigma0 = Sigma0, a = a, b = b)
+              
+            } else{
+              
+              prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
+                log(1) + 
+                nonconj_prior_dens_DEV(mu = split_means[[sm_iter+1]][[1]], mu0 = mu0, 
+                                       Sigma = split_vars[[sm_iter+1]][[1]], 
+                                       Sigma0 = Sigma0, a = a, b = b) + 
+                nonconj_prior_dens_DEV(mu = split_means[[sm_iter+1]][[2]], mu0 = mu0, 
+                                       Sigma = split_vars[[sm_iter+1]][[2]], 
+                                       Sigma0 = Sigma0, a = a, b = b)
+              
+            }
+            
+            prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
+                                       split_counts[[split_group_count_index[2]]]-1))) +
+              nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
+                                     Sigma = diag(original_sigma1,p), 
+                                     Sigma0 = Sigma0, a = a, b = b)
+            
+          } else{
+            # both singletons
+            
+            prob2_num = log(1) + log(1) + 
+              nonconj_prior_dens_DEV(mu = split_means[[sm_iter+1]][[1]], mu0 = mu0, 
+                                     Sigma = split_vars[[sm_iter+1]][[1]], 
+                                     Sigma0 = Sigma0, a = a, b = b) + 
+              nonconj_prior_dens_DEV(mu = split_means[[sm_iter+1]][[2]], mu0 = mu0, 
+                                     Sigma = split_vars[[sm_iter+1]][[2]], 
+                                     Sigma0 = Sigma0, a = a, b = b)
+            
+            prob2_denom = log(1) +
+              nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
+                                     Sigma = diag(original_sigma1,p), 
+                                     Sigma0 = Sigma0, a = a, b = b)
+          }
+          
+          
+        } else{
+          # cat("\n NO Singletons detected \n")
+          prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
+            sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) + 
+            nonconj_prior_dens_DEV(mu = split_means[[sm_iter+1]][[1]], mu0 = mu0, 
+                                   Sigma = split_vars[[sm_iter+1]][[1]], 
+                                   Sigma0 = Sigma0, a = a, b = b) + 
+            nonconj_prior_dens_DEV(mu = split_means[[sm_iter+1]][[2]], mu0 = mu0, 
+                                   Sigma = split_vars[[sm_iter+1]][[2]], 
+                                   Sigma0 = Sigma0, a = a, b = b)
+          
+          prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
+                                     split_counts[[split_group_count_index[2]]]-1))) +
+            nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
+                                   Sigma = diag(original_sigma1,p), 
+                                   Sigma0 = Sigma0, a = a, b = b)
+          
+        }
         
         prob2 = log(alpha) + prob2_num - prob2_denom
         
@@ -1600,37 +1605,82 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
         
         ## prior ratio
         ## dont log prior density again here -- already taking log in fxn!
-        prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
-                                 split_counts[[split_group_count_index[2]]]-1))) +
-          nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
-                                 Sigma = merge_vars[[scan]], 
-                                 Sigma0 = Sigma0, a = a, b = b)
-        
-        # cat("\n prob2_num", prob2_num, "\n")
-        # cat("\n merge factorial: ", sum(log(1:(split_counts[[split_group_count_index[1]]] + 
-        #                                          split_counts[[split_group_count_index[2]]]-1))), "\n")
-        # cat("\n num dens: ", log(nonconj_prior_dens_DEV(mu = merge_means[[scan]], mu0 = mu0, 
-        #                                                 Sigma = merge_vars[[scan]], 
-        #                                                 Sigma0 = Sigma0, a = a, b = b)), "\n")
-        
-        prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
-          sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) +
-          nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
-                                 Sigma = diag(original_sigma1,p), 
-                                 Sigma0 = Sigma0, a = a, b = b) +
-          nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0, 
-                                 Sigma = diag(original_sigma2,p), 
-                                 Sigma0 = Sigma0, a = a, b = b)
-        
-        # cat("\n prob2_denom", prob2_denom)
-        # cat("\n split factorial: ", sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
-        #       sum(log(1:(split_counts[[split_group_count_index[2]]]-1))), "\n")
-        # cat("\n num dens 1: ", nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0,
-        #                                               Sigma = diag(original_sigma1,p),
-        #                                               Sigma0 = Sigma0, a = a, b = b), "\n")
-        # cat("\n num dens 2: ", nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0,
-        #                                               Sigma = diag(original_sigma2,p),
-        #                                               Sigma0 = Sigma0, a = a, b = b), "\n")
+        # check if any resulting group has only one observation
+        if(any(split_counts== 1)){
+          # need to change strategy, since 0! = 1
+          which_split_counts_one = which(split_counts == 1)
+          if(length(which_split_counts_one) == 1){
+            # just one singleton
+            
+            if(which_split_counts_one == 1){
+              
+              prob2_denom = log(1) + 
+                sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) +
+                nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
+                                       Sigma = diag(original_sigma1,p), 
+                                       Sigma0 = Sigma0, a = a, b = b) +
+                nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0, 
+                                       Sigma = diag(original_sigma2,p), 
+                                       Sigma0 = Sigma0, a = a, b = b)
+              
+            } else{
+              
+              prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
+                log(1) +
+                nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
+                                       Sigma = diag(original_sigma1,p), 
+                                       Sigma0 = Sigma0, a = a, b = b) +
+                nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0, 
+                                       Sigma = diag(original_sigma2,p), 
+                                       Sigma0 = Sigma0, a = a, b = b)
+              
+              
+              
+            }
+            
+            prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
+                                     split_counts[[split_group_count_index[2]]]-1))) +
+              nonconj_prior_dens_DEV(mu = merge_means[[sm_iter+1]], mu0 = mu0, 
+                                     Sigma = merge_vars[[sm_iter+1]], 
+                                     Sigma0 = Sigma0, a = a, b = b)
+            
+          } else{
+            # both singletons
+            
+            prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
+                                     split_counts[[split_group_count_index[2]]]-1))) +
+              nonconj_prior_dens_DEV(mu = merge_means[[sm_iter+1]], mu0 = mu0, 
+                                     Sigma = merge_vars[[sm_iter+1]], 
+                                     Sigma0 = Sigma0, a = a, b = b)
+            
+            prob2_denom = log(1) + log(1) + 
+              nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
+                                     Sigma = diag(original_sigma1,p), 
+                                     Sigma0 = Sigma0, a = a, b = b) +
+              nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0, 
+                                     Sigma = diag(original_sigma2,p), 
+                                     Sigma0 = Sigma0, a = a, b = b)
+          }
+          
+          
+        } else{
+          
+          prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
+                                   split_counts[[split_group_count_index[2]]]-1))) +
+            nonconj_prior_dens_DEV(mu = merge_means[[sm_iter+1]], mu0 = mu0, 
+                                   Sigma = merge_vars[[sm_iter+1]], 
+                                   Sigma0 = Sigma0, a = a, b = b)
+          
+          prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
+            sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) +
+            nonconj_prior_dens_DEV(mu = original_mu1, mu0 = mu0, 
+                                   Sigma = diag(original_sigma1,p), 
+                                   Sigma0 = Sigma0, a = a, b = b) +
+            nonconj_prior_dens_DEV(mu = original_mu2, mu0 = mu0, 
+                                   Sigma = diag(original_sigma2,p), 
+                                   Sigma0 = Sigma0, a = a, b = b)
+          
+        }
         
         prob2 = log(alpha) + prob2_num - prob2_denom
         

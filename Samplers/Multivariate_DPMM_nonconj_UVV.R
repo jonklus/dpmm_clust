@@ -442,7 +442,13 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
     } 
     
     if(any(is.infinite(ratio))){
-      ratio = rep(0.5,2)
+      which_inf = which(is.infinite(ratio))
+      if(length(which_inf) == 2){
+        ratio = rep(0.5,2)
+      } else{
+        ratio = ifelse(which_inf == 1, c(1,0), c(0,1))
+      }
+      
     } 
     
   }
@@ -1129,9 +1135,9 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 1,
           ## dont log prior density again here -- already taking log in fxn!
           
           # check if any resulting group has only one observation
-          if(any(split_counts) == 1){
+          if(any(split_counts == 1)){
             # need to change strategy, since 0! = 1
-            cat("\n Singletons detected \n")
+            # cat("\n Singletons detected \n")
             which_split_counts_one = which(split_counts == 1)
             if(length(which_split_counts_one) == 1){
               # just one singleton
@@ -1185,7 +1191,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 1,
 
 
           } else{
-            cat("\n NO Singletons detected \n")
+            # cat("\n NO Singletons detected \n")
             prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
               sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) + 
               nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[1]], mu0 = mu0, 
@@ -1612,8 +1618,9 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 1,
           
           prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
           
-          ## prior ratio          # check if any resulting group has only one observation
-          if(any(split_counts) == 1){
+          ## prior ratio          
+          # check if any resulting group has only one observation
+          if(any(split_counts == 1)){
             # need to change strategy, since 0! = 1
             which_split_counts_one = which(split_counts == 1)
             if(length(which_split_counts_one) == 1){
