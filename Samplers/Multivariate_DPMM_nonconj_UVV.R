@@ -21,9 +21,9 @@ library(mvtnorm)
 
 ## calculate group membership probabilities
 
-group_prob_calc_UVV <- function(k, n, n_j, alpha, y_i, mu, Sigma, mu0, Sigma0, 
+group_prob_calc_UVV <- function(k, n, n_j, alpha = 1, m = 1, y_i, mu, Sigma, mu0, Sigma0, 
                                  nu, Lambda0, singleton = 0, curr_group_assign = NULL, 
-                                  curr_labels = NULL){
+                                  curr_labels = NULL, final_prob_calc = FALSE){
   # k is the number of existing groups
   # n is total number of observations
   # n_j is a vector of length k with the total number of observations in each group
@@ -54,60 +54,109 @@ group_prob_calc_UVV <- function(k, n, n_j, alpha, y_i, mu, Sigma, mu0, Sigma0,
         ## not sure that this is correct way to handle singletons here === come back
         ## looks like we're already dropping ith observation if singleton before
         ## sending to function so it's kosher
-        pr_curr = sapply(X = 1:k, 
+        log_pr_curr = sapply(X = 1:k, 
                          FUN = function(x){
                            # print("Step1")
                            # print(matrix(mu[,x], nrow = p))
                            # print(y_i)
-                           c1 = n_j[x]/(n-1+alpha)
-                           c2 = mvtnorm::dmvnorm(x = y_i[,1], 
+                           log_c1 = log(n_j[x]) - log(n-1+alpha)
+                           log_c2 = mvtnorm::dmvnorm(x = y_i[,1], 
                                                  mean = mu[,x], 
-                                                 sigma = Sigma[[x]]) 
-                           return(c1*c2)
+                                                 sigma = Sigma[[x]],
+                                                 log = TRUE) 
+                           return(log_c1 + log_c2)
                          })
  
     } else{
       
-      pr_curr = sapply(X = 1:k, 
+      log_pr_curr = sapply(X = 1:k, 
                        FUN = function(x){
                          #### make sure you're calculating n_{-i, c}
                          if(curr_group_assign == curr_labels[x]){
                            # print("Step2")
                            # print(matrix(mu[,x], nrow = p))
                            # print(y_i)
-                           c1 = (n_j[x]-1)/(n-1+alpha)
-                           c2 = mvtnorm::dmvnorm(x = y_i[,1], 
+                           log_c1 = log(n_j[x]-1) - log(n-1+alpha)
+                           log_c2 = mvtnorm::dmvnorm(x = y_i[,1], 
                                                  mean = mu[,x], 
-                                                 sigma = Sigma[[x]]) 
+                                                 sigma = Sigma[[x]],
+                                                 log = TRUE) 
                          } else{
                            # print("Step3")
                            # print(matrix(mu[,x], nrow = p))
                            # print(y_i)
-                           c1 = n_j[x]/(n-1+alpha)
-                           c2 = mvtnorm::dmvnorm(x = y_i[,1], 
+                           log_c1 = log(n_j[x]) - log(n-1+alpha)
+                           log_c2 = mvtnorm::dmvnorm(x = y_i[,1], 
                                                  mean = mu[,x],
-                                                 sigma = Sigma[[x]]) 
+                                                 sigma = Sigma[[x]],
+                                                 log = TRUE) 
                          }
-                         return(c1*c2)
+                         return(log_c1 + log_c2)
                        })
       
     }
   
+  if(final_prob_calc == TRUE){
+    # don't include probability of a new K+1 group -- not possible bc group
+    # assignments already done --- this is only used in the final calculation
+    # at the end of the MCMC iteration for label switching purposes
+    log_pr_curr = log_pr_curr - max(log_pr_curr) # for numerical stability
+    pr_c = exp(log_pr_curr)/sum(exp(log_pr_curr))
+    
+    # cat("\n FINAL pr_c=", pr_c, ", sum pr(c)=", sum(pr_c), "\n")
+    
+    return(list(pr_c = pr_c))
+    
+  } else{
+    
+    # proceed, consider m new groups
+  
     #### probability of creating a new group
     
     ##### draw new values of phi from G_0
-    mu_new = t(mvtnorm::rmvnorm(n = 1, mean = mu0[,1], sigma = Sigma0)) # column vec
-    Sigma_new = LaplacesDemon::rinvwishart(nu = nu, S = Lambda0)
+    mu_new = t(mvtnorm::rmvnorm(n = m, mean = mu0[,1], sigma = Sigma0)) # column vec
+    Sigma_new = lapply(X = 1:m, 
+                       FUN = function(x){
+                         LaplacesDemon::rinvwishart(nu = nu, S = Lambda0)
+                       })
     
     ##### calculate probs
-    pr_new = ((alpha/1)/(n-1+alpha))*mvtnorm::dmvnorm(x = y_i[,1], 
-                                                mean = mu_new[,1],
-                                                sigma = Sigma_new) 
+    log_pr_new = sapply(X = 1:m, 
+                        FUN = function(x){
+                          
+                          log_c1_new = log(alpha/m) - log(n-1+alpha)
+                          # loss_w_j = t(w_j - lambda_new[x]*x_new[,x])%*%(w_j - lambda_new[x]*x_new[,x])
+                          # log_c2_new = (-n/2)*log(tau2_new[x]) - (loss_w_j/(2*tau2_new[x]))[[1]]
+                          log_c2_new = mvtnorm::dmvnorm(x = y_i[,1], 
+                                                        mean = mu_new[,1],
+                                                        sigma = Sigma_new[[x]], 
+                                                        log = TRUE) 
+                          
+                          log_pr_new = log_c1_new + log_c2_new
+                          
+                          if(is.nan(log_pr_new) == TRUE){
+                            cat("\n mu_new[x]=", mu_new[x], "\n")
+                            cat("\n sigma_new[[x]]=", Sigma_new[[x]], "\n")
+                            cat("\n log_pr_new=", log_pr_new, ", corrected... \n")
+                            warning("Error in group prob calc function. NaNs produced in 
+                                    log_pr_new. Set to zero to prevent script failure.")
+                            log_pr_new = log(10^(-300)) # prevent numerical issues 
+                          }
+                          
+                          return(log_pr_new)
+                          
+                        })
+    
     #### normalize probs to account for "b"
-    pr_c = c(pr_curr, pr_new)/(sum(pr_curr) + pr_new)
+    log_pr_all = c(log_pr_curr, log_pr_new)
+    log_pr_all = log_pr_all - max(log_pr_all) # for numerical stability
+    pr_c = exp(log_pr_all)/sum(exp(log_pr_all))
+    # cat("\n pr_c=", pr_c, ", sum pr(c)=", sum(pr_c), "\n")
     
     return(list(pr_c = pr_c, Sigma_new = Sigma_new))
     
+    }
+  
   }
   
   
@@ -118,11 +167,12 @@ update_phi_UVV <- function(curr_label, group_assign, count_assign, y,
   
   # group_index is the current split or merge group for which new parameters are 
   # being drawn
-  
-  # distinguish between split, where mu and Sigma will have two entries, and merge
-  # where they will have just 1???? do we need to do this?
-  
-  p = nrow(mu)
+
+  if(is.null(nrow(mu)) == TRUE){
+    p = length(mu)
+  } else{
+    p = nrow(mu)
+  }
   
   # cat("\n p=", p)
   # cat("\n curr_label=", curr_label)
@@ -151,7 +201,19 @@ update_phi_UVV <- function(curr_label, group_assign, count_assign, y,
                            mean = mu_mean, 
                            sigma = mu_cov))
   
-  return(list(mu = mu, Sigma = Sigma))
+  # calculate Gibbs sampling transition prob density for q
+  # This is P_GS(phi*|phi^L,...) from Jain & Neal 2007 
+  dens1 = mvtnorm::dmvnorm(x = c(mu), 
+                           mean = c(mu_mean), 
+                           sigma = mu_cov, 
+                           log = TRUE)
+  
+  dens2 =   LaplacesDemon::dinvwishart(Sigma = Sigma, 
+                                       nu = nu + count_assign, 
+                                       S = loss_y_i + Lambda0,
+                                       log = TRUE)
+
+  return(list(mu = mu, Sigma = Sigma, ldens = dens1 + dens2))
   
 }
 
@@ -173,25 +235,53 @@ nonconj_prior_dens_UVV <- function(mu, mu0, Sigma, Sigma0, nu, Lambda0){
 }
 
 nonconj_phi_prob_UVV <- function(curr_label, group_assign, count_assign, y, 
-                                 mu, mu0, Sigma, Sigma0, Lambda0, nu){
+                                 mu, mu0, Sigma, Sigma0, Lambda0, nu,
+                                 original_mu, original_Sigma){
   # This is P_GS(phi*|phi^L,...) from Jain & Neal 2007
   # for the kth component under a UVV assumption
-  # print(Sigma)
-  # print(y[[1]])
-  # print(mu)
-  # print(t(y[[1]] - mu) %*% Sigma %*% (y[[1]] - mu))
-  p = nrow(mu)
+
+  if(is.null(nrow(mu)) == TRUE){
+    p = length(mu)
+  } else{
+    p = nrow(mu)
+  }
+  
+  # cat("\n p=", p)
+  # cat("\n curr_label=", curr_label)
+  # print(unlist(y[group_assign == curr_label]))
+  # print(matrix(unlist(y[group_assign == curr_label]), nrow = p))
+  
+  # draw group variance
   group_ind = which(group_assign == curr_label)
+  
   loss_y_i = Reduce(f = "+", 
                     x = lapply(X = group_ind, FUN = function(x){
-                    t(y[[x]] - mu) %*% solve(Sigma) %*% (y[[x]] - mu)}))
-  # wrap loss in c() to avoid length 1 array ---> dire warnings from R
-  loss_mu_k = c(t(matrix(mu, nrow = p) - mu0)%*% solve(Sigma0) %*% (matrix(mu, nrow = p)- mu0))
-  # density of posterior up to a constant...
-  dens = (det(Sigma)^(-(count_assign + nu + p + 1)/2))*
-    exp(-(1/2)*(loss_y_i + loss_mu_k + tr(Lambda0 %*% solve(Sigma))))
+                      (y[[x]] - mu)%*%t(y[[x]] - mu)}))
   
-  return(dens)
+  
+  Sigma = LaplacesDemon::rinvwishart(nu = nu + count_assign, 
+                                     S = loss_y_i + Lambda0)
+  
+  # draw group mean
+  sum_y_i = rowSums(matrix(unlist(y[group_assign == curr_label]), nrow = p))
+  
+  mu_cov = solve(count_assign*solve(Sigma) + solve(Sigma0))
+  
+  mu_mean = (t(sum_y_i)%*%solve(Sigma) + t(mu0)%*%solve(Sigma0))%*%mu_cov
+  
+  # calculate Gibbs sampling transition prob density for q
+  # This is P_GS(phi*|phi^L,...) from Jain & Neal 2007 
+  dens1 = mvtnorm::dmvnorm(x = c(original_mu), 
+                           mean = c(mu_mean), 
+                           sigma = mu_cov, 
+                           log = TRUE)
+  
+  dens2 =   LaplacesDemon::dinvwishart(Sigma = original_Sigma, 
+                                       nu = nu + count_assign, 
+                                       S = loss_y_i + Lambda0,
+                                       log = TRUE)
+  
+  return(dens1 + dens2)
 }
 
 ll_components_UVV <- function(obs_ind, y, mu, Sigma){
@@ -206,7 +296,8 @@ ll_components_UVV <- function(obs_ind, y, mu, Sigma){
   
 }
 
-nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma){
+nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma,
+                                     proposal_calc = FALSE, iter){
   # This is P_GS(c*|c^L,...) from Jain & Neal 2007 
   
   # split_labs is an array of length 2 indicating which entries in counts correspond
@@ -225,9 +316,10 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
   which_group_k = which(split_labs == group_assign[obs])
   sm_counts[which_group_k] = sm_counts[which_group_k] - 1
   
+  # handling singleton observations
   if(0 %in% sm_counts){
     
-    which_one = which(sm_counts == 1)
+    which_one = which(sm_counts == 0)
     
     # check length of which_zero
     if(length(which_one) == 1){
@@ -235,30 +327,43 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
       # cat("1 singleton", "\n")
       if(which_one == 1){
         
-        num = (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
-                                              mean = mu[[2]][,1], 
-                                              sigma = Sigma[[2]]) 
+        # num = (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+        #                                       mean = mu[[2]][,1], 
+        #                                       sigma = Sigma[[2]]) 
+        # 
+        # denom = num + (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+        #                                               mean = mu[[1]][,1], 
+        #                                               sigma = Sigma[[1]])
+        # 
+        # # will just be (1,0)... seems extreme
+        # if(is.nan(num/denom)){
+        #   warning("NaN detected in SM group assignment calculation: nonconj_component_prob_c")
+        #   ratio = rep(1/2,2)
+        # } else{
+        #   ratio =  ratio = c(1-(num/denom), num/denom)
+        # }
         
-        denom = num + (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
-                                                      mean = mu[[1]][,1], 
-                                                      sigma = Sigma[[1]])
-        
-        # will just be (1,0)... seems extreme
-        ratio = c(1-(num/denom), num/denom)
+        ratio = c(0,1)
         
       } else{ 
         # which_one == 2
         
-        num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
-                                              mean = mu[[1]][,1], 
-                                              sigma = Sigma[[1]]) 
+        # num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+        #                                       mean = mu[[1]][,1], 
+        #                                       sigma = Sigma[[1]]) 
+        # 
+        # denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+        #                                               mean = mu[[2]][,1], 
+        #                                               sigma = Sigma[[2]])
+        # 
+        # if(is.nan(num/denom)){
+        #   warning("NaN detected in SM group assignment calculation: nonconj_component_prob_c")
+        #   ratio = rep(1/2,2)
+        # } else{
+        #   ratio =  ratio = c(1-(num/denom), num/denom)
+        # }
         
-        denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
-                                                      mean = mu[[2]][,1], 
-                                                      sigma = Sigma[[2]])
-        
-        # will just be (1,0)... seems extreme
-        ratio = c(num/denom, 1-(num/denom))
+        ratio = c(1,0)
         
       }
       
@@ -313,21 +418,46 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
     
   } else{
     
-    num = (sm_counts[1])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+    c1 = log(sm_counts[1]) + mvtnorm::dmvnorm(x = y[[obs]][,1], 
                                           mean = mu[[1]][,1], 
-                                          sigma = Sigma[[1]]) 
+                                          sigma = Sigma[[1]], log = TRUE) 
     
-    denom = num + (sm_counts[2])*mvtnorm::dmvnorm(x = y[[obs]][,1], 
-                                                  mean = mu[[2]][,1], 
-                                                  sigma = Sigma[[2]])
+    c2 = log(sm_counts[2]) + mvtnorm::dmvnorm(x = y[[obs]][,1], 
+                                              mean = mu[[2]][,1], 
+                                              sigma = Sigma[[2]], log = TRUE) 
     
-    ratio = c(num/denom, 1-(num/denom))
+    sumc12 = log(sm_counts[1]*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+                                             mean = mu[[1]][,1], 
+                                             sigma = Sigma[[1]]) + 
+                sm_counts[2]*mvtnorm::dmvnorm(x = y[[obs]][,1], 
+                                            mean = mu[[2]][,1], 
+                                            sigma = Sigma[[2]]))
+    
+    ratio = c(exp(c1 - sumc12), exp(c2 - sumc12))
+    
+    if(any(is.nan(ratio))){
+      cat("\n NaN detected", " sm_counts=", sm_counts, " c1=", c1, " c2=", c2, "sum=", sumc12, "\n")
+      warning(paste0("NaN detected in SM group assignment calculation: nonconj_component_prob_c at iter", iter))
+      ratio = rep(0.5,2)
+    } 
+    
+    if(any(is.infinite(ratio))){
+      ratio = rep(0.5,2)
+    } 
     
   }
   
   
   
-  return(ratio)
+  if(proposal_calc == TRUE){
+    
+    return(ratio[which_group_k])
+    
+  } else{
+    
+    return(ratio)
+    
+  }
   
 }
 
@@ -337,12 +467,12 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
 
 ############################ INDEPENDENT IG PRIORS ############################# 
 
-MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, 
+MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 1,
                                 k_init = 2, init_method = "kmeans",
                                 mu0, Sigma0, nu, Lambda0, 
                                 standardize_y = FALSE,
-                                split_merge = FALSE, sm_iter = 5, truth = NA,
-                                diag_weights = FALSE, 
+                                split_merge = FALSE, sm_iter = 5, sm_freq = 10,
+                                diag_weights = FALSE, truth = NA,
                                 verbose = TRUE, print_iter = 100, print_start = 0){
   
   # S is number of MCMC iterations
@@ -423,6 +553,13 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                        # but note that initial off-diag elements may be extreme
                      })
   
+  if(verbose == TRUE){
+    cat("\n Initial means: \n")
+    print(means[[1]])
+    cat("\n Initial vars: \n")
+    print(vars[[1]])
+  }
+  
   # initial allocation probs
   if(k == 1){
     probs[[1]] = matrix(data = 0, nrow = n, ncol = 1) 
@@ -458,158 +595,163 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
     ## initialize group assignments for current iteration using ending state from prior iteration
     group_assign[s, ] = group_assign[s-1, ]
     
-    ## iterate through observations 1:n 
-    for(i in 1:n){
+    if((split_merge == TRUE & (s %% sm_freq) != 0)|(split_merge == FALSE)){
+    
+      ## iterate through observations 1:n 
+      for(i in 1:n){
+        
+        #cat("S =", S, " i =", i, "\n")
+        
+        ### check if observation i is a singleton
+        count_assign = as.numeric(table(group_assign[s,]))
+        label_assign = as.numeric(names(table(group_assign[s,])))
+        singletons = label_assign[which(count_assign == 1)]
+        
+        ### record current group assignment & parameters for observation i
+        ### used to compute acceptance prob in later steps
+        curr_assign = which(label_assign == group_assign[s,i]) 
+        mu_curr = mu[,curr_assign]
+        Sigma_curr = Sigma[[curr_assign]]
+        
+        # print("Current state")
+        # print(curr_assign)
+        # print(mu_curr)
+        # print(Sigma_curr)
+        
+        ### debugging
+        # print(count_assign)
+        # print(label_assign)
+        # print(curr_labels)
+        # print(i)
+        
+        ### if observation i is a singleton, remove its mean from the current state of system
+        if(group_assign[s,i] %in% singletons){
+          
+          #### only drop observation i if it is a singleton...DO NOT drop other singleton
+          #### observations at this point!!!
+          singleton_index = which(label_assign == group_assign[s,i]) 
+          # check if there are singletons identified, otherwise do not touch mu
+          
+          # save current values for acceptance prob
+          # mu_curr = mu[,singleton_index]
+          # Sigma_curr = Sigma[[singleton_index]]
+          
+          # remove current values for singleton from index
+          mu = matrix(mu[,-singleton_index], nrow = p)
+          Sigma = Sigma[-singleton_index]
+          
+          count_assign = count_assign[-singleton_index]
+          label_assign = label_assign[-singleton_index]
+          
+          avail_labels = c(group_assign[s,i], avail_labels)
+          curr_labels = curr_labels[-which(curr_labels %in% group_assign[s,i])]
+          k = length(curr_labels) # update k 
+          
+          #### calculate proposal distribution for group assignment
+          ### for any observation i, calculate group membership probabilities
+          pr_res = group_prob_calc_UVV(k = k, n = n, n_j = count_assign, alpha = alpha, 
+                                 y_i = y[[i]], mu = mu, Sigma = Sigma,
+                                 mu0 = mu0, Sigma0 = Sigma0,
+                                 nu = nu, Lambda0 = Lambda0, 
+                                 singleton = 1)
+          pr_c = pr_res$pr_c
+          
+        } else{
+          
+          #### calculate proposal distribution for group assignment
+          #### if obs i is not presently a singleton
+          pr_res = group_prob_calc_UVV(k = k, n = n, n_j = count_assign, alpha = alpha, 
+                                 y_i = y[[i]], mu = mu, Sigma = Sigma, 
+                                 mu0 = mu0, Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0, 
+                                 singleton = 0, curr_group_assign = group_assign[s,i], 
+                                 curr_labels = curr_labels)
+          
+          pr_c = pr_res$pr_c
+          
+        }
+        
+        ### draw a group assignment conditional on group membership probs
+        group_assign[s,i] = sample(x = c(curr_labels, avail_labels[1]), 
+                                   size = 1, prob = pr_c)
+        
+        #### if new group selected
+        if(group_assign[s,i] == avail_labels[1:m]){
+          
+          #### handle bookkeeping
+          which_m = which(avail_labels[1:m] == group_assign[s,i])
+          curr_labels = c(curr_labels, avail_labels[which_m])
+          avail_labels = avail_labels[-which_m]
+          k = length(curr_labels)
+          
+          
+          ### using only the ith observation:
+          
+          #### draw variance for newly created group from FC posterior of Sigma
+          #### according to algo, but this is conditional on mean so do prior for now
+          Sigma_k = pr_res$Sigma_new[[which_m]] #1/rgamma(n = 1, shape = a, rate = b)
+          length_Sigma = length(Sigma)
+          Sigma[[length_Sigma+1]] = Sigma_k
+          
+          #### draw a mean for newly created group from FC posterior of mu
+          mu_cov_k = solve(solve(Sigma_k) + solve(Sigma0))
+          mu_mean_k = (t(y[[i]])%*%solve(Sigma_k) + t(mu0)%*%solve(Sigma0))%*%mu_cov_k
+          mu_k = matrix(mvtnorm::rmvnorm(n = 1, 
+                                         mean = mu_mean_k, 
+                                         sigma = mu_cov_k), 
+                        nrow = p) # kth mean
+          mu = cbind(mu, mu_k)
+          
+          
+        }
+        
+        
+        # print(dim(y[[i]]))
+        # print(dim(Sigma_k))
+        # print(dim(Sigma_curr))
+        # print(c("Proposed group", prop_group_assign, prop_group_assign_index))
+        # print(mu)
+        # print(Sigma)
+        
+        
+        ### iterate through all y_i
+        
+        # cat("Labels", curr_labels)
+        # cat("Probs", pr_c)
+        #### save allocation probabiltiies after each observation i 
+        # probs[[s]][i,curr_labels] = pr_c
+        
+      } ### end iterations from i=1:n
       
-      #cat("S =", S, " i =", i, "\n")
-      
-      ### check if observation i is a singleton
+      if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
+        cat("\n")
+        cat("End of CRP step") # just create a new line for separation
+        cat("\n")
+        # print(paste("iter = ", s))
+        # cat("\n")
+        print(paste("Current k = ", k))
+        cat("\n")
+        print(group_assign[s,])
+        cat("\n")
+        print(table(group_assign[s,]))
+        cat("\n")
+        print(mu)
+        cat("\n")
+        print(Sigma)
+        cat("\n")
+      }
+  
+      # final update of counts after a sweep
       count_assign = as.numeric(table(group_assign[s,]))
       label_assign = as.numeric(names(table(group_assign[s,])))
-      singletons = label_assign[which(count_assign == 1)]
-      
-      ### record current group assignment & parameters for observation i
-      ### used to compute acceptance prob in later steps
-      curr_assign = which(label_assign == group_assign[s,i]) 
-      mu_curr = mu[,curr_assign]
-      Sigma_curr = Sigma[[curr_assign]]
-      
-      # print("Current state")
-      # print(curr_assign)
-      # print(mu_curr)
-      # print(Sigma_curr)
-      
-      ### debugging
-      # print(count_assign)
-      # print(label_assign)
-      # print(curr_labels)
-      # print(i)
-      
-      ### if observation i is a singleton, remove its mean from the current state of system
-      if(group_assign[s,i] %in% singletons){
-        
-        #### only drop observation i if it is a singleton...DO NOT drop other singleton
-        #### observations at this point!!!
-        singleton_index = which(label_assign == group_assign[s,i]) 
-        # check if there are singletons identified, otherwise do not touch mu
-        
-        # save current values for acceptance prob
-        # mu_curr = mu[,singleton_index]
-        # Sigma_curr = Sigma[[singleton_index]]
-        
-        # remove current values for singleton from index
-        mu = matrix(mu[,-singleton_index], nrow = p)
-        Sigma = Sigma[-singleton_index]
-        
-        count_assign = count_assign[-singleton_index]
-        label_assign = label_assign[-singleton_index]
-        
-        avail_labels = c(group_assign[s,i], avail_labels)
-        curr_labels = curr_labels[-which(curr_labels %in% group_assign[s,i])]
-        k = length(curr_labels) # update k 
-        
-        #### calculate proposal distribution for group assignment
-        ### for any observation i, calculate group membership probabilities
-        pr_res = group_prob_calc_UVV(k = k, n = n, n_j = count_assign, alpha = alpha, 
-                               y_i = y[[i]], mu = mu, Sigma = Sigma,
-                               mu0 = mu0, Sigma0 = Sigma0,
-                               nu = nu, Lambda0 = Lambda0, 
-                               singleton = 1)
-        pr_c = pr_res$pr_c
-        
-      } else{
-        
-        #### calculate proposal distribution for group assignment
-        #### if obs i is not presently a singleton
-        pr_res = group_prob_calc_UVV(k = k, n = n, n_j = count_assign, alpha = alpha, 
-                               y_i = y[[i]], mu = mu, Sigma = Sigma, 
-                               mu0 = mu0, Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0, 
-                               singleton = 0, curr_group_assign = group_assign[s,i], 
-                               curr_labels = curr_labels)
-        
-        pr_c = pr_res$pr_c
-        
-      }
-      
-      ### draw a group assignment conditional on group membership probs
-      group_assign[s,i] = sample(x = c(curr_labels, avail_labels[1]), 
-                                 size = 1, prob = pr_c)
-      
-      #### if new group selected
-      if(group_assign[s,i] == avail_labels[1]){
-        
-        #### handle bookkeeping
-        curr_labels = c(curr_labels, avail_labels[1])
-        avail_labels = avail_labels[-1]
-        k = length(curr_labels)
-        
-        
-        ### using only the ith observation:
-        
-        #### draw variance for newly created group from FC posterior of Sigma
-        #### according to algo, but this is conditional on mean so do prior for now
-        Sigma_k = pr_res$Sigma_new #1/rgamma(n = 1, shape = a, rate = b)
-        length_Sigma = length(Sigma)
-        Sigma[[length_Sigma+1]] = Sigma_k
-        
-        #### draw a mean for newly created group from FC posterior of mu
-        mu_cov_k = solve(solve(Sigma_k) + solve(Sigma0))
-        mu_mean_k = (t(y[[i]])%*%solve(Sigma_k) + t(mu0)%*%solve(Sigma0))%*%mu_cov_k
-        mu_k = matrix(mvtnorm::rmvnorm(n = 1, 
-                                       mean = mu_mean_k, 
-                                       sigma = mu_cov_k), 
-                      nrow = p) # kth mean
-        mu = cbind(mu, mu_k)
-        
-        
-      }
-      
-      
-      # print(dim(y[[i]]))
-      # print(dim(Sigma_k))
-      # print(dim(Sigma_curr))
-      # print(c("Proposed group", prop_group_assign, prop_group_assign_index))
-      # print(mu)
-      # print(Sigma)
-      
-      
-      ### iterate through all y_i
-      
-      # cat("Labels", curr_labels)
-      # cat("Probs", pr_c)
-      #### save allocation probabiltiies after each observation i 
-      # probs[[s]][i,curr_labels] = pr_c
-      
-    } ### end iterations from i=1:n
+      num_groups[s,] = k
     
-    if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
-      cat("\n")
-      cat("End of CRP step") # just create a new line for separation
-      cat("\n")
-      # print(paste("iter = ", s))
-      # cat("\n")
-      print(paste("Current k = ", k))
-      cat("\n")
-      print(group_assign[s,])
-      cat("\n")
-      print(table(group_assign[s,]))
-      cat("\n")
-      print(mu)
-      cat("\n")
-      print(Sigma)
-      cat("\n")
     }
-
-    # final update of counts after a sweep
-    count_assign = as.numeric(table(group_assign[s,]))
-    label_assign = as.numeric(names(table(group_assign[s,])))
-    num_groups[s,] = k
     
     # proceed to split-merge step if true
     
     # Split-Merge step --- every 10 iterations
     
-    if(split_merge == TRUE & (s %% sm_iter) == 0){
+    if(split_merge == TRUE & (s %% sm_freq) == 0){
         
         k_start = k
         
@@ -789,7 +931,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                   # update group assignment probabilities 
                   
                   split_assign_prob = nonconj_component_prob_c(
-                    obs = obs, split_labs = split_lab,
+                    obs = obs, split_labs = split_lab, iter = s, 
                     group_assign = split_temp_group_assign[scan,], 
                     y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
                   
@@ -832,7 +974,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                   # current observation under consideration cannot be included here
                   
                   split_assign_prob = nonconj_component_prob_c(
-                    obs = obs, split_labs = split_lab,
+                    obs = obs, split_labs = split_lab, iter = s,
                     group_assign = split_temp_group_assign[scan,], 
                     y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
                   
@@ -888,31 +1030,46 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                                 nu = nu, Lambda0 = Lambda0)
                                })
             
-            merge_phi = update_phi_UVV(curr_label = merge_lab, 
-                                       group_assign = merge_temp_group_assign[scan,], 
-                                       count_assign = merge_count_assign[merge_group_count_index], 
-                                       y = y, 
-                                       mu = merge_means[[scan]], 
-                                       mu0 = mu0, 
-                                       Sigma = merge_vars[[scan]], 
-                                       Sigma0 = Sigma0,                                                 
-                                       nu = nu, Lambda0 = Lambda0)
+
             
             split_means[[scan]] = list(split_phi[[1]]$mu, split_phi[[2]]$mu)
             split_vars[[scan]] = list(split_phi[[1]]$Sigma, split_phi[[2]]$Sigma)
             
-            merge_means[[scan]] = merge_phi$mu
-            merge_vars[[scan]] = merge_phi$Sigma
+            if(scan == sm_iter + 1){
+              
+              # stop, record launch state (previous scan result) for merge
+              merge_means[[scan]] = merge_phi$mu
+              merge_vars[[scan]] = merge_phi$Sigma
             
-            # cat("\n Split means: \n")
-            # print(split_means[[scan]])
-            # cat("\n Split vars: \n")
-            # print(split_vars[[scan]])
-            # 
-            # cat("\n Merge means: \n")
-            # print(merge_means[[scan]])
-            # cat("\n Merge vars: \n")
-            # print(merge_vars[[scan]])
+              # calculate transition density from launch state to original state
+              merge_phi_dens = nonconj_phi_prob_UVV(curr_label = merge_lab, 
+                                         group_assign = merge_temp_group_assign[scan,], 
+                                         count_assign = merge_count_assign[merge_group_count_index], 
+                                         y = y, 
+                                         mu = merge_means[[scan]], 
+                                         mu0 = mu0, 
+                                         Sigma = merge_vars[[scan]], 
+                                         Sigma0 = Sigma0,                                                 
+                                         nu = nu, Lambda0 = Lambda0,
+                                         original_mu = original_mu1, 
+                                         original_Sigma = original_sigma1)
+              
+            } else{
+              
+              merge_phi = update_phi_UVV(curr_label = merge_lab, 
+                                         group_assign = merge_temp_group_assign[scan,], 
+                                         count_assign = merge_count_assign[merge_group_count_index], 
+                                         y = y, 
+                                         mu = merge_means[[scan]], 
+                                         mu0 = mu0, 
+                                         Sigma = merge_vars[[scan]], 
+                                         Sigma0 = Sigma0,                                                 
+                                         nu = nu, Lambda0 = Lambda0)
+              
+              merge_means[[scan]] = merge_phi$mu
+              merge_vars[[scan]] = merge_phi$Sigma
+              
+            }
             
           } # scans 1:(sm_iter+1)
           
@@ -931,10 +1088,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           # 
           split_counts = table(split_temp_group_assign[sm_iter+1,])
           merge_counts = table(merge_temp_group_assign[sm_iter+1,])
-          
-          # cat("\n split_counts: \n")
-          # print(split_counts)
-          
+
           split_lab_assign = as.numeric(names(split_counts))
           merge_lab_assign = as.numeric(names(merge_counts))
           
@@ -946,69 +1100,109 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           
           ## proposal probability
           
-          # compute P_GS(phi) from launch state to final scan for both split and merge proposals
-          split_phi_prob = sapply(X = 1:2, 
-                                  FUN = function(x){
-                                    nonconj_phi_prob_UVV(
-                                      curr_label = split_lab[x],
-                                      group_assign = split_temp_group_assign[sm_iter+1,], 
-                                      count_assign = split_count_assign[split_group_count_index][x], 
-                                      y = y, 
-                                      mu = split_means[[sm_iter+1]][[x]], 
-                                      mu0 = mu0, 
-                                      Sigma = split_vars[[sm_iter+1]][[x]], 
-                                      Sigma0 = Sigma0,                                                 
-                                      nu = nu, Lambda0 = Lambda0)
-                                  })
+          # for reverse split proposal, only one way to arrange --- merge, so overall prob = 1
+          prob1_c_num = log(1) # Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
+          # when doing a SPLIT proposal, this is the \phi component of 
+          # q(\gamma|\gamma^{split}) - i.e. the Gibbs sampling transition kernel
+          # from the merge launch state to the *original merged configuration*
+          prob1_phi_num = merge_phi_dens
+          # ifelse(merge_phi$ldens < 10^(-300), log(10^(-300)), merge_phi$ldens)  
           
-          # cat("\n split phi prob:", split_phi_prob)
-          
-          merge_phi_prob = nonconj_phi_prob_UVV(curr_label = merge_lab, 
-                                                group_assign = merge_temp_group_assign[sm_iter+1,], 
-                                                count_assign = merge_count_assign[merge_group_count_index], 
-                                                y = y, 
-                                                mu = merge_means[[sm_iter+1]], 
-                                                mu0 = mu0, 
-                                                Sigma = merge_vars[[sm_iter+1]], 
-                                                Sigma0 = Sigma0,                                                  
-                                                nu = nu, Lambda0 = Lambda0)
-          
-          # cat("\n merge phi prob:", merge_phi_prob)
+          prob1_c_denom = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
           
           # check to prevent numeric overflow from small densities (happens when proposal is two large
           # groups that are not compatible)
-          if(any(split_phi_prob < 10^(-300)) == TRUE){
-            
-            which_below_tol = which(split_phi_prob < 10^(-300))
-            split_phi_prob[which_below_tol] = 10^-300 # if below tol, set equal to tol
-            
-          } 
+          # if(any(split_phi_prob < 10^(-300)) == TRUE){
+          #   
+          #   which_below_tol = which(split_phi_prob < 10^(-300))
+          #   split_phi_prob[which_below_tol] = 10^-300 # if below tol, set equal to tol
+          #   
+          # } 
           
-          prob1_c_denom = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
-          prob1_phi_denom = Reduce(f = "+", x = log(split_phi_prob)) # only calculated at end
+          # else, business as usual
+          prob1_phi_denom = split_phi[[1]]$ldens + split_phi[[2]]$ldens
           # so no need to index
-          
-          prob1_c_num = log(1) # Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
-          prob1_phi_num = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
           
           prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
           
           ## prior ratio
           ## dont log prior density again here -- already taking log in fxn!
-          prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
-            sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) + 
-            nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[1]], mu0 = mu0, 
-                                   Sigma = split_vars[[sm_iter+1]][[1]], 
-                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0) + 
-            nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[2]], mu0 = mu0, 
-                                   Sigma = split_vars[[sm_iter+1]][[2]], 
-                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
           
-          prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
-                                     split_counts[[split_group_count_index[2]]]-1))) +
-            nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
-                                   Sigma = original_sigma1, 
-                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+          # check if any resulting group has only one observation
+          if(any(split_counts) == 1){
+            # need to change strategy, since 0! = 1
+            cat("\n Singletons detected \n")
+            which_split_counts_one = which(split_counts == 1)
+            if(length(which_split_counts_one) == 1){
+              # just one singleton
+              
+              if(which_split_counts_one == 1){
+                
+                prob2_num = log(1) + 
+                  sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) + 
+                  nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[1]], mu0 = mu0, 
+                                         Sigma = split_vars[[sm_iter+1]][[1]], 
+                                         Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0) + 
+                  nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[2]], mu0 = mu0, 
+                                         Sigma = split_vars[[sm_iter+1]][[2]], 
+                                         Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+                
+              } else{
+                
+                prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
+                  log(1) + 
+                  nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[1]], mu0 = mu0, 
+                                         Sigma = split_vars[[sm_iter+1]][[1]], 
+                                         Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0) + 
+                  nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[2]], mu0 = mu0, 
+                                         Sigma = split_vars[[sm_iter+1]][[2]], 
+                                         Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+                
+              }
+              
+              prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
+                                         split_counts[[split_group_count_index[2]]]-1))) +
+                nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
+                                       Sigma = original_sigma1, 
+                                       Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+              
+            } else{
+              # both singletons
+              
+              prob2_num = log(1) + log(1) + 
+                nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[1]], mu0 = mu0, 
+                                       Sigma = split_vars[[sm_iter+1]][[1]], 
+                                       Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0) + 
+                nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[2]], mu0 = mu0, 
+                                       Sigma = split_vars[[sm_iter+1]][[2]], 
+                                       Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+              
+              prob2_denom = log(1) +
+                nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
+                                       Sigma = original_sigma1, 
+                                       Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+            }
+
+
+          } else{
+            cat("\n NO Singletons detected \n")
+            prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
+              sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) + 
+              nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[1]], mu0 = mu0, 
+                                     Sigma = split_vars[[sm_iter+1]][[1]], 
+                                     Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0) + 
+              nonconj_prior_dens_UVV(mu = split_means[[sm_iter+1]][[2]], mu0 = mu0, 
+                                     Sigma = split_vars[[sm_iter+1]][[2]], 
+                                     Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+            
+            prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
+                                       split_counts[[split_group_count_index[2]]]-1))) +
+              nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
+                                     Sigma = original_sigma1, 
+                                     Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+            
+          }
+
           
           prob2 = log(alpha) + prob2_num - prob2_denom
           
@@ -1226,7 +1420,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                   # update group assignment probabilities 
                   
                   split_assign_prob = nonconj_component_prob_c(
-                    obs = obs, split_labs = split_lab,
+                    obs = obs, split_labs = split_lab, iter = s,
                     group_assign = split_temp_group_assign[scan,], 
                     y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
                   
@@ -1265,16 +1459,38 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                   
                   # current observation under consideration cannot be included here
                   
+                  if(scan == sm_iter + 1){
+                    # final scan is hypothetical transition from split launch state
+                    # back to original split configuration (use \phi from launch
+                    # state but calculate prob of going back to original group assigns)
+                    
                   split_assign_prob = nonconj_component_prob_c(
-                    obs = obs, split_labs = split_lab,
-                    group_assign = split_temp_group_assign[scan,], 
-                    y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
+                    obs = obs, split_labs = split_lab, iter = s,
+                    group_assign = group_assign[s,], # original group assign 
+                    y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]],
+                    proposal_calc = TRUE)
                   
-                  sm_prop_index = sample(x = 1:2, size = 1, 
-                                         prob = split_assign_prob)
+                  # dont actually change assignments from launch state
+                  split_temp_group_assign[scan,obs] =  split_temp_group_assign[scan-1,obs]
                   
-                  split_temp_group_assign[scan,obs] = split_lab[sm_prop_index]
-                  split_sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
+                  # record probs of returning to original configuration
+                  split_sm_probs[scan,obs] = split_assign_prob # function should
+                  # only return a single prob when proposal_calc == TRUE
+                  
+                  } else{
+                    
+                    split_assign_prob = nonconj_component_prob_c(
+                      obs = obs, split_labs = split_lab, iter = s,
+                      group_assign = split_temp_group_assign[scan],
+                      y = y, mu = split_means[[scan]], Sigma = split_vars[[scan]])
+                    
+                    sm_prop_index = sample(x = 1:2, size = 1,
+                                           prob = split_assign_prob)
+                    
+                    split_temp_group_assign[scan,obs] = split_lab[sm_prop_index]
+                    split_sm_probs[scan,obs] = split_assign_prob[sm_prop_index]
+                    
+                  }
                   
                   ### merge_assign prob by definition always 1 when proposing merge
                   ### launch state from c_i = c_j, no other way to permute assignment
@@ -1306,18 +1522,46 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
             split_group_count_index = which(as.numeric(names(split_counts)) %in% split_lab)
             merge_group_count_index = which(as.numeric(names(merge_counts)) %in% merge_lab)
             
-            split_phi = lapply(X = 1:2, #split_lab, 
-                               FUN = function(x){
-                                 update_phi_UVV(curr_label = split_lab[x], 
-                                                group_assign = split_temp_group_assign[scan,], 
-                                                count_assign = split_count_assign[split_group_count_index][x], 
-                                                y = y, 
-                                                mu = split_means[[scan]][[x]], 
-                                                mu0 = mu0, 
-                                                Sigma = split_vars[[scan]][[x]], 
-                                                Sigma0 = Sigma0, 
-                                                nu = nu, Lambda0 = Lambda0)
-                               })
+            if(scan == sm_iter + 1){
+              # don't do final scan - stop at split launch state
+              split_means[[scan]] = split_means[[scan-1]] 
+              split_vars[[scan]] = split_vars[[scan-1]] 
+              
+              split_phi_prob = lapply(X = 1:2, #split_lab, 
+                                 FUN = function(x){
+                                   nonconj_phi_prob_UVV(
+                                        curr_label = split_lab[x], 
+                                        group_assign = split_temp_group_assign[scan,], 
+                                        count_assign = split_count_assign[split_group_count_index][x], 
+                                        y = y, 
+                                        mu = split_means[[scan]][[x]], 
+                                        mu0 = mu0, 
+                                        Sigma = split_vars[[scan]][[x]], 
+                                        Sigma0 = Sigma0, 
+                                        nu = nu, Lambda0 = Lambda0,
+                                        original_mu = list(original_mu1, original_mu2)[[x]],
+                                        original_Sigma = list(original_sigma1, original_sigma2)[[x]])
+                                 })
+            } else{
+              
+              split_phi = lapply(X = 1:2, #split_lab, 
+                                 FUN = function(x){
+                                   update_phi_UVV(
+                                     curr_label = split_lab[x], 
+                                     group_assign = split_temp_group_assign[scan,], 
+                                     count_assign = split_count_assign[split_group_count_index][x], 
+                                     y = y, 
+                                     mu = split_means[[scan]][[x]], 
+                                     mu0 = mu0, 
+                                     Sigma = split_vars[[scan]][[x]], 
+                                     Sigma0 = Sigma0, 
+                                     nu = nu, Lambda0 = Lambda0)
+                                 })
+              
+              split_means[[scan]] = list(split_phi[[1]]$mu, split_phi[[2]]$mu)
+              split_vars[[scan]] = list(split_phi[[1]]$Sigma, split_phi[[2]]$Sigma)
+              
+            }
             
             merge_phi = update_phi_UVV(curr_label = merge_lab, 
                                        group_assign = merge_temp_group_assign[scan,], 
@@ -1329,9 +1573,6 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                                        Sigma0 = Sigma0,
                                        nu = nu, Lambda0 = Lambda0)
             
-            split_means[[scan]] = list(split_phi[[1]]$mu, split_phi[[2]]$mu)
-            split_vars[[scan]] = list(split_phi[[1]]$Sigma, split_phi[[2]]$Sigma)
-            
             merge_means[[scan]] = merge_phi$mu
             merge_vars[[scan]] = merge_phi$Sigma
             
@@ -1341,7 +1582,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           # calculate & evaluate acceptance prob
           
           # update counts after scans
-          split_counts = table(split_temp_group_assign[sm_iter+1,])
+          split_counts = table(group_assign[s,]) # need to be original counts
           merge_counts = table(merge_temp_group_assign[sm_iter+1,])
           
           split_lab_assign = as.numeric(names(split_counts))
@@ -1352,74 +1593,116 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           
           split_group_count_index = which(split_lab_assign %in% split_lab)
           merge_group_count_index = which(merge_lab_assign %in% merge_lab)
-          ## proposal probability
-          
-          # compute P_GS(phi) from launch state to final scan for both split and merge proposals
-          split_phi_prob = sapply(X = 1:2, 
-                                  FUN = function(x){
-                                    nonconj_phi_prob_UVV(
-                                      curr_label = split_lab[x],
-                                      group_assign = split_temp_group_assign[sm_iter+1,], 
-                                      count_assign = split_count_assign[split_group_count_index][x], 
-                                      y = y, 
-                                      mu = split_means[[sm_iter+1]][[x]], 
-                                      mu0 = mu0, 
-                                      Sigma = split_vars[[sm_iter+1]][[x]], 
-                                      Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
-                                  })
-          
-          merge_phi_prob = nonconj_phi_prob_UVV(curr_label = merge_lab, 
-                                                group_assign = merge_temp_group_assign[sm_iter+1,], 
-                                                count_assign =merge_count_assign[merge_group_count_index], 
-                                                y = y, 
-                                                mu = merge_means[[sm_iter+1]], 
-                                                mu0 = mu0, 
-                                                Sigma = merge_vars[[sm_iter+1]], 
-                                                Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
-          
-          prob1_c_denom = log(1) #Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
-          prob1_phi_denom = ifelse(merge_phi_prob < 10^(-300), log(10^(-300)), log(merge_phi_prob))  
-          
-          if(any(split_phi_prob < 10^(-300)) == TRUE){
-            
-            which_below_tol = which(split_phi_prob < 10^(-300))
-            split_phi_prob[which_below_tol] = 10^-300 # if below tol, set equal to tol
-            
-          } 
+        
+          # # proposal probability
+          prob1_c_denom = log(1) # Reduce(f = "+", x = log(merge_sm_probs[sm_iter+1,subset_index]))
+          prob1_phi_denom = merge_phi$ldens
           
           prob1_c_num = Reduce(f = "+", x = log(split_sm_probs[sm_iter+1,subset_index]))
-          prob1_phi_num = Reduce(f = "+", x = log(split_phi_prob))
+          
+          # if(any(split_phi_prob < 10^(-300)) == TRUE){
+          #   
+          #   which_below_tol = which(split_phi_prob < 10^(-300))
+          #   split_phi_prob[which_below_tol] = 10^-300 # if below tol, set equal to tol
+          #   
+          # } 
+          
+          prob1_phi_num = Reduce(f = "+", x = split_phi_prob)
+          # cat("\n split_phi_prob: ", split_phi_prob, "\n")
           
           prob1 = (prob1_c_num + prob1_phi_num) - (prob1_c_denom + prob1_phi_denom)
           
-          ## prior ratio
-          prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
-                                   split_counts[[split_group_count_index[2]]]-1))) +
-            nonconj_prior_dens_UVV(mu = merge_means[[sm_iter+1]], mu0 = mu0, 
-                                   Sigma = merge_vars[[sm_iter+1]], 
-                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+          ## prior ratio          # check if any resulting group has only one observation
+          if(any(split_counts) == 1){
+            # need to change strategy, since 0! = 1
+            which_split_counts_one = which(split_counts == 1)
+            if(length(which_split_counts_one) == 1){
+              # just one singleton
+              
+              if(which_split_counts_one == 1){
+                
+                prob2_denom = log(1) + 
+                  sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) +
+                  nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
+                                         Sigma = original_sigma1, 
+                                         Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0) +
+                  nonconj_prior_dens_UVV(mu = original_mu2, mu0 = mu0, 
+                                         Sigma = original_sigma2, 
+                                         Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+                
+              } else{
+                
+                prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
+                  log(1) +
+                  nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
+                                         Sigma = original_sigma1, 
+                                         Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0) +
+                  nonconj_prior_dens_UVV(mu = original_mu2, mu0 = mu0, 
+                                         Sigma = original_sigma2, 
+                                         Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+                
+                
+                
+              }
+              
+              prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
+                                       split_counts[[split_group_count_index[2]]]-1))) +
+                nonconj_prior_dens_UVV(mu = merge_means[[sm_iter+1]], mu0 = mu0, 
+                                       Sigma = merge_vars[[sm_iter+1]], 
+                                       Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+              
+            } else{
+              # both singletons
+              
+              prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
+                                       split_counts[[split_group_count_index[2]]]-1))) +
+                nonconj_prior_dens_UVV(mu = merge_means[[sm_iter+1]], mu0 = mu0, 
+                                       Sigma = merge_vars[[sm_iter+1]], 
+                                       Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+              
+              prob2_denom = log(1) + log(1) + 
+                nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
+                                       Sigma = original_sigma1, 
+                                       Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0) +
+                nonconj_prior_dens_UVV(mu = original_mu2, mu0 = mu0, 
+                                       Sigma = original_sigma2, 
+                                       Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+            }
+            
+            
+          } else{
+            
+            prob2_num = sum(log(1:(split_counts[[split_group_count_index[1]]] + 
+                                     split_counts[[split_group_count_index[2]]]-1))) +
+              nonconj_prior_dens_UVV(mu = merge_means[[sm_iter+1]], mu0 = mu0, 
+                                     Sigma = merge_vars[[sm_iter+1]], 
+                                     Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+            
+            prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
+              sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) +
+              nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
+                                     Sigma = original_sigma1, 
+                                     Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0) +
+              nonconj_prior_dens_UVV(mu = original_mu2, mu0 = mu0, 
+                                     Sigma = original_sigma2, 
+                                     Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
+            
+          }
           
-          prob2_denom = sum(log(1:(split_counts[[split_group_count_index[1]]]-1))) + 
-            sum(log(1:(split_counts[[split_group_count_index[2]]]-1))) +
-            nonconj_prior_dens_UVV(mu = original_mu1, mu0 = mu0, 
-                                   Sigma = original_sigma1, 
-                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0) +
-            nonconj_prior_dens_UVV(mu = original_mu2, mu0 = mu0, 
-                                   Sigma = original_sigma2, 
-                                   Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0)
           
           prob2 = log(alpha) + prob2_num - prob2_denom
           
           ## likelihood ratio
-          subset_index_grp1 = which(split_temp_group_assign[sm_iter+1,] %in% split_lab[1]) 
-          subset_index_grp2 = which(split_temp_group_assign[sm_iter+1,] %in% split_lab[2]) 
+          # original indices 
+          subset_index_grp1 = which(group_assign[s,] %in% split_lab[1]) 
+          subset_index_grp2 = which(group_assign[s,] %in% split_lab[2])
           
           ### component 1 - numerator I (group 1 - split proposal)
           prob3_num1 = 0
           for(obs_ind in 1:length(subset_index_grp1)){
             val = ll_components_UVV(obs_ind = subset_index_grp1[obs_ind], y = y, 
-                                    mu = original_mu1, 
-                                    Sigma = original_sigma1)
+                                    mu = merge_means[[sm_iter+1]], 
+                                    Sigma = merge_vars[[sm_iter+1]])
             prob3_num1 = prob3_num1 + log(val)
           }
           
@@ -1427,8 +1710,8 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           prob3_num2 = 0
           for(obs_ind in 1:length(subset_index_grp2)){
             val = ll_components_UVV(obs_ind = subset_index_grp2[obs_ind], y = y, 
-                                    mu = original_mu2, # change, needs tot be merge mu
-                                    Sigma = original_sigma2)
+                                    mu = original_mu1, 
+                                    Sigma = original_sigma1)
             prob3_num2 = prob3_num2 + log(val)
           }
           
@@ -1437,8 +1720,8 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
           prob3_denom = 0
           for(obs_ind in 1:length(subset_index)){
             val = ll_components_UVV(obs_ind = subset_index[obs_ind], y = y, 
-                                    mu = merge_means[[sm_iter+1]], 
-                                    Sigma = merge_vars[[sm_iter+1]])
+                                    mu = original_mu2, 
+                                    Sigma = original_sigma2)
             prob3_denom = prob3_denom + log(val)
           }
           
@@ -1587,13 +1870,13 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
             split_obs_col = rep(1, nrow(plot_y))
             split_obs_col[sampled_obs] = 3 # color SM candidates green
             
-            prog_plot = scatterplot3d(x = plot_y$y1, y = plot_y$y2, z = plot_y$y3, 
-                                      color = plot_y$curr_assign, angle = -45, cex.symbols = 0.5, 
-                                      xlab = "y1", ylab = "y2", zlab = "y3", pch = 20,
-                                      main = paste0("Proposed ", move_type, " s=", s, ", k=", k, "Accept=", accept))
-            
-            text(prog_plot$xyz.convert(plot_y[,1:3]), labels = rownames(plot_y), 
-                 pos = 4, cex = 0.75, col = split_obs_col)
+            # prog_plot = scatterplot3d(x = plot_y$y1, y = plot_y$y2, z = plot_y$y3, 
+            #                           color = plot_y$curr_assign, angle = -45, cex.symbols = 0.5, 
+            #                           xlab = "y1", ylab = "y2", zlab = "y3", pch = 20,
+            #                           main = paste0("Proposed ", move_type, " s=", s, ", k=", k, "Accept=", accept))
+            # 
+            # text(prog_plot$xyz.convert(plot_y[,1:3]), labels = rownames(plot_y), 
+            #      pos = 4, cex = 0.75, col = split_obs_col)
             # print(prog_plot)
           }
           
@@ -1704,46 +1987,46 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
       print(Sigma)
       cat("\n")
 
-      # if(nrow(mu0) == 2){
-      #   # if this is a 2D problem, can make scatterplot of group assign
-      #   yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
-      #   plot_y = data.frame(
-      #     y1 = yvals[,1],
-      #     y2 = yvals[,2],
-      #     curr_assign = group_assign[s,]
-      #   )
-      #   print(plot_y$curr_assign)
-      #   prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = rownames(plot_y))) +
-      #     #geom_point(color = assign) +
-      #     #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
-      #     geom_text(size = 3, color = plot_y$curr_assign) +
-      #     ggtitle(paste0("Group Assignments at Iteration s=", s, ", k=", k)) + 
-      #     theme_classic()
-      #   print(prog_plot)
-      # } else if(nrow(mu0) == 3){
-      #   # if this is a 3D problem, can make scatterplot of group assign
-      #   yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
-      #   plot_y = data.frame(
-      #     y1 = yvals[,1],
-      #     y2 = yvals[,2],
-      #     y3 = yvals[,3],
-      #     curr_assign = group_assign[s,]
-      #   )
-      #   
-      #   print(plot_y$curr_assign)
-      #   
-      #   split_obs_col = rep(1, nrow(plot_y))
-      #   split_obs_col[sampled_obs] = 2 # color SM candidates RED
-      #   
-      #   prog_plot = scatterplot3d(x = plot_y$y1, y = plot_y$y2, z = plot_y$y3, 
-      #                 color = plot_y$curr_assign, angle = -45, cex.symbols = 0.5, 
-      #                 xlab = "y1", ylab = "y2", zlab = "y3", pch = 20,
-      #                 main = paste0("Group Assignments at Iteration s=", s, ", k=", k))
+      if(nrow(mu0) == 2){
+        # if this is a 2D problem, can make scatterplot of group assign
+        yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
+        plot_y = data.frame(
+          y1 = yvals[,1],
+          y2 = yvals[,2],
+          curr_assign = group_assign[s,]
+        )
+        print(plot_y$curr_assign)
+        prog_plot = ggplot(data = plot_y, aes(x = y1, y = y2, label = rownames(plot_y))) +
+          #geom_point(color = assign) +
+          #geom_text(size = 3, hjust = 0, nudge_x = 0.5, color = assign) +
+          geom_text(size = 3, color = plot_y$curr_assign) +
+          ggtitle(paste0("Group Assignments at Iteration s=", s, ", k=", k)) +
+          theme_classic()
+        print(prog_plot)
+      } else if(nrow(mu0) == 3){
+        # if this is a 3D problem, can make scatterplot of group assign
+        yvals = matrix(data = unlist(y), ncol = nrow(mu0), byrow = TRUE)
+        plot_y = data.frame(
+          y1 = yvals[,1],
+          y2 = yvals[,2],
+          y3 = yvals[,3],
+          curr_assign = group_assign[s,]
+        )
+
+        print(plot_y$curr_assign)
+
+        split_obs_col = rep(1, nrow(plot_y))
+        split_obs_col[sampled_obs] = 2 # color SM candidates RED
+
+        prog_plot = scatterplot3d(x = plot_y$y1, y = plot_y$y2, z = plot_y$y3,
+                      color = plot_y$curr_assign, angle = -45, cex.symbols = 0.5,
+                      xlab = "y1", ylab = "y2", zlab = "y3", pch = 20,
+                      main = paste0("Group Assignments at Iteration s=", s, ", k=", k))
       #   
       #   text(prog_plot$xyz.convert(plot_y[,1:3]), labels = rownames(plot_y), 
       #        pos = 4, cex = 0.75, col = split_obs_col)
         # print(prog_plot)
-      #}
+      }
       
       
     }
@@ -1817,7 +2100,7 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1,
                     nu = nu, Lambda0 = Lambda0,
                     k_init = k_init, 
                     mod_type = "nonconjUVV", 
-                    split_merge = split_merge, sm_iter = sm_iter)
+                    split_merge = split_merge, sm_iter = sm_iter, sm_freq = sm_freq)
     
     return_list = list(settings = settings,
                        runtime = difftime(end, start, units = "m"),

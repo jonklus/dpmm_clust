@@ -623,151 +623,155 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
     ## initialize group assignments for current iteration using ending state from prior iteration
     group_assign[s, ] = group_assign[s-1, ]
     
-    ## iterate through observations 1:n 
-    for(i in 1:n){
+    if((split_merge == TRUE & (s %% sm_freq) != 0)|(split_merge == FALSE)){
+    
+      ## iterate through observations 1:n 
+      for(i in 1:n){
+        
+        #cat("S =", S, " i =", i, "\n")
+        
+        ### check if observation i is a singleton
+        count_assign = as.numeric(table(group_assign[s,]))
+        label_assign = as.numeric(names(table(group_assign[s,])))
+        singletons = label_assign[which(count_assign == 1)]
+        
+        ### record current group assignment & parameters for observation i
+        ### used to compute acceptance prob in later steps
+        curr_assign = which(label_assign == group_assign[s,i]) 
+        mu_curr = mu[,curr_assign]
+        sigma2_curr = sigma2[[curr_assign]]
+        
+        # print("Current state")
+        # print(curr_assign)
+        # print(mu_curr)
+        # print(Sigma_curr)
+        
+        ### debugging
+        # print(count_assign)
+        # print(label_assign)
+        # print(curr_labels)
+        # print(i)
+        
+        ### if observation i is a singleton, remove its mean from the current state of system
+        if(group_assign[s,i] %in% singletons){
+          
+          #### only drop observation i if it is a singleton...DO NOT drop other singleton
+          #### observations at this point!!!
+          singleton_index = which(label_assign == group_assign[s,i]) 
+          # check if there are singletons identified, otherwise do not touch mu
+          
+          # save current values for acceptance prob
+          # mu_curr = mu[,singleton_index]
+          # Sigma_curr = Sigma[[singleton_index]]
+          
+          # remove current values for singleton from index
+          mu = matrix(mu[,-singleton_index], nrow = p)
+          sigma2 = sigma2[-singleton_index]
+          
+          count_assign = count_assign[-singleton_index]
+          label_assign = label_assign[-singleton_index]
+          
+          avail_labels = c(group_assign[s,i], avail_labels)
+          curr_labels = curr_labels[-which(curr_labels %in% group_assign[s,i])]
+          k = length(curr_labels) # update k 
+          
+          #### calculate proposal distribution for group assignment
+          ### for any observation i, calculate group membership probabilities
+          pr_res = group_prob_calc_DEV(k = k, n = n, n_j = count_assign, 
+                                       alpha = alpha, m = m,
+                                       y_i = y[[i]], mu = mu, sigma2 = sigma2,
+                                       a = a, b = b, mu0 = mu0, sigma0 = sigma0, 
+                                       singleton = 1)
+          pr_c = pr_res$pr_c
+          
+        } else{
+          
+          #### calculate proposal distribution for group assignment
+          #### if obs i is not presently a singleton
+          pr_res = group_prob_calc_DEV(k = k, n = n, n_j = count_assign, 
+                                       alpha = alpha, m = m,
+                                       y_i = y[[i]], mu = mu, sigma2 = sigma2, 
+                                       a = a, b = b, mu0 = mu0, sigma0 = sigma0, singleton = 0, 
+                                       curr_group_assign = group_assign[s,i], 
+                                       curr_labels = curr_labels)
+          
+          pr_c = pr_res$pr_c
+          
+        }
+        
+        ### draw a group assignment conditional on group membership probs
+        group_assign[s,i] = sample(x = c(curr_labels, avail_labels[1:m]), 
+                                   size = 1, prob = pr_c)
+        
+        #### if new group selected
+        if(group_assign[s,i] %in% avail_labels[1:m]){
+          
+          #### handle bookkeeping
+          which_m = which(avail_labels[1:m] == group_assign[s,i])
+          curr_labels = c(curr_labels, avail_labels[which_m])
+          avail_labels = avail_labels[-which_m]
+          k = length(curr_labels)
+          
+          
+          ### using only the ith observation:
+          
+          #### draw variance for newly created group from FC posterior of sigma2
+          #### according to algo, but this is conditional on mean so do prior for now
+          sigma2_k = pr_res$sigma2_new[which_m] 
+          sigma2 = c(sigma2, sigma2_k)
+          
+          #### draw a mean for newly created group from FC posterior of mu 
+          mu_cov_k = 1/(1/sigma2_k + 1/sigma0)
+          mu_mean_k = (y[[i]]/sigma2_k + mu0/sigma0)*mu_cov_k
+          mu_k = matrix(mvtnorm::rmvnorm(n = 1, 
+                                         mean = mu_mean_k, 
+                                         sigma = diag(mu_cov_k, p)), 
+                        nrow = p) # kth mean
+          mu = cbind(mu, mu_k)
+          
+        }
+        
+        
+        # print(dim(y[[i]]))
+        # print(dim(Sigma_k))
+        # print(dim(Sigma_curr))
+        # print(c("Proposed group", prop_group_assign, prop_group_assign_index))
+        # print(mu)
+        # print(Sigma)
+        
+        
+        ### iterate through all y_i
+        
+        # cat("Labels", curr_labels)
+        # cat("Probs", pr_c)
+        #### save allocation probabiltiies after each observation i 
+        # probs[[s]][i,curr_labels] = pr_c
+        
+      } ### end iterations from i=1:n
       
-      #cat("S =", S, " i =", i, "\n")
+      if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
+        cat("\n End of CRP step, iter: ", s, "\n") # just create a new line for separation
+        # print(paste("iter = ", s))
+        print(paste("Current k = ", k))
+        cat("\n")
+        print(group_assign[s,])
+        cat("\n")
+        print(table(group_assign[s,]))
+        cat("\n Curr labels: \n")
+        print(curr_labels)
+        cat("\n")
+        print(mu)
+        cat("\n")
+        print(sigma2)
+        cat("\n")
+      }
       
-      ### check if observation i is a singleton
+      # final update of counts after a sweep
       count_assign = as.numeric(table(group_assign[s,]))
       label_assign = as.numeric(names(table(group_assign[s,])))
-      singletons = label_assign[which(count_assign == 1)]
+      num_groups[s,] = k
       
-      ### record current group assignment & parameters for observation i
-      ### used to compute acceptance prob in later steps
-      curr_assign = which(label_assign == group_assign[s,i]) 
-      mu_curr = mu[,curr_assign]
-      sigma2_curr = sigma2[[curr_assign]]
-      
-      # print("Current state")
-      # print(curr_assign)
-      # print(mu_curr)
-      # print(Sigma_curr)
-      
-      ### debugging
-      # print(count_assign)
-      # print(label_assign)
-      # print(curr_labels)
-      # print(i)
-      
-      ### if observation i is a singleton, remove its mean from the current state of system
-      if(group_assign[s,i] %in% singletons){
-        
-        #### only drop observation i if it is a singleton...DO NOT drop other singleton
-        #### observations at this point!!!
-        singleton_index = which(label_assign == group_assign[s,i]) 
-        # check if there are singletons identified, otherwise do not touch mu
-        
-        # save current values for acceptance prob
-        # mu_curr = mu[,singleton_index]
-        # Sigma_curr = Sigma[[singleton_index]]
-        
-        # remove current values for singleton from index
-        mu = matrix(mu[,-singleton_index], nrow = p)
-        sigma2 = sigma2[-singleton_index]
-        
-        count_assign = count_assign[-singleton_index]
-        label_assign = label_assign[-singleton_index]
-        
-        avail_labels = c(group_assign[s,i], avail_labels)
-        curr_labels = curr_labels[-which(curr_labels %in% group_assign[s,i])]
-        k = length(curr_labels) # update k 
-        
-        #### calculate proposal distribution for group assignment
-        ### for any observation i, calculate group membership probabilities
-        pr_res = group_prob_calc_DEV(k = k, n = n, n_j = count_assign, 
-                                     alpha = alpha, m = m,
-                                     y_i = y[[i]], mu = mu, sigma2 = sigma2,
-                                     a = a, b = b, mu0 = mu0, sigma0 = sigma0, 
-                                     singleton = 1)
-        pr_c = pr_res$pr_c
-        
-      } else{
-        
-        #### calculate proposal distribution for group assignment
-        #### if obs i is not presently a singleton
-        pr_res = group_prob_calc_DEV(k = k, n = n, n_j = count_assign, 
-                                     alpha = alpha, m = m,
-                                     y_i = y[[i]], mu = mu, sigma2 = sigma2, 
-                                     a = a, b = b, mu0 = mu0, sigma0 = sigma0, singleton = 0, 
-                                     curr_group_assign = group_assign[s,i], 
-                                     curr_labels = curr_labels)
-        
-        pr_c = pr_res$pr_c
-        
-      }
-      
-      ### draw a group assignment conditional on group membership probs
-      group_assign[s,i] = sample(x = c(curr_labels, avail_labels[1:m]), 
-                                 size = 1, prob = pr_c)
-      
-      #### if new group selected
-      if(group_assign[s,i] %in% avail_labels[1:m]){
-        
-        #### handle bookkeeping
-        which_m = which(avail_labels[1:m] == group_assign[s,i])
-        curr_labels = c(curr_labels, avail_labels[which_m])
-        avail_labels = avail_labels[-which_m]
-        k = length(curr_labels)
-        
-        
-        ### using only the ith observation:
-        
-        #### draw variance for newly created group from FC posterior of sigma2
-        #### according to algo, but this is conditional on mean so do prior for now
-        sigma2_k = pr_res$sigma2_new[which_m] 
-        sigma2 = c(sigma2, sigma2_k)
-        
-        #### draw a mean for newly created group from FC posterior of mu 
-        mu_cov_k = 1/(1/sigma2_k + 1/sigma0)
-        mu_mean_k = (y[[i]]/sigma2_k + mu0/sigma0)*mu_cov_k
-        mu_k = matrix(mvtnorm::rmvnorm(n = 1, 
-                                       mean = mu_mean_k, 
-                                       sigma = diag(mu_cov_k, p)), 
-                      nrow = p) # kth mean
-        mu = cbind(mu, mu_k)
-        
-      }
-      
-      
-      # print(dim(y[[i]]))
-      # print(dim(Sigma_k))
-      # print(dim(Sigma_curr))
-      # print(c("Proposed group", prop_group_assign, prop_group_assign_index))
-      # print(mu)
-      # print(Sigma)
-      
-      
-      ### iterate through all y_i
-      
-      # cat("Labels", curr_labels)
-      # cat("Probs", pr_c)
-      #### save allocation probabiltiies after each observation i 
-      # probs[[s]][i,curr_labels] = pr_c
-      
-    } ### end iterations from i=1:n
-    
-    if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
-      cat("\n End of CRP step, iter: ", s, "\n") # just create a new line for separation
-      # print(paste("iter = ", s))
-      print(paste("Current k = ", k))
-      cat("\n")
-      print(group_assign[s,])
-      cat("\n")
-      print(table(group_assign[s,]))
-      cat("\n Curr labels: \n")
-      print(curr_labels)
-      cat("\n")
-      print(mu)
-      cat("\n")
-      print(sigma2)
-      cat("\n")
     }
-    
-    # final update of counts after a sweep
-    count_assign = as.numeric(table(group_assign[s,]))
-    label_assign = as.numeric(names(table(group_assign[s,])))
-    num_groups[s,] = k
     
     # proceed to split-merge step if true
     
@@ -1816,10 +1820,10 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
           split_obs_col = rep(1, nrow(plot_y))
           split_obs_col[sampled_obs] = 3 # color SM candidates green
           
-          prog_plot = scatterplot3d(x = plot_y$y1, y = plot_y$y2, z = plot_y$y3, 
-                                    color = plot_y$curr_assign, angle = -45, cex.symbols = 0.5, 
-                                    xlab = "y1", ylab = "y2", zlab = "y3", pch = 20,
-                                    main = paste0("Proposed ", move_type, " s=", s, ", k=", k, ", Accept=", accept))
+          # prog_plot = scatterplot3d(x = plot_y$y1, y = plot_y$y2, z = plot_y$y3, 
+          #                           color = plot_y$curr_assign, angle = -45, cex.symbols = 0.5, 
+          #                           xlab = "y1", ylab = "y2", zlab = "y3", pch = 20,
+          #                           main = paste0("Proposed ", move_type, " s=", s, ", k=", k, ", Accept=", accept))
           
           # text(prog_plot$xyz.convert(plot_y[,1:3]), labels = rownames(plot_y), 
           #      pos = 4, cex = 0.75, col = split_obs_col)
@@ -2020,7 +2024,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
                     k_init = k_init, init_method = init_method,
                     #d = d, f = f,
                     mod_type = "nonconjDEV", 
-                    split_merge = split_merge, sm_iter = sm_iter)
+                    split_merge = split_merge, sm_iter = sm_iter, sm_freq = sm_freq)
     
     return_list = list(settings = settings,
                        runtime = difftime(end, start, units = "m"),

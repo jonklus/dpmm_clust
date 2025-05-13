@@ -50,11 +50,12 @@ group_prob_calc_diag <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0
                          # print("Step1")
                          # print(matrix(mu[,x], nrow = p))
                          # print(y_i)
-                         c1 = n_j[x]/(n-1+alpha)
+                         c1 = log(n_j[x]) - log(n-1+alpha)
                          c2 = mvtnorm::dmvnorm(x = y_i[,1], 
                                                mean = mu[,x], 
-                                               sigma = diag(sigma2, p)) 
-                         return(c1*c2)
+                                               sigma = diag(sigma2, p),
+                                               log = TRUE) 
+                         return(c1 + c2)
                        })
       
     } else{
@@ -66,20 +67,21 @@ group_prob_calc_diag <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0
                            # print("Step2")
                            # print(matrix(mu[,x], nrow = p))
                            # print(y_i)
-                           c1 = (n_j[x]-1)/(n-1+alpha)
+                           c1 = log(n_j[x]-1) - log(n-1+alpha)
                            c2 = mvtnorm::dmvnorm(x = y_i[,1], 
                                                  mean = mu[,x], 
-                                                 sigma = diag(sigma2, p)) 
+                                                 sigma = diag(sigma2, p),
+                                                 log = TRUE) 
                          } else{
                            # print("Step3")
                            # print(matrix(mu[,x], nrow = p))
                            # print(y_i)
-                           c1 = n_j[x]/(n-1+alpha)
+                           c1 = log (n_j[x]) - log(n-1+alpha)
                            c2 = mvtnorm::dmvnorm(x = y_i[,1], 
                                                  mean = mu[,x],
                                                  sigma = diag(sigma2, p)) 
                          }
-                         return(c1*c2)
+                         return(c1 + c2)
                        })
       
     }
@@ -95,11 +97,12 @@ group_prob_calc_diag <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0
                          # print("Step1")
                          # print(matrix(mu[,x], nrow = p))
                          # print(y_i)
-                         c1 = n_j[x]/(n-1+alpha)
+                         c1 = log(n_j[x]) - log(n-1+alpha)
                          c2 = mvtnorm::dmvnorm(x = y_i[,1], 
                                                mean = mu[,x], 
-                                               sigma = diag(sigma2[[x]], p)) 
-                         return(c1*c2)
+                                               sigma = diag(sigma2[[x]], p),
+                                               log = TRUE) 
+                         return(c1 + c2)
                        })
       
     } else{
@@ -111,20 +114,22 @@ group_prob_calc_diag <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0
                            # print("Step2")
                            # print(matrix(mu[,x], nrow = p))
                            # print(y_i)
-                           c1 = (n_j[x]-1)/(n-1+alpha)
+                           c1 = log(n_j[x]-1) - log(n-1+alpha)
                            c2 = mvtnorm::dmvnorm(x = y_i[,1], 
                                                  mean = mu[,x], 
-                                                 sigma = diag(sigma2[[x]], p)) 
+                                                 sigma = diag(sigma2[[x]], p),
+                                                 log = TRUE) 
                          } else{
                            # print("Step3")
                            # print(matrix(mu[,x], nrow = p))
                            # print(y_i)
-                           c1 = n_j[x]/(n-1+alpha)
+                           c1 = log(n_j[x]) - log(n-1+alpha)
                            c2 = mvtnorm::dmvnorm(x = y_i[,1], 
                                                  mean = mu[,x],
-                                                 sigma = diag(sigma2[[x]], p)) 
+                                                 sigma = diag(sigma2[[x]], p),
+                                                 log = TRUE) 
                          }
-                         return(c1*c2)
+                         return(c1 + c2)
                        })
       
     }
@@ -137,13 +142,14 @@ group_prob_calc_diag <- function(k, n, n_j, alpha, y_i, mu, sigma2, r, a, b, mu0
   #### probability of creating a new group
   #### now a multivariate t distribution --- need to fix this and add required
   #### elements from prior on mean, variance
-  pr_new = alpha/(n-1+alpha)*LaplacesDemon::dmvt(x = y_i[,1], 
+  pr_new = log(alpha) - log (n-1+alpha) + LaplacesDemon::dmvt(x = y_i[,1], 
                                                  mu = mu0[,1], 
                                                  S = diag((b/a)*(r+1), p),
-                                                 df = 2*a)
+                                                 df = 2*a, log = TRUE)
   
   #### normalize probs to account for "b"
-  pr_c = c(pr_curr, pr_new)/(sum(pr_curr) + pr_new)
+  log_pr_all = c(pr_curr, pr_new)
+  pr_c = exp(log_pr_all)/sum(exp(log_pr_all))
   
   return(pr_c)
   
@@ -482,8 +488,8 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1,
                                 k_init = 3, init_method = "kmeans",
                                 d = 1, f = 1, g = 1, h = 1, standardize_y = FALSE,
                                 sigma_hyperprior = TRUE, fix_r = FALSE,
-                                split_merge = FALSE, sm_iter = 5, truth = NA,
-                                diag_weights = FALSE, verbose = TRUE, 
+                                split_merge = FALSE, sm_iter = 5, sm_freq = 10,
+                                truth = NA, diag_weights = FALSE, verbose = TRUE, 
                                 print_iter = 100, print_start = 0){
   
   # S is number of MCMC iterations
@@ -613,150 +619,153 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1,
     ## initialize group assignments for current iteration using ending state from prior iteration
     group_assign[s, ] = group_assign[s-1, ]
     
-    ## iterate through observations 1:n 
-    for(i in 1:n){
+    if((split_merge == TRUE & (s %% sm_freq) != 0)|(split_merge == FALSE)){
       
-      #cat("S =", S, " i =", i, "\n")
+      ## iterate through observations 1:n 
+      for(i in 1:n){
+        
+        #cat("S =", S, " i =", i, "\n")
+        
+        ### check if observation i is a singleton
+        count_assign = as.numeric(table(group_assign[s,]))
+        label_assign = as.numeric(names(table(group_assign[s,])))
+        singletons = label_assign[which(count_assign == 1)]
+        
+        ### record current group assignment & parameters for observation i
+        ### used to compute acceptance prob in later steps
+        curr_assign = which(label_assign == group_assign[s,i]) 
+        mu_curr = mu[,curr_assign]
+        sigma2_curr = sigma2[[curr_assign]]
+        
+        # print("Current state")
+        # print(curr_assign)
+        # print(mu_curr)
+        # print(Sigma_curr)
+        
+        ### debugging
+        # print(count_assign)
+        # print(label_assign)
+        # print(curr_labels)
+        # print(i)
+        
+        ### if observation i is a singleton, remove its mean from the current state of system
+        if(group_assign[s,i] %in% singletons){
+          
+          #### only drop observation i if it is a singleton...DO NOT drop other singleton
+          #### observations at this point!!!
+          singleton_index = which(label_assign == group_assign[s,i]) 
+          # check if there are singletons identified, otherwise do not touch mu
+          
+          # save current values for acceptance prob
+          # mu_curr = mu[,singleton_index]
+          # Sigma_curr = Sigma[[singleton_index]]
+          
+          # remove current values for singleton from index
+          mu = matrix(mu[,-singleton_index], nrow = p)
+          sigma2 = sigma2[-singleton_index]
+          
+          count_assign = count_assign[-singleton_index]
+          label_assign = label_assign[-singleton_index]
+          
+          avail_labels = c(group_assign[s,i], avail_labels)
+          curr_labels = curr_labels[-which(curr_labels %in% group_assign[s,i])]
+          k = length(curr_labels) # update k 
+          
+          #### calculate proposal distribution for group assignment
+          ### for any observation i, calculate group membership probabilities
+          pr_c = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
+                                 y_i = y[[i]], mu = mu, sigma2 = sigma2, r = r, 
+                                 a = a, b = b, mu0 = mu0, singleton = 1)
+          
+          
+        } else{
+          
+          #### calculate proposal distribution for group assignment
+          #### if obs i is not presently a singleton
+          pr_c = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
+                                 y_i = y[[i]], mu = mu, sigma2 = sigma2, r = r, 
+                                 a = a, b = b, mu0 = mu0, singleton = 0, 
+                                 curr_group_assign = group_assign[s,i], 
+                                 curr_labels = curr_labels)
+          
+        }
+        
+        ### draw a group assignment conditional on group membership probs
+        group_assign[s,i] = sample(x = c(curr_labels, avail_labels[1]), 
+                                   size = 1, prob = pr_c)
+        
+        #### if new group selected
+        if(group_assign[s,i] == avail_labels[1]){
+          
+          #### handle bookkeeping
+          curr_labels = c(curr_labels, avail_labels[1])
+          avail_labels = avail_labels[-1]
+          k = length(curr_labels)
+          
+          
+          ### using only the ith observation:
+          
+          #### draw variance for newly created group from FC posterior of sigma2
+          #### according to algo, but this is conditional on mean so do prior for now
+          sigma2_k = 1/rgamma(n = 1, shape = a, rate = b)
+          sigma2 = c(sigma2, sigma2_k)
+          
+          #### draw a mean for newly created group from FC posterior of mu 
+          mu_mean = (y[[i]] + (1/r)*mu0)/(1/r + 1)
+          mu_cov = diag(sigma2_k/(1/r + 1), p)
+          mu_k = matrix(mvtnorm::rmvnorm(n = 1, mean = mu_mean, sigma = mu_cov), nrow = p) # kth mean
+          mu = cbind(mu, mu_k)
+          
+        }
+        
+        
+        # print(dim(y[[i]]))
+        # print(dim(Sigma_k))
+        # print(dim(Sigma_curr))
+        # print(c("Proposed group", prop_group_assign, prop_group_assign_index))
+        # print(mu)
+        # print(Sigma)
+        
+        
+        ### iterate through all y_i
+        
+        # cat("Labels", curr_labels)
+        # cat("Probs", pr_c)
+        #### save allocation probabiltiies after each observation i 
+        # probs[[s]][i,curr_labels] = pr_c
+        
+      } ### end iterations from i=1:n
       
-      ### check if observation i is a singleton
+      if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
+        cat("\n")
+        cat("End of CRP step") # just create a new line for separation
+        cat("\n")
+        # print(paste("iter = ", s))
+        # cat("\n")
+        print(paste("Current k = ", k))
+        cat("\n")
+        print(group_assign[s,])
+        cat("\n")
+        print(table(group_assign[s,]))
+        cat("\n")
+        print(mu)
+        cat("\n")
+        print(sigma2)
+        cat("\n")
+      }
+  
+      # final update of counts after a sweep
       count_assign = as.numeric(table(group_assign[s,]))
       label_assign = as.numeric(names(table(group_assign[s,])))
-      singletons = label_assign[which(count_assign == 1)]
+      num_groups[s,] = k
       
-      ### record current group assignment & parameters for observation i
-      ### used to compute acceptance prob in later steps
-      curr_assign = which(label_assign == group_assign[s,i]) 
-      mu_curr = mu[,curr_assign]
-      sigma2_curr = sigma2[[curr_assign]]
-      
-      # print("Current state")
-      # print(curr_assign)
-      # print(mu_curr)
-      # print(Sigma_curr)
-      
-      ### debugging
-      # print(count_assign)
-      # print(label_assign)
-      # print(curr_labels)
-      # print(i)
-      
-      ### if observation i is a singleton, remove its mean from the current state of system
-      if(group_assign[s,i] %in% singletons){
-        
-        #### only drop observation i if it is a singleton...DO NOT drop other singleton
-        #### observations at this point!!!
-        singleton_index = which(label_assign == group_assign[s,i]) 
-        # check if there are singletons identified, otherwise do not touch mu
-        
-        # save current values for acceptance prob
-        # mu_curr = mu[,singleton_index]
-        # Sigma_curr = Sigma[[singleton_index]]
-        
-        # remove current values for singleton from index
-        mu = matrix(mu[,-singleton_index], nrow = p)
-        sigma2 = sigma2[-singleton_index]
-        
-        count_assign = count_assign[-singleton_index]
-        label_assign = label_assign[-singleton_index]
-        
-        avail_labels = c(group_assign[s,i], avail_labels)
-        curr_labels = curr_labels[-which(curr_labels %in% group_assign[s,i])]
-        k = length(curr_labels) # update k 
-        
-        #### calculate proposal distribution for group assignment
-        ### for any observation i, calculate group membership probabilities
-        pr_c = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
-                               y_i = y[[i]], mu = mu, sigma2 = sigma2, r = r, 
-                               a = a, b = b, mu0 = mu0, singleton = 1)
-        
-        
-      } else{
-        
-        #### calculate proposal distribution for group assignment
-        #### if obs i is not presently a singleton
-        pr_c = group_prob_calc_diag(k = k, n = n, n_j = count_assign, alpha = alpha, 
-                               y_i = y[[i]], mu = mu, sigma2 = sigma2, r = r, 
-                               a = a, b = b, mu0 = mu0, singleton = 0, 
-                               curr_group_assign = group_assign[s,i], 
-                               curr_labels = curr_labels)
-        
-      }
-      
-      ### draw a group assignment conditional on group membership probs
-      group_assign[s,i] = sample(x = c(curr_labels, avail_labels[1]), 
-                                 size = 1, prob = pr_c)
-      
-      #### if new group selected
-      if(group_assign[s,i] == avail_labels[1]){
-        
-        #### handle bookkeeping
-        curr_labels = c(curr_labels, avail_labels[1])
-        avail_labels = avail_labels[-1]
-        k = length(curr_labels)
-        
-        
-        ### using only the ith observation:
-        
-        #### draw variance for newly created group from FC posterior of sigma2
-        #### according to algo, but this is conditional on mean so do prior for now
-        sigma2_k = 1/rgamma(n = 1, shape = a, rate = b)
-        sigma2 = c(sigma2, sigma2_k)
-        
-        #### draw a mean for newly created group from FC posterior of mu 
-        mu_mean = (y[[i]] + (1/r)*mu0)/(1/r + 1)
-        mu_cov = diag(sigma2_k/(1/r + 1), p)
-        mu_k = matrix(mvtnorm::rmvnorm(n = 1, mean = mu_mean, sigma = mu_cov), nrow = p) # kth mean
-        mu = cbind(mu, mu_k)
-        
-      }
-      
-      
-      # print(dim(y[[i]]))
-      # print(dim(Sigma_k))
-      # print(dim(Sigma_curr))
-      # print(c("Proposed group", prop_group_assign, prop_group_assign_index))
-      # print(mu)
-      # print(Sigma)
-      
-      
-      ### iterate through all y_i
-      
-      # cat("Labels", curr_labels)
-      # cat("Probs", pr_c)
-      #### save allocation probabiltiies after each observation i 
-      # probs[[s]][i,curr_labels] = pr_c
-      
-    } ### end iterations from i=1:n
-    
-    if((s %% print_iter == 0) & (s >= print_start) & (verbose == TRUE)){
-      cat("\n")
-      cat("End of CRP step") # just create a new line for separation
-      cat("\n")
-      # print(paste("iter = ", s))
-      # cat("\n")
-      print(paste("Current k = ", k))
-      cat("\n")
-      print(group_assign[s,])
-      cat("\n")
-      print(table(group_assign[s,]))
-      cat("\n")
-      print(mu)
-      cat("\n")
-      print(sigma2)
-      cat("\n")
     }
-
-    # final update of counts after a sweep
-    count_assign = as.numeric(table(group_assign[s,]))
-    label_assign = as.numeric(names(table(group_assign[s,])))
-    num_groups[s,] = k
-    
     # proceed to split-merge step if true
     
     # Split-Merge step --- every 10 iterations
     
-    if(split_merge == TRUE & (s %% sm_iter) == 0){
-      
+    if(split_merge == TRUE & (s %% sm_freq) == 0){
+    
       # print(table(group_assign[s,]))
       
       k_start = k
@@ -939,7 +948,8 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1,
         prob1 = -Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index])) # log1 - sum(logs)
         #print(sm_probs)
         ## prior ratio
-        prob2 = log(alpha) - sum_log(n_tot = sm_counts[[split_group_count_index[1]]]+sm_counts[[split_group_count_index[2]]], 
+        prob2 = log(alpha) - sum_log(n_tot = sm_counts[[split_group_count_index[1]]] + 
+                                       sm_counts[[split_group_count_index[2]]], 
                                      n_1 = sm_counts[[split_group_count_index[1]]], 
                                      n_2 = sm_counts[[split_group_count_index[2]]])
         
@@ -1138,7 +1148,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1,
         # calculate & evaluate acceptance prob
         sm_counts = table(temp_group_assign[sm_iter+1,]) # update counts after scans
         ## proposal probability
-        prob1 = Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index])) # log1 - sum(logs)
+        prob1 = Reduce(f = "+", x = log(sm_probs[sm_iter+1,subset_index])) 
         # need to index by subset since NAs for observation not part of split/merge -- as well as the
         # two anchor observations. shoudl you be calculating a prob for those as well though???
         
@@ -1490,7 +1500,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1,
     
     settings = list(S = S, alpha = alpha, a = a, b = b, mu0 = mu0, 
                     k_init = k_init, d = d, f = f, g = g, h = h, r = r,
-                    mod_type = "conjDEV", 
+                    mod_type = "conjDEV", sm_freq = sm_freq,
                     split_merge = split_merge, sm_iter = sm_iter)
     
     return_list = list(settings = settings,
@@ -1513,7 +1523,7 @@ MVN_CRP_sampler_DEV <- function(S = 10^3, seed = 516, y, r = 2, alpha = 1,
                     a = a, b = b, mu0 = mu0, 
                     k_init = k_init, init_method = init_method,
                     d = d, f = f, r = r,
-                    mod_type = "conjDEV", 
+                    mod_type = "conjDEV", sm_freq = sm_freq,
                     split_merge = split_merge, sm_iter = sm_iter)
     
     return_list = list(settings = settings,
