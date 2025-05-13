@@ -655,7 +655,8 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 1,
           
           #### calculate proposal distribution for group assignment
           ### for any observation i, calculate group membership probabilities
-          pr_res = group_prob_calc_UVV(k = k, n = n, n_j = count_assign, alpha = alpha, 
+          pr_res = group_prob_calc_UVV(k = k, n = n, n_j = count_assign, 
+                                 alpha = alpha, m = m,
                                  y_i = y[[i]], mu = mu, Sigma = Sigma,
                                  mu0 = mu0, Sigma0 = Sigma0,
                                  nu = nu, Lambda0 = Lambda0, 
@@ -666,7 +667,8 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 1,
           
           #### calculate proposal distribution for group assignment
           #### if obs i is not presently a singleton
-          pr_res = group_prob_calc_UVV(k = k, n = n, n_j = count_assign, alpha = alpha, 
+          pr_res = group_prob_calc_UVV(k = k, n = n, n_j = count_assign, 
+                                 alpha = alpha, m = m,
                                  y_i = y[[i]], mu = mu, Sigma = Sigma, 
                                  mu0 = mu0, Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0, 
                                  singleton = 0, curr_group_assign = group_assign[s,i], 
@@ -2041,7 +2043,8 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 1,
     # at the end of each iteration, recalculate group probs based on final k
     # and save for label switching fix
     pr_c = sapply(X = 1:length(y), FUN = function(x){
-      group_prob_calc_UVV(k = k, n = n, n_j = count_assign, alpha = alpha, 
+      group_prob_calc_UVV(k = k, n = n, n_j = count_assign, 
+                      alpha = alpha, m = m,
                       y_i = y[[x]], mu = mu, Sigma = Sigma, mu0 = mu0, 
                       Sigma0 = Sigma0, nu = nu, Lambda0 = Lambda0,
                       singleton = 0, curr_group_assign = group_assign[s,x], 

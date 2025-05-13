@@ -11,9 +11,9 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 # load necessary functions
 # source("./Samplers/Multivariate_DPMM_unknownvar_DEE.R")
 # source("./Samplers/Multivariate_DPMM_unknownvar_DEV.R")
-# source("./Samplers/Multivariate_DPMM_nonconj_UVV.R")
+source("./Samplers/Multivariate_DPMM_nonconj_UVV.R")
 # source("./Samplers/Multivariate_DPMM_nonconj_DVV.R")
-source("./Samplers/Multivariate_DPMM_nonconj_DEV.R")
+# source("./Samplers/Multivariate_DPMM_nonconj_DEV.R")
 # source("./Samplers/Multivariate_DPMM_unknownvar_UVV.R")
 source("./Samplers/posterior_helper_fxns.R")
 source("./Samplers/post_processing_inf.R")
@@ -244,10 +244,10 @@ sim_results_nonconjDEV$sm_results %>%
   dplyr::group_by(move_type) %>%
   dplyr::summarize(acc = mean(accept))
 
-S = n_iter
+S = 50
 seed = seeds[x]
 y = y
-alpha = 1 
+alpha = 1; m = 1
 a = 1 
 b = 1 
 mu0 = matrix(round((colMeans(matrix(unlist(y), ncol = 3))),0), ncol = 1)
@@ -258,6 +258,7 @@ sigma_hyperprior = FALSE
 standardize_y = FALSE
 split_merge = TRUE
 sm_iter = 5
+sm_freq = 10
 truth = NA
 diag_weights = FALSE
 verbose = TRUE
@@ -353,7 +354,7 @@ sim_results_nonconjUVV = MVN_CRP_nonconj_UVV(
         nu = 5, Lambda0 = diag(1,3),
         standardize_y = FALSE,
         split_merge = TRUE, sm_iter = 5, sm_freq = 10, truth = NA,
-        diag_weights = FALSE, verbose = TRUE, print_iter = 5, print_start = 0)
+        diag_weights = FALSE, verbose = TRUE, print_iter = 10, print_start = 0)
   
 mod_sum_nonconjUVV = dpmm_summary(output = sim_results_nonconjUVV, 
        print_k_sum = TRUE, 
