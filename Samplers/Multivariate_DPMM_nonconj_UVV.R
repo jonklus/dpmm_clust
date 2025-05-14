@@ -315,7 +315,7 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
   sm_counts = sapply(X = split_labs, FUN = function(x){sum(group_assign == x)})
   which_group_k = which(split_labs == group_assign[obs])
   sm_counts[which_group_k] = sm_counts[which_group_k] - 1
-  
+  zero_val = 0.001
   # handling singleton observations
   if(0 %in% sm_counts){
     
@@ -343,7 +343,7 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
         #   ratio =  ratio = c(1-(num/denom), num/denom)
         # }
         
-        ratio = c(0,1)
+        ratio = c(zero_val,1-zero_val)
         
       } else{ 
         # which_one == 2
@@ -363,7 +363,7 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
         #   ratio =  ratio = c(1-(num/denom), num/denom)
         # }
         
-        ratio = c(1,0)
+        ratio = c(1-zero_val,zero_val)
         
       }
       
@@ -446,7 +446,7 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
       if(length(which_inf) == 2){
         ratio = rep(0.5,2)
       } else{
-        ratio = ifelse(which_inf == 1, c(1,0), c(0,1))
+        ratio = ifelse(which_inf == 1, c(1-zero_val,zero_val), c(zero_val,1-zero_val))
       }
       
     } 
@@ -1137,10 +1137,10 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 1,
           ## dont log prior density again here -- already taking log in fxn!
           
           # check if any resulting group has only one observation
-          if(any(split_counts == 1)){
+          if(any(split_counts[split_group_count_index] == 1)){
             # need to change strategy, since 0! = 1
             # cat("\n Singletons detected \n")
-            which_split_counts_one = which(split_counts == 1)
+            which_split_counts_one = which(split_counts[split_group_count_index] == 1)
             if(length(which_split_counts_one) == 1){
               # just one singleton
               
@@ -1622,9 +1622,9 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 1,
           
           ## prior ratio          
           # check if any resulting group has only one observation
-          if(any(split_counts == 1)){
+          if(any(split_counts[split_group_count_index] == 1)){
             # need to change strategy, since 0! = 1
-            which_split_counts_one = which(split_counts == 1)
+            which_split_counts_one = which(split_counts[split_group_count_index] == 1)
             if(length(which_split_counts_one) == 1){
               # just one singleton
               

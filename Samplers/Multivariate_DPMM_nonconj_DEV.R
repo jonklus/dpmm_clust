@@ -346,6 +346,8 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
   which_group_k = which(split_labs == group_assign[obs])
   sm_counts[which_group_k] = sm_counts[which_group_k] - 1
   # cat("\n sm_counts[which_group_k]:", sm_counts[which_group_k], "\n")
+  zero_prob = 0.001 # cannot set identically equal to zero --- since (1) log0
+  # is undefined, and (2) don't want this to be deterministic
   
   if(0 %in% sm_counts){
     
@@ -357,12 +359,12 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
       # cat("1 singleton", "\n")
       if(which_one == 1){
         
-        ratio = c(0,1)
+        ratio = c(zero_prob,1-zero_prob)
         
       } else{ 
         # which_one == 2
         
-        ratio = c(1,0)
+        ratio = c(1-zero_prob,zero_prob)
         
       }
         
@@ -405,7 +407,7 @@ nonconj_component_prob_c <- function(obs, split_labs, group_assign, y, mu, Sigma
       if(length(which_inf) == 2){
         ratio = rep(0.5,2)
       } else{
-        ratio = ifelse(which_inf == 1, c(1,0), c(0,1))
+        ratio = ifelse(which_inf == 1, c(1-zero_prob,zero_prob), c(zero_prob,1-zero_prob))
       }
       
     } 
@@ -1098,10 +1100,10 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
         ## prior ratio
         ## don't log nonconj_prior_dens again, already taking log in fxn!
         # check if any resulting group has only one observation
-        if(any(split_counts == 1)){
+        if(any(split_counts[split_group_count_index] == 1)){
           # need to change strategy, since 0! = 1
           # cat("\n Singletons detected \n")
-          which_split_counts_one = which(split_counts == 1)
+          which_split_counts_one = which(split_counts[split_group_count_index] == 1)
           if(length(which_split_counts_one) == 1){
             # just one singleton
             
@@ -1606,9 +1608,9 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
         ## prior ratio
         ## dont log prior density again here -- already taking log in fxn!
         # check if any resulting group has only one observation
-        if(any(split_counts== 1)){
+        if(any(split_counts[split_group_count_index] == 1)){
           # need to change strategy, since 0! = 1
-          which_split_counts_one = which(split_counts == 1)
+          which_split_counts_one = which(split_counts[split_group_count_index] == 1)
           if(length(which_split_counts_one) == 1){
             # just one singleton
             

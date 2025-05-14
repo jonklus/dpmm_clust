@@ -11,9 +11,9 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 # load necessary functions
 # source("./Samplers/Multivariate_DPMM_unknownvar_DEE.R")
 # source("./Samplers/Multivariate_DPMM_unknownvar_DEV.R")
-source("./Samplers/Multivariate_DPMM_nonconj_UVV.R")
+# source("./Samplers/Multivariate_DPMM_nonconj_UVV.R")
 # source("./Samplers/Multivariate_DPMM_nonconj_DVV.R")
-# source("./Samplers/Multivariate_DPMM_nonconj_DEV.R")
+source("./Samplers/Multivariate_DPMM_nonconj_DEV.R")
 # source("./Samplers/Multivariate_DPMM_unknownvar_UVV.R")
 source("./Samplers/posterior_helper_fxns.R")
 source("./Samplers/post_processing_inf.R")
@@ -36,9 +36,10 @@ library(xtable)
 
 ################## simulate data ##############################################
 
-set.seed(516)
-x = 90 # dataset100
+# set.seed(516)
+x = 4 # dataset100
 seeds = readRDS("./BHsimseeds.rds")
+set.seed(seeds[x])
 
 # 
 # w = rep(1/3,3)
@@ -235,7 +236,7 @@ sim_results_nonconjDEV = MVN_CRP_nonconj_DEV(
         k_init = 2, init_method = "kmeans",
         # d = 1, f = 1, 
         sigma_hyperprior = FALSE, standardize_y = FALSE,
-        split_merge = TRUE, sm_iter = 10, truth = NA, sm_freq = 10,
+        split_merge = TRUE, sm_iter = 5, truth = NA, sm_freq = 10,
         diag_weights = FALSE, verbose = TRUE, print_iter = 10^1, print_start = 0)
 
 sim_results_nonconjDEV$sm_results %>%
