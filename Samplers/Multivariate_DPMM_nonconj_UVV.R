@@ -1707,35 +1707,35 @@ MVN_CRP_nonconj_UVV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 1,
           subset_index_grp2 = which(group_assign[s,] %in% split_lab[2])
           
           ### component 1 - numerator I (group 1 - split proposal)
-          prob3_num1 = 0
-          for(obs_ind in 1:length(subset_index_grp1)){
-            val = ll_components_UVV(obs_ind = subset_index_grp1[obs_ind], y = y, 
+          prob3_num = 0
+          for(obs_ind in 1:length(subset_index)){
+            val = ll_components_UVV(obs_ind = subset_index[obs_ind], y = y, 
                                     mu = merge_means[[sm_iter+1]], 
                                     Sigma = merge_vars[[sm_iter+1]])
-            prob3_num1 = prob3_num1 + log(val)
+            prob3_num = prob3_num + log(val)
           }
           
           ### component 2 - numerator II (group 2 - split proposal)
-          prob3_num2 = 0
-          for(obs_ind in 1:length(subset_index_grp2)){
-            val = ll_components_UVV(obs_ind = subset_index_grp2[obs_ind], y = y, 
+          prob3_denom1 = 0
+          for(obs_ind in 1:length(subset_index_grp1)){
+            val = ll_components_UVV(obs_ind = subset_index_grp1[obs_ind], y = y, 
                                     mu = original_mu1, 
                                     Sigma = original_sigma1)
-            prob3_num2 = prob3_num2 + log(val)
+            prob3_denom1 = prob3_denom1 + log(val)
           }
           
           
           ### component 3 - denominator (all in original group w/ merge proposal params)
-          prob3_denom = 0
-          for(obs_ind in 1:length(subset_index)){
-            val = ll_components_UVV(obs_ind = subset_index[obs_ind], y = y, 
+          prob3_denom2 = 0
+          for(obs_ind in 1:length(subset_index_grp2)){
+            val = ll_components_UVV(obs_ind = subset_index_grp2[obs_ind], y = y, 
                                     mu = original_mu2, 
                                     Sigma = original_sigma2)
-            prob3_denom = prob3_denom + log(val)
+            prob3_denom2 = prob3_denom2 + log(val)
           }
           
           # flip this for merge step
-          prob3 = prob3_denom - (prob3_num1 + prob3_num2)
+          prob3 = prob3_num - (prob3_denom1 + prob3_denom2)
           
           ## evaluate acceptance prob
           prob_components = c(prob1, prob2, prob3)
