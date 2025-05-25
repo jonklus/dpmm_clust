@@ -305,10 +305,10 @@ nonconj_prior_dens_DEV <- function(mu, mu0, Sigma, Sigma0, a, b){
   # sigma0 = diag(Sigma0)[1]
   # p = nrow(mu)
   
-  dens = log(mvtnorm::dmvnorm(x = c(mu), mean = c(mu0), sigma = Sigma0)) + 
-    log(LaplacesDemon::dinvgamma(x = sigma2, shape = a, scale = b))
+  dens = mvtnorm::dmvnorm(x = c(mu), mean = c(mu0), sigma = Sigma0, log = TRUE) + 
+    LaplacesDemon::dinvgamma(x = sigma2, shape = a, scale = b, log = TRUE)
   
-  return(exp(dens))
+  return(dens)
 }
 
 
@@ -319,7 +319,8 @@ ll_components_DEV <- function(obs_ind, y, mu, Sigma){
   
   val = mvtnorm::dmvnorm(x = y[[obs_ind]][,1], 
                          mean = c(mu), 
-                         sigma = Sigma)
+                         sigma = Sigma,
+                         log = TRUE)
   
   return(val)  
   
@@ -1186,7 +1187,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
           val = ll_components_DEV(obs_ind = subset_index_grp1[obs_ind], y = y, 
                                   mu = split_means[[sm_iter+1]][[1]], 
                                   Sigma = split_vars[[sm_iter+1]][[1]])
-          prob3_num1 = prob3_num1 + log(val)
+          prob3_num1 = prob3_num1 + val
         }
         
         ### component 2 - numerator II (group 2 - split proposal)
@@ -1195,7 +1196,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
           val = ll_components_DEV(obs_ind = subset_index_grp2[obs_ind], y = y, 
                                   mu = split_means[[sm_iter+1]][[2]], 
                                   Sigma = split_vars[[sm_iter+1]][[2]])
-          prob3_num2 = prob3_num2 + log(val)
+          prob3_num2 = prob3_num2 + val
         }
         
         
@@ -1205,7 +1206,7 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
           val = ll_components_DEV(obs_ind = subset_index[obs_ind], y = y, 
                                   mu = original_mu1, 
                                   Sigma = diag(original_sigma1, p))
-          prob3_denom = prob3_denom + log(val)
+          prob3_denom = prob3_denom + val
         }
         
         prob3 = prob3_num1 + prob3_num2 - prob3_denom
@@ -1698,25 +1699,25 @@ MVN_CRP_nonconj_DEV <- function(S = 10^3, seed = 516, y, alpha = 1, m = 5,
           val = ll_components_DEV(obs_ind = subset_index[obs_ind], y = y, 
                                   mu = merge_means[[sm_iter+1]], 
                                   Sigma = merge_vars[[sm_iter+1]])
-          prob3_num = prob3_num + log(val)
+          prob3_num = prob3_num + val
         }
         
-        ### component 1 - numerator I (group 1 - split proposal)
+        ### component 2 - denom I (group 1 - split proposal)
         prob3_denom1 = 0
         for(obs_ind in 1:length(subset_index_grp1)){
           val = ll_components_DEV(obs_ind = subset_index_grp1[obs_ind], y = y, 
                                   mu = original_mu1, 
                                   Sigma = diag(original_sigma1,p))
-          prob3_denom1 = prob3_denom1 + log(val)
+          prob3_denom1 = prob3_denom1 + val
         }
         
-        ### component 2 - numerator II (group 2 - split proposal)
+        ### component 3 - denom II (group 2 - split proposal)
         prob3_denom2 = 0
         for(obs_ind in 1:length(subset_index_grp2)){
           val = ll_components_DEV(obs_ind = subset_index_grp2[obs_ind], y = y, 
                                   mu = original_mu2, # change, needs tot be merge mu
                                   Sigma = diag(original_sigma2,p))
-          prob3_denom2 = prob3_denom2 + log(val)
+          prob3_denom2 = prob3_denom2 + val
         }
         
         
