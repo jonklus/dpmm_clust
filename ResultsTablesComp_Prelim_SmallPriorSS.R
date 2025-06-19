@@ -1,5 +1,5 @@
-source("../Samplers/posterior_helper_fxns.R")
-source("../Samplers/post_processing_inf.R")
+# source("../Samplers/posterior_helper_fxns.R")
+# source("../Samplers/post_processing_inf.R")
 
 # load R libraries
 library(ggplot2)
@@ -13,16 +13,32 @@ library(kableExtra) # use for complex tables http://haozhu233.github.io/kableExt
 # results across the 100 data sets!
 
 # read in results database
-data_path = "../results_database_SummaryLargePriorSS_2024_12_22.rds"
-summary_table = readRDS(data_path)
+# data_path = "../results_database_SummaryLargePriorSS_2024_12_22.rds"
 
+file1_loc = "./Results/results_database_SummarySmallPriorSS_2024_12_22.rds"
+file2_loc = "./Results/results_database_SummarySmallPriorSS_2025_06_09.rds"
+
+
+# for small prior SS
+nonconj_noSM_table = readRDS(file1_loc) %>% # readRDS(paste0(data_path, file1_loc)) %>%
+  dplyr::filter(!(Model %in% c("nonconjDEV", "nonconjUVV") &
+                    SM == "withSM"))
+
+summary_table = rbind(readRDS(file2_loc) %>%
+                        dplyr::filter(Model %in% c("nonconjDEV", "nonconjUVV") &
+                                          SM == "withSM"),
+                      nonconj_noSM_table) %>%
+  dplyr::filter(n_obs %in% c(30,100)) # for now dont include n=300 for small prior SS sims
+
+# summary_table = readRDS(file1_loc)
 ####################################################################################################################
 
 # output LATEX results to .txt file
-sink(file = paste0("./ResultsCompOutput_",
-                   stringr::str_extract(string = stringr::str_extract(string = data_path, pattern = "database_[:alnum:]+"), pattern = "[:alnum:]+$"),
+sim_setting = stringr::str_extract(string = stringr::str_extract(string = file2_loc, pattern = "database_[:alnum:]+"), pattern = "[:alnum:]+$")
+sink(file = paste0("./manuscript_plots/ResultsCompOutput_",
+                   sim_setting,
                    "_",
-                   stringr::str_extract(string = data_path, pattern = "[:digit:]{4}_[:digit:]{2}_[:digit:]{2}"),
+                   stringr::str_extract(string = file2_loc, pattern = "[:digit:]{4}_[:digit:]{2}_[:digit:]{2}"),
                    ".txt"),
      type = "output")
 
@@ -59,7 +75,7 @@ kld_table = summary_table %>%
 mapk_table = summary_table %>% 
   # dplyr::filter(Tag == "ENAR") %>%
   dplyr::group_by(Model, Scenario, SM, n_obs) %>%
-  dplyr::summarize(MAP_K = paste0(round(median(MAP_K),2), " (", round(IQR(MAP_K),2),")")) %>% 
+  dplyr::summarize(MAP_K = paste0(round(median(MAP_K),0), " (", round(IQR(MAP_K),0),")")) %>% 
   # dplyr::summarize(MAP_K = paste0(round(median(MAP_K),2), " (", round(min(MAP_K),2), ",", round(max(MAP_K),2), ")")) %>% 
   tidyr::pivot_wider(names_from = c(Scenario, n_obs), values_from = MAP_K) %>%
   # keep first 2 columns with model info, sort remaining cols with results by n
@@ -76,7 +92,7 @@ col_format <- function(x, type){
                    "Conjugate ", "Non-Conjugate ")
     
     label = paste0(conjT,
-      stringr::str_extract(string = x, pattern = "[:alpha:]{3}$"))
+                   stringr::str_extract(string = x, pattern = "[:alpha:]{3}$"))
     
   } else if(type == "SM"){
     
@@ -91,9 +107,9 @@ col_format <- function(x, type){
 
 s1_table = cbind(
   Model = kld_table$Model, SM = kld_table$SM,
-  kld_table %>% dplyr::ungroup() %>% dplyr::select(`3wellsep_30`, `3wellsep_100`, `3wellsep_300`),
-  ari_table %>% dplyr::ungroup() %>% dplyr::select(`3wellsep_30`, `3wellsep_100`, `3wellsep_300`),
-  mapk_table %>% dplyr::ungroup() %>% dplyr::select(`3wellsep_30`, `3wellsep_100`, `3wellsep_300`)
+  kld_table %>% dplyr::ungroup() %>% dplyr::select(`3wellsep_30`, `3wellsep_100`),#`3wellsep_300`),
+  ari_table %>% dplyr::ungroup() %>% dplyr::select(`3wellsep_30`, `3wellsep_100`),#`3wellsep_300`),
+  mapk_table %>% dplyr::ungroup() %>% dplyr::select(`3wellsep_30`, `3wellsep_100`)# `3wellsep_300`)
 )
 
 s1_table$Model = col_format(x = s1_table$Model, type = "Model")
@@ -105,9 +121,9 @@ xtable::xtable(s1_table,
 
 s2_table = cbind(
   Model = kld_table$Model, SM = kld_table$SM,
-  kld_table %>% dplyr::ungroup() %>% dplyr::select(`3close_30`, `3close_100`, `3close_300`),
-  ari_table %>% dplyr::ungroup() %>% dplyr::select(`3close_30`, `3close_100`, `3close_300`),
-  mapk_table %>% dplyr::ungroup() %>% dplyr::select(`3close_30`, `3close_100`, `3close_300`)
+  kld_table %>% dplyr::ungroup() %>% dplyr::select(`3close_30`, `3close_100`),#`3close_300`),
+  ari_table %>% dplyr::ungroup() %>% dplyr::select(`3close_30`, `3close_100`),#`3close_300`),
+  mapk_table %>% dplyr::ungroup() %>% dplyr::select(`3close_30`, `3close_100`)# `3close_300`)
 )
 
 s2_table$Model = col_format(x = s2_table$Model, type = "Model")
@@ -119,9 +135,9 @@ xtable::xtable(s2_table,
 
 s3_table = cbind(
   Model = kld_table$Model, SM = kld_table$SM,
-  kld_table %>% dplyr::ungroup() %>% dplyr::select(`5grp3d_30`, `5grp3d_100`, `5grp3d_300`),
-  ari_table %>% dplyr::ungroup() %>% dplyr::select(`5grp3d_30`, `5grp3d_100`, `5grp3d_300`),
-  mapk_table %>% dplyr::ungroup() %>% dplyr::select(`5grp3d_30`, `5grp3d_100`, `5grp3d_300`)
+  kld_table %>% dplyr::ungroup() %>% dplyr::select(`5grp3d_30`, `5grp3d_100`), #`5grp3d_300`),
+  ari_table %>% dplyr::ungroup() %>% dplyr::select(`5grp3d_30`, `5grp3d_100`), #`5grp3d_300`),
+  mapk_table %>% dplyr::ungroup() %>% dplyr::select(`5grp3d_30`, `5grp3d_100`) # `5grp3d_300`)
 )
 
 s3_table$Model = col_format(x = s3_table$Model, type = "Model")
@@ -177,7 +193,7 @@ results_plot_table_long$Conjugate = (!stringr::str_detect(string = results_plot_
 
 ggplot2::ggplot(data = results_plot_table_long %>% 
                   dplyr::filter(Scenario == "3wellsep"), 
-                                # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")), 
+                # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")), 
                 aes(x = n_obs, y = med, shape = SM, lty = Model, color = Conjugate,
                     group = interaction(Model, SM))) +
   ggplot2::facet_wrap(facets = vars(metric), ncol = 3, scales = "free") +
@@ -188,13 +204,13 @@ ggplot2::ggplot(data = results_plot_table_long %>%
   # ggplot2::theme(legend.position = "bottom") + 
   ggplot2::xlab("Sample Size") +
   ggplot2::ylab("Value") +
-  ggplot2::ggtitle("Results for Well-Separated Scenarios")
-ggsave("./3wellsep_results.png")
+  ggplot2::ggtitle("Results for Well-Separated Scenario")
+ggsave(paste0("./manuscript_plots/3wellsep_results_", sim_setting, ".png"))
 
 
 ggplot2::ggplot(data = results_plot_table_long %>% 
                   dplyr::filter(Scenario == "3close"), 
-                                # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")),
+                # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")),
                 aes(x = n_obs, y = med, shape = SM, lty = Model, color = Conjugate,
                     group = interaction(Model, SM))) +
   ggplot2::facet_wrap(facets = vars(metric), ncol = 3, scales = "free") +
@@ -205,12 +221,12 @@ ggplot2::ggplot(data = results_plot_table_long %>%
   # ggplot2::theme(legend.position = "bottom") + 
   ggplot2::xlab("Sample Size") +
   ggplot2::ylab("Value") +
-  ggplot2::ggtitle("Results for Close Together Scenario: Conjugate Models")
-ggsave("./3close_results.png")
+  ggplot2::ggtitle("Results for Close Together Scenario")
+ggsave(paste0("./manuscript_plots/3close_results_", sim_setting, ".png"))
 
 ggplot2::ggplot(data = results_plot_table_long %>% 
                   dplyr::filter(Scenario == "5grp3d"),
-                                # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")),
+                # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")),
                 aes(x = n_obs, y = med, shape = SM, lty = Model, color = Conjugate,
                     group = interaction(Model, SM))) +
   ggplot2::facet_wrap(facets = vars(metric), ncol = 3, scales = "free") +
@@ -221,5 +237,5 @@ ggplot2::ggplot(data = results_plot_table_long %>%
   # ggplot2::theme(legend.position = "bottom") + 
   ggplot2::xlab("Sample Size") +
   ggplot2::ylab("Value") +
-  ggplot2::ggtitle("Results for 5 group 3D Scenario: Conjugate Models")
-ggsave("./5grp3d_results.png")
+  ggplot2::ggtitle("Results for 5 group 3D Scenario")
+ggsave(paste0("./manuscript_plots/5grp3d_results_", sim_setting, ".png"))

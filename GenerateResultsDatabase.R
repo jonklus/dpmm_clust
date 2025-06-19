@@ -18,7 +18,8 @@ library(kableExtra) # use for complex tables http://haozhu233.github.io/kableExt
 # data_path = "//GENE.bst.rochester.edu/Projects/JKSTproj/BlueHive_Sim_Results/"
 
 # running on server
-data_path = "/smdnas02/projects/jklus/JKSTProj/BlueHive_Sim_Results/SummaryLargePriorSS"
+data_path = "/mnt/smdnas02/BSTProjects/JKSTProj/BlueHive_Sim_Results/SummaryLargePriorSS"
+# data_path = "/smdnas02/projects/jklus/JKSTProj/BlueHive_Sim_Results/SummaryLargePriorSS"
 # data_path = "/scratch/jklus/dpmSims/SummarySmallPriorSS"
 
 # list file extensions
