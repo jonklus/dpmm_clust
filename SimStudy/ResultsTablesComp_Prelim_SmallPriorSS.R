@@ -16,7 +16,7 @@ library(kableExtra) # use for complex tables http://haozhu233.github.io/kableExt
 # data_path = "../results_database_SummaryLargePriorSS_2024_12_22.rds"
 
 file1_loc = "./Results/results_database_SummarySmallPriorSS_2024_12_22.rds"
-file2_loc = "./Results/results_database_SummarySmallPriorSS_2025_06_09.rds"
+file2_loc = "./Results/results_database_SummarySmallPriorSS_2025_07_14.rds"
 
 
 # for small prior SS
@@ -201,7 +201,8 @@ ggplot2::ggplot(data = results_plot_table_long %>%
   ggplot2::geom_point(size = 2) +
   ggplot2::theme_classic() +
   ggplot2::scale_color_manual(values = c("blue", "black")) + 
-  # ggplot2::theme(legend.position = "bottom") + 
+  # ggplot2::theme(legend.position = "top", legend.box="vertical", legend.margin=margin()) + 
+  # ggplot2::guides(fill=guide_legend(nrow=2)) + 
   ggplot2::xlab("Sample Size") +
   ggplot2::ylab("Value") +
   ggplot2::ggtitle("Results for Well-Separated Scenario")
