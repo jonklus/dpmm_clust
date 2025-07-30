@@ -1,5 +1,5 @@
 % latex table generated in R 4.4.3 by xtable 1.8-4 package
-% Mon Jul 14 17:03:57 2025
+% Wed Jul 30 11:01:14 2025
 \begin{table}[ht]
 \centering
 \begin{tabular}{rllrrrrrr}
@@ -21,7 +21,7 @@
 \caption{Counts} 
 \end{table}
 % latex table generated in R 4.4.3 by xtable 1.8-4 package
-% Mon Jul 14 17:03:57 2025
+% Wed Jul 30 11:01:14 2025
 \begin{table}[ht]
 \centering
 \begin{tabular}{rllllllll}
@@ -43,7 +43,7 @@
 \caption{3wellsep} 
 \end{table}
 % latex table generated in R 4.4.3 by xtable 1.8-4 package
-% Mon Jul 14 17:03:57 2025
+% Wed Jul 30 11:01:14 2025
 \begin{table}[ht]
 \centering
 \begin{tabular}{rllllllll}
@@ -65,7 +65,7 @@
 \caption{3close} 
 \end{table}
 % latex table generated in R 4.4.3 by xtable 1.8-4 package
-% Mon Jul 14 17:03:57 2025
+% Wed Jul 30 11:01:14 2025
 \begin{table}[ht]
 \centering
 \begin{tabular}{rllllllll}

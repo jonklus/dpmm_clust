@@ -186,57 +186,144 @@ results_plot_table_long$SM = factor(results_plot_table_long$SM)
 # results_plot_table_long$Model = factor(results_plot_table_long$Model)
 results_plot_table_long$metric = factor(results_plot_table_long$metric)
 results_plot_table_long$Conjugate = (!stringr::str_detect(string = results_plot_table_long$Model, pattern = "Non-Conjugate"))
+results_plot_table_long$Conjugate = factor(ifelse(results_plot_table_long$Conjugate == TRUE, "Conjugate", "Non-Conjugate"))
+results_plot_table_long$Type = factor(stringr::str_extract(string = results_plot_table_long$Model, pattern = "[:alpha:]{3}$"))
 # thought -- pivot below by scenario for final plots??
 
+# 
+# ggplot2::ggplot(data = results_plot_table_long %>% 
+#                   dplyr::filter(Scenario == "3wellsep"), 
+#                 # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")), 
+#                 aes(x = n_obs, y = med, shape = SM, lty = Model, color = Conjugate,
+#                     group = interaction(Model, SM))) +
+#   ggplot2::facet_wrap(facets = vars(metric), ncol = 3, scales = "free") +
+#   ggplot2::geom_line() + 
+#   ggplot2::geom_point(size = 2) +
+#   ggplot2::theme_classic() +
+#   ggplot2::scale_color_manual(values = c("blue", "black")) + 
+#   ggplot2::theme(legend.position = "bottom", legend.box="vertical", legend.margin=margin()) + 
+#   # ggplot2::guides(fill=guide_legend(nrow=2)) + 
+#   ggplot2::xlab("Sample Size") +
+#   ggplot2::ylab("Value") +
+#   ggplot2::ggtitle("Results for Well-Separated Scenario")
 
 ggplot2::ggplot(data = results_plot_table_long %>% 
-                  dplyr::filter(Scenario == "3wellsep"), 
+                  dplyr::filter(Scenario == "3wellsep", metric == "KLD"), 
                 # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")), 
-                aes(x = n_obs, y = med, shape = SM, lty = Model, color = Conjugate,
+                aes(x = n_obs, y = med, shape = SM, lty = Type, # color = Conjugate,
                     group = interaction(Model, SM))) +
-  ggplot2::facet_wrap(facets = vars(metric), ncol = 3, scales = "free") +
+  ggplot2::facet_wrap(facets = vars(Conjugate), ncol = 3, scales = "fixed") +
   ggplot2::geom_line() + 
   ggplot2::geom_point(size = 2) +
   ggplot2::theme_classic() +
-  ggplot2::scale_color_manual(values = c("blue", "black")) + 
-  ggplot2::theme(legend.position = "bottom", legend.box="vertical", legend.margin=margin()) + 
-  # ggplot2::guides(fill=guide_legend(nrow=2)) + 
+  ggplot2::scale_linetype_manual(name = "Model", # values = c("DEE", "DEV", "UVV")
+                                 values = c(2,1,3)) + 
+  # ggplot2::scale_color_manual(values = c("blue", "black")) + 
+  ggplot2::scale_shape_manual(name = "Split-Merge", values = c(TRUE, FALSE)) + 
+  ggplot2::theme(legend.position = "bottom") + 
   ggplot2::xlab("Sample Size") +
-  ggplot2::ylab("Value") +
-  ggplot2::ggtitle("Results for Well-Separated Scenario")
-ggsave(paste0("./manuscript_plots/3wellsep_results_", sim_setting, ".png"))
+  ggplot2::ylab("KLD") +
+  ggplot2::ggtitle("KL Divergence for Well-Separated Scenario")
+
+ggsave(paste0("./manuscript_plots/3wellsep_KLD_", sim_setting, ".png"))
+
+ggplot2::ggplot(data = results_plot_table_long %>% 
+                  dplyr::filter(Scenario == "3wellsep", metric == "ARI"), 
+                # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")), 
+                aes(x = n_obs, y = med, shape = SM, lty = Type, # color = Conjugate,
+                    group = interaction(Model, SM))) +
+  ggplot2::facet_wrap(facets = vars(Conjugate), ncol = 3, scales = "fixed") +
+  ggplot2::geom_line() + 
+  ggplot2::geom_point(size = 2) +
+  ggplot2::theme_classic() +
+  ggplot2::scale_linetype_manual(name = "Model", # values = c("DEE", "DEV", "UVV")
+                                 values = c(2,1,3)) + 
+  # ggplot2::scale_color_manual(values = c("blue", "black")) + 
+  ggplot2::scale_shape_manual(name = "Split-Merge", values = c(TRUE, FALSE)) + 
+  ggplot2::theme(legend.position = "bottom") + 
+  ggplot2::xlab("Sample Size") +
+  ggplot2::ylab("ARI") +
+  ggplot2::ggtitle("Adj RAND Index for Well-Separated Scenario")
+
+ggsave(paste0("./manuscript_plots/3wellsep_ARI_", sim_setting, ".png"))
 
 
 ggplot2::ggplot(data = results_plot_table_long %>% 
-                  dplyr::filter(Scenario == "3close"), 
-                # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")),
-                aes(x = n_obs, y = med, shape = SM, lty = Model, color = Conjugate,
+                  dplyr::filter(Scenario == "3close", metric == "KLD"), 
+                # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")), 
+                aes(x = n_obs, y = med, shape = SM, lty = Type, # color = Conjugate,
                     group = interaction(Model, SM))) +
-  ggplot2::facet_wrap(facets = vars(metric), ncol = 3, scales = "free") +
+  ggplot2::facet_wrap(facets = vars(Conjugate), ncol = 3, scales = "fixed") +
   ggplot2::geom_line() + 
   ggplot2::geom_point(size = 2) +
   ggplot2::theme_classic() +
-  ggplot2::scale_color_manual(values = c("blue", "black")) + 
-  ggplot2::theme(legend.position = "bottom", legend.box="vertical", legend.margin=margin()) + 
-  # ggplot2::guides(fill=guide_legend(nrow=2)) + 
+  ggplot2::scale_linetype_manual(name = "Model", # values = c("DEE", "DEV", "UVV")
+                                 values = c(2,1,3)) + 
+  # ggplot2::scale_color_manual(values = c("blue", "black")) + 
+  ggplot2::scale_shape_manual(name = "Split-Merge", values = c(TRUE, FALSE)) + 
+  ggplot2::theme(legend.position = "bottom") + 
   ggplot2::xlab("Sample Size") +
-  ggplot2::ylab("Value") +
-  ggplot2::ggtitle("Results for Close Together Scenario")
-ggsave(paste0("./manuscript_plots/3close_results_", sim_setting, ".png"))
+  ggplot2::ylab("KLD") +
+  ggplot2::ggtitle("KL Divergence for Close Scenario")
+
+ggsave(paste0("./manuscript_plots/3close_KLD_", sim_setting, ".png"))
 
 ggplot2::ggplot(data = results_plot_table_long %>% 
-                  dplyr::filter(Scenario == "5grp3d"),
-                # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")),
-                aes(x = n_obs, y = med, shape = SM, lty = Model, color = Conjugate,
+                  dplyr::filter(Scenario == "3close", metric == "ARI"), 
+                # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")), 
+                aes(x = n_obs, y = med, shape = SM, lty = Type, # color = Conjugate,
                     group = interaction(Model, SM))) +
-  ggplot2::facet_wrap(facets = vars(metric), ncol = 3, scales = "free") +
+  ggplot2::facet_wrap(facets = vars(Conjugate), ncol = 3, scales = "fixed") +
   ggplot2::geom_line() + 
   ggplot2::geom_point(size = 2) +
   ggplot2::theme_classic() +
-  ggplot2::scale_color_manual(values = c("blue", "black")) + 
-  ggplot2::theme(legend.position = "bottom", legend.box="vertical", legend.margin=margin()) + 
-  # ggplot2::guides(fill=guide_legend(nrow=2)) + 
+  ggplot2::scale_linetype_manual(name = "Model", # values = c("DEE", "DEV", "UVV")
+                                 values = c(2,1,3)) + 
+  # ggplot2::scale_color_manual(values = c("blue", "black")) + 
+  ggplot2::scale_shape_manual(name = "Split-Merge", values = c(TRUE, FALSE)) + 
+  ggplot2::theme(legend.position = "bottom") + 
   ggplot2::xlab("Sample Size") +
-  ggplot2::ylab("Value") +
-  ggplot2::ggtitle("Results for 5 group 3D Scenario")
-ggsave(paste0("./manuscript_plots/5grp3d_results_", sim_setting, ".png"))
+  ggplot2::ylab("ARI") +
+  ggplot2::ggtitle("Adj RAND Index for Close Scenario")
+
+ggsave(paste0("./manuscript_plots/3close_ARI_", sim_setting, ".png"))
+
+ggplot2::ggplot(data = results_plot_table_long %>% 
+                  dplyr::filter(Scenario == "5grp3d", metric == "KLD"), 
+                # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")), 
+                aes(x = n_obs, y = med, shape = SM, lty = Type, # color = Conjugate,
+                    group = interaction(Model, SM))) +
+  ggplot2::facet_wrap(facets = vars(Conjugate), ncol = 3, scales = "fixed") +
+  ggplot2::geom_line() + 
+  ggplot2::geom_point(size = 2) +
+  ggplot2::theme_classic() +
+  ggplot2::scale_linetype_manual(name = "Model", # values = c("DEE", "DEV", "UVV")
+                                 values = c(2,1,3)) + 
+  # ggplot2::scale_color_manual(values = c("blue", "black")) + 
+  ggplot2::scale_shape_manual(name = "Split-Merge", values = c(TRUE, FALSE)) + 
+  ggplot2::theme(legend.position = "bottom") + 
+  ggplot2::xlab("Sample Size") +
+  ggplot2::ylab("KLD") +
+  ggplot2::ggtitle("KL Divergence for 5-group Scenario")
+
+ggsave(paste0("./manuscript_plots/5grp3d_KLD_", sim_setting, ".png"))
+
+ggplot2::ggplot(data = results_plot_table_long %>% 
+                  dplyr::filter(Scenario == "5grp3d", metric == "ARI"), 
+                # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")), 
+                aes(x = n_obs, y = med, shape = SM, lty = Type, # color = Conjugate,
+                    group = interaction(Model, SM))) +
+  ggplot2::facet_wrap(facets = vars(Conjugate), ncol = 3, scales = "fixed") +
+  ggplot2::geom_line() + 
+  ggplot2::geom_point(size = 2) +
+  ggplot2::theme_classic() +
+  ggplot2::scale_linetype_manual(name = "Model", # values = c("DEE", "DEV", "UVV")
+                                 values = c(2,1,3)) + 
+  # ggplot2::scale_color_manual(values = c("blue", "black")) + 
+  ggplot2::scale_shape_manual(name = "Split-Merge", values = c(TRUE, FALSE)) + 
+  ggplot2::theme(legend.position = "bottom") + 
+  ggplot2::xlab("Sample Size") +
+  ggplot2::ylab("ARI") +
+  ggplot2::ggtitle("Adj RAND Index for 5-group Scenario")
+
+ggsave(paste0("./manuscript_plots/5grp3d_ARI_", sim_setting, ".png"))

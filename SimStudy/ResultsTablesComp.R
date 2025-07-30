@@ -1,5 +1,5 @@
-source("../Samplers/posterior_helper_fxns.R")
-source("../Samplers/post_processing_inf.R")
+source("./Samplers/posterior_helper_fxns.R")
+source("./Samplers/post_processing_inf.R")
 
 # load R libraries
 library(ggplot2)
@@ -13,7 +13,7 @@ library(kableExtra) # use for complex tables http://haozhu233.github.io/kableExt
 # results across the 100 data sets!
 
 # read in results database
-data_path = "../results_database_SummaryLargePriorSS_2024_12_22.rds"
+data_path = "./Results/results_database_SummaryLargePriorSS_2024_12_22.rds"
 summary_table = readRDS(data_path)
 
 ####################################################################################################################
@@ -172,6 +172,7 @@ results_plot_table_long$SM = factor(results_plot_table_long$SM)
 # results_plot_table_long$Model = factor(results_plot_table_long$Model)
 results_plot_table_long$metric = factor(results_plot_table_long$metric)
 results_plot_table_long$Conjugate = (!stringr::str_detect(string = results_plot_table_long$Model, pattern = "Non-Conjugate"))
+results_plot_table_long$Type = factor(stringr::str_extract(string = results_plot_table_long$Model, pattern = "[:alpha:]{3}$"))
 # thought -- pivot below by scenario for final plots??
 
 
@@ -189,6 +190,23 @@ ggplot2::ggplot(data = results_plot_table_long %>%
   ggplot2::xlab("Sample Size") +
   ggplot2::ylab("Value") +
   ggplot2::ggtitle("Results for Well-Separated Scenarios")
+
+# do with just ARI instead...
+ggplot2::ggplot(data = results_plot_table_long %>% 
+                  dplyr::filter(Scenario == "3wellsep", metric == "ARI"), 
+                # Model %in% c("Conjugate DEE", "Conjugate DEV", "Conjugate UVV")), 
+                aes(x = n_obs, y = med, shape = SM, lty = Type, # color = Conjugate,
+                    group = interaction(Model, SM))) +
+  ggplot2::facet_wrap(facets = vars(Conjugate), ncol = 3, scales = "free") +
+  ggplot2::geom_line() + 
+  ggplot2::geom_point(size = 2) +
+  ggplot2::theme_classic() +
+  # ggplot2::scale_color_manual(values = c("blue", "black")) + 
+  ggplot2::theme(legend.position = "bottom") + 
+  ggplot2::xlab("Sample Size") +
+  ggplot2::ylab("Value") +
+  ggplot2::ggtitle("Results for Well-Separated Scenarios")
+
 ggsave("./3wellsep_results.png")
 
 
