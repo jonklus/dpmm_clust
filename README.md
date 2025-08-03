@@ -1,6 +1,6 @@
-This repository contains source code for fitting a Gaussian DPMM as described in - **Cite paper
+This repository contains source code for fitting a Gaussian DPMM using a combination of algorithms described in Neal (2000) and Jain & Neal (2004, 2007).
 
-Currently, five different models are supported:
+Currently, five different model structures are supported:
 - Conjugate DEE, DEV, and UVV
 - Non-conjugate DEV, UVV
 
